@@ -1,0 +1,58 @@
+// Load test against a running server: npm start, then npm run test:load.
+// Writes reports/load-test.json and prints a table.
+import autocannon from "autocannon";
+import { mkdir, writeFile } from "node:fs/promises";
+
+const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const DURATION = Number(process.env.DURATION ?? 10);
+
+const scenarios = [
+  { name: "GET /api/health", path: "/api/health", connections: 50 },
+  { name: "GET /api/services", path: "/api/services", connections: 50 },
+  { name: "GET /api/appointments (240+ rows)", path: "/api/appointments", connections: 50 },
+  { name: "GET /api/appointments/free-slots", path: `/api/appointments/free-slots?service_code=MN-02&date=${nextWednesday()}`, connections: 50 },
+  { name: "GET /api/analytics/no-shows (Task 9 view)", path: "/api/analytics/no-shows", connections: 50 },
+  { name: "GET /api/bootstrap (all tables)", path: "/api/bootstrap", connections: 20 },
+  {
+    name: "POST /api/channels/telegram/inbound (AI reply)",
+    connections: 20,
+    // Each request is a new messenger user, so every message starts a chat and an AI run.
+    setupClient: (client) =>
+      client.setBody(JSON.stringify({ external_user_id: `load_${Math.random().toString(36).slice(2)}`, name: "load", text: "Сколько стоит маникюр завтра после 6?" })),
+    method: "POST",
+    path: "/api/channels/telegram/inbound",
+  },
+];
+
+function nextWednesday() {
+  const d = new Date(Date.now() + 21 * 864e5);
+  while (d.getDay() !== 3) d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+const results = [];
+for (const s of scenarios) {
+  const r = await autocannon({
+    url: BASE + s.path,
+    method: s.method ?? "GET",
+    headers: { "content-type": "application/json" },
+    connections: s.connections,
+    duration: DURATION,
+    setupClient: s.setupClient,
+  });
+  const row = {
+    scenario: s.name,
+    connections: s.connections,
+    requests: r.requests.total,
+    rps: Math.round(r.requests.average),
+    p50_ms: r.latency.p50,
+    p97_5_ms: r.latency.p97_5,
+    p99_ms: r.latency.p99,
+    errors: r.errors + r.non2xx,
+  };
+  results.push(row);
+  console.log(row);
+}
+await mkdir(new URL("../../reports/", import.meta.url), { recursive: true });
+await writeFile(new URL("../../reports/load-test.json", import.meta.url), JSON.stringify({ base: BASE, duration_s: DURATION, at: new Date().toISOString(), results }, null, 2));
+console.table(results);

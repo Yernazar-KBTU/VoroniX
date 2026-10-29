@@ -1,0 +1,111 @@
+# CRM for Small Business
+
+An AI administrator and CRM for appointment-based businesses (beauty salons, barbershops, clinics).
+Clients write in **Telegram, WhatsApp or Instagram**. The AI answers **only from the CRM database**: real services, real prices, real free time. It books the visit, sends a prepayment link and moves the deal through the sales funnel. Complaints go to a human.
+
+![Chat: the AI books a visit and takes a prepayment](docs/images/chat_paid.png)
+
+| Requirement | How it is met | Proof |
+|---|---|---|
+| FR-01 messages from three messengers | `POST /api/channels/:messenger/inbound`, Telegram bot adapter | `ai-flow.test.ts` |
+| FR-02 answers from the database | 7 CRM tools; the AI never runs SQL itself | `ai-flow.test.ts` |
+| FR-03 booking and payment | EXCLUDE constraint, payment transaction | `database.test.ts`, `api.test.ts` |
+| NFR-01 reply within 5 s | every AI run logged in `ai_runs` with latency | p95 380 ms under load |
+| BR-01 no invented prices | prices come from `services`, unknown services are refused | `ai-flow.test.ts` |
+
+## Quick start
+
+```bash
+docker compose up --build        # PostgreSQL 16 + app on http://localhost:3000
+```
+
+Without Docker (Node 20+, PostgreSQL 16):
+
+```bash
+cp .env.example .env             # set DATABASE_URL
+npm install
+npm run db:migrate && npm run db:seed
+npm run dev                      # API :3000, web :5173
+```
+
+Set `ANTHROPIC_API_KEY` to let Claude write the replies. Without a key the built-in offline engine answers with rules, using the same tools and the same database.
+
+## Architecture
+
+```
+Telegram / WhatsApp / Instagram ──► channel webhook ─┐
+Web CRM (Vite, ES modules) ──────► REST API ─────────┤  Express 5 + TypeScript
+                                   ◄── SSE events ───┤
+                                                     ├─► services (booking, conversations)
+                                   AI runner ────────┤      └─► repositories ─► PostgreSQL 16
+                                   (Claude | offline)┘  tools: find_free_slots, link_client,
+                                                        create_appointment, create_payment_link, …
+```
+
+```
+apps/
+  api/                 Express API, AI engines, Telegram adapter
+    src/
+      ai/              runner, Claude tool loop, offline NLU engine, tools, context
+      channels/        telegram.ts
+      db/              pool, migrations runner, demo seed
+      domain/          pure logic: free slots, prepayment rule, types
+      repositories/    SQL per table
+      routes/          HTTP + zod validation
+      services/        booking and conversation workflows (transactions)
+    test/unit          40 tests, no database
+    test/integration   51 tests on a real PostgreSQL
+  web/                 single-page CRM (12 pages), live updates over SSE
+db/migrations/         001_init.sql (13 tables), 002_reporting.sql (views, read-only role)
+tests/load/            autocannon load test
+docs/                  architecture, database, test report, screenshots
+```
+
+More: [architecture](docs/architecture.md) · [database](docs/database.md) · [testing](docs/testing.md)
+
+## Database
+
+![ERD](docs/images/erd.png)
+
+Rules the database enforces itself, so neither the AI nor a person can break them:
+
+- **No double booking**: `EXCLUDE USING gist (master_id WITH =, tsrange(start_at, end_at) WITH &&)`.
+- **Only qualified masters**: composite FK `(master_id, service_code) → master_services`.
+- **Valid values**: CHECK on codes, prices, durations, statuses and funnel stages. A paid payment must have `paid_at`.
+- **Reports are read-only**: the SQL console runs as `crm_readonly` in a `READ ONLY` transaction with a 3 s timeout.
+
+## Tests
+
+```bash
+npm test                 # 91 tests: unit + integration (needs PostgreSQL, uses crm_test)
+npm start & npm run test:load
+```
+
+| Suite | Tests | Result |
+|---|---|---|
+| Unit: scheduling, pricing, message understanding | 40 | passed |
+| Integration: database rules | 18 | passed |
+| Integration: REST API | 24 | passed |
+| Integration: AI chat funnel | 9 | passed |
+
+Load test (single Node process, laptop-class container, 50 connections, 0 errors):
+
+| Endpoint | req/s | p50 | p99 |
+|---|---|---|---|
+| `GET /api/services` | 1 409 | 35 ms | 54 ms |
+| `GET /api/appointments/free-slots` | 743 | 66 ms | 93 ms |
+| `GET /api/analytics/no-shows` | 1 036 | 46 ms | 88 ms |
+| `POST /api/channels/telegram/inbound` | 253 | 76 ms | 126 ms |
+
+## Screens
+
+| | |
+|---|---|
+| ![Dashboard](docs/images/dashboard.png) | ![Calendar](docs/images/calendar.png) |
+| ![Database](docs/images/database.png) | ![Analytics](docs/images/analytics.png) |
+
+## Team
+
+Basics of Information Systems, Fall 2026. Balabatyr Kamila, Ussenbayeva Alua, Aitakhyn Inzhu, Askarova Akbota, Altynbekov Yernazar, Nurzhanov Amirkhan.
+
+MIT License.

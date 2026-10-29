@@ -1,0 +1,29 @@
+{
+  "name": "crm-small-business",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI CRM for appointment-based small businesses: the AI administrator answers clients in Telegram, WhatsApp and Instagram using only data from the CRM database.",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/api & npm run dev -w apps/web",
+    "build": "npm run build -w apps/web && npm run build -w apps/api",
+    "start": "npm run start -w apps/api",
+    "db:migrate": "npm run db:migrate -w apps/api",
+    "db:seed": "npm run db:seed -w apps/api",
+    "typecheck": "npm run typecheck -w apps/api",
+    "test": "npm run test -w apps/api",
+    "test:unit": "npm run test:unit -w apps/api",
+    "test:integration": "npm run test:integration -w apps/api",
+    "test:load": "node tests/load/run.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "autocannon": "^8.0.0"
+  }
+}
