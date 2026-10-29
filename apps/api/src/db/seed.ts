@@ -185,9 +185,9 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
     await c.query(`TRUNCATE ai_runs, messages, conversations, payments, appointments, master_accounts, master_services, masters,
       client_channels, clients, services, knowledge_entries, business_settings RESTART IDENTITY CASCADE`);
     await c.query(
-      `INSERT INTO business_settings (id, name, business_type, city, address, hours, phone, tone, languages, prepay_percent, prepay_min_price_kzt, autopilot)
+      `INSERT INTO business_settings (id, name, business_type, city, address, hours, phone, tone, languages, prepay_percent, prepay_min_price_kzt, autopilot, catchphrase)
        VALUES (1, 'Lumière Beauty Studio', 'Beauty salon', 'Almaty', 'пр. Абая 10, 2 этаж (демо-адрес)', 'пн–сб 09:00–20:00, воскресенье выходной',
-               '+7 700 000 0000 (demo)', 'Тепло, коротко и вежливо. Обращаться на «вы». Не больше одного эмодзи.', 'Russian, Kazakh, English', 30, 20000, TRUE)`,
+               '+7 700 000 0000 (demo)', 'Тепло, коротко и вежливо. Обращаться на «вы». Не больше одного эмодзи.', 'Russian, Kazakh, English', 30, 20000, TRUE, 'Красота начинается с заботы ✨')`,
     );
     await insertMany(c, "services (service_code, name, duration_min, price_kzt, category)", services);
     await insertMany(c, "masters (master_id, full_name, specialization, work_start, work_end, work_days)", masters);

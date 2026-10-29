@@ -14,6 +14,7 @@ import { getSettings } from "../repositories/settings.repo.js";
 import { getEngine, idle } from "../ai/runner.js";
 import { SqlBody } from "./schemas.js";
 import { askKnowledge } from "../ai/ask.js";
+import { organiseNotes } from "../ai/teach.js";
 
 export const insightsRouter = Router();
 
@@ -90,6 +91,13 @@ insightsRouter.post("/sql", async (req, res) => {
     await client.query("ROLLBACK").catch(() => {});
     client.release();
   }
+});
+
+/** "Teach the AI": free-form notes in, a draft of knowledge entries and settings out. */
+insightsRouter.post("/ai/teach", async (req, res) => {
+  const text = typeof req.body?.text === "string" ? req.body.text.trim().slice(0, 20000) : "";
+  if (!text) throw new HttpError(400, "text is required", "bad_request");
+  res.json(await organiseNotes(text));
 });
 
 insightsRouter.post("/ai/ask", async (req, res) => {

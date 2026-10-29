@@ -12,6 +12,7 @@ export const SettingsBody = z.object({
   hours: z.string().max(120).default(""),
   phone: z.string().max(40).default(""),
   tone: z.string().max(2000).default(""),
+  catchphrase: z.string().max(200).default(""),
   languages: z.string().max(120).default(""),
   staff_label: z.string().max(30).default("Master"),
   service_label: z.string().max(30).default("Service"),

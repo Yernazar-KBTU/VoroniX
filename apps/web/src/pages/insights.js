@@ -156,6 +156,7 @@ export const business = {
   <div class="frow"><div class="f"><label for="b_staff">What you call staff</label><input id="b_staff" value="${esc(b.staff_label)}" placeholder="Master, Doctor, Trainer"></div><div class="f"><label for="b_svc">What you call services</label><input id="b_svc" value="${esc(b.service_label)}" placeholder="Service, Procedure, Class"></div><div class="f"><label for="b_lang">Client languages</label><input id="b_lang" value="${esc(b.languages)}"></div></div>
  </div><div class="ph" style="border-top:1px solid var(--line)"><h3>AI administrator</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:14px">
   <div class="f"><label for="b_tone">Tone of voice</label><textarea id="b_tone">${esc(b.tone)}</textarea></div>
+  <div class="f"><label for="b_catch">Brand phrase (the AI uses it in greetings and confirmations)</label><input id="b_catch" value="${esc(b.catchphrase || "")}" placeholder="e.g. Красота начинается с заботы ✨"></div>
   <div class="frow"><div class="f"><label for="b_pp">Prepayment, % of price</label><input id="b_pp" type="number" min="0" max="100" value="${esc(b.prepay_percent)}"></div><div class="f"><label for="b_ppmin">Prepayment needed from price, ₸</label><input id="b_ppmin" type="number" min="0" value="${esc(b.prepay_min_price)}"></div></div>
   <label class="switch"><input type="checkbox" id="b_auto" ${b.autopilot !== false ? "checked" : ""}> New chats start with AI autopilot on</label>
  </div><div class="mf" style="border-top:1px solid var(--line)"><button class="btn danger" type="button" data-act="resetDemo">Reset demo data…</button><span style="flex:1"></span><button class="btn create" type="submit">Save</button></div></form>`;
@@ -169,7 +170,7 @@ document.addEventListener("submit", (e) => {
   act(
     api.put("/settings", {
       name: v("b_name"), type: v("b_type"), city: v("b_city"), address: v("b_address"), hours: v("b_hours"), phone: v("b_phone"),
-      staff_label: v("b_staff"), service_label: v("b_svc"), languages: v("b_lang"), tone: v("b_tone"),
+      staff_label: v("b_staff"), service_label: v("b_svc"), languages: v("b_lang"), tone: v("b_tone"), catchphrase: v("b_catch"),
       prepay_percent: +v("b_pp") || 0, prepay_min_price: +v("b_ppmin") || 0, autopilot: document.getElementById("b_auto").checked,
     }),
     "Saved. The AI uses the new settings from the next message.",

@@ -25,9 +25,9 @@ beforeAll(freshDb);
 afterAll(() => pool.end());
 
 describe("schema", () => {
-  it("applies both migrations once", async () => {
+  it("applies every migration once, in order", async () => {
     const { rows } = await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-    expect(rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql"]);
+    expect(rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql"]);
   });
 
   it("has the 13 tables and 2 reporting views of the design", async () => {

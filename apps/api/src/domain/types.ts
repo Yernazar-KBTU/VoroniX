@@ -17,6 +17,8 @@ export interface BusinessSettings {
   hours: string;
   phone: string;
   tone: string;
+  /** Brand phrase the AI uses in greetings and confirmations. */
+  catchphrase: string;
   languages: string;
   staff_label: string;
   service_label: string;

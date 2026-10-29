@@ -39,6 +39,26 @@ const dot = (s: string) => (s.endsWith(".") ? s : `${s}.`);
 
 const RU_DOW = ["воскресенье", "понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"];
 
+/** " Красота начинается с заботы ✨" when the owner set a brand phrase. */
+const sign = (snap: CrmSnapshot) => (snap.biz.catchphrase ? ` ${snap.biz.catchphrase}` : "");
+
+const PROMO = /(акци|скидк|промо|бонус|подар|бесплатн|promo|discount|sale|offer|free|%)/i;
+
+/**
+ * A promotion from the knowledge base that names this service, so the client
+ * hears about it when asking the price. Only text the owner wrote is used (BR-01).
+ */
+export function promoFor(service: Pick<Service, "name">, snap: Pick<CrmSnapshot, "knowledge">, before = "", after = ""): string {
+  const stems = service.name.toLowerCase().match(/[\p{L}]{4,}/gu)?.map((w) => w.slice(0, 5)) ?? [];
+  for (const k of snap.knowledge) {
+    if (!PROMO.test(`${k.category} ${k.title}`) && !PROMO.test(k.content)) continue;
+    const sentences = k.content.split(/(?<=[.!?])\s+/);
+    const hit = sentences.find((s) => PROMO.test(s) && stems.some((st) => s.toLowerCase().includes(st)));
+    if (hit) return `${before}${hit.trim()}${after}`;
+  }
+  return "";
+}
+
 export class OfflineAgent implements AgentEngine {
   readonly name = "offline-rules";
   private states = new Map<string, DialogState>();
@@ -140,7 +160,7 @@ export class OfflineAgent implements AgentEngine {
 
     const service = snap.services.find((s) => s.id === st.service);
     if (!service) {
-      const greet = nlu.isGreeting(text) ? R("Здравствуйте! ", "Hello! ") : "";
+      const greet = nlu.isGreeting(text) ? this.hello(conv, snap, R) : "";
       if (info.length) return { text: greet + info.join(" ") + R(" Подсказать по услугам и свободному времени?", " Can I help you with a service or a free time?"), toolCalls: calls };
       const list = snap.services.filter((s) => s.is_active).slice(0, 5).map((s) => `${s.name.toLowerCase()} (${money(s.price_kzt)})`).join(", ");
       return { text: greet + R(`Подскажите, на какую услугу хотите записаться? Например: ${list}.`, `Which service would you like? For example: ${list}.`), toolCalls: calls };
@@ -150,22 +170,29 @@ export class OfflineAgent implements AgentEngine {
     if (!st.date) {
       const pp = prepaymentFor(service, snap.biz);
       const extra = pp ? R(` Для этой услуги нужна предоплата ${snap.biz.prepay_percent}%: ${money(pp)}.`, ` This service needs a ${snap.biz.prepay_percent}% prepayment: ${money(pp)}.`) : "";
-      const greet = nlu.isGreeting(text) ? R("Здравствуйте! ", "Hello! ") : "";
+      const greet = nlu.isGreeting(text) ? this.hello(conv, snap, R) : "";
       return {
-        text: greet + info.join(" ") + (info.length ? " " : "") + R(`${service.name} стоит ${money(service.price_kzt)}, длится ${durRu(service.duration_min)}.${extra} На какой день вам удобно?`, `${service.name} costs ${money(service.price_kzt)} and takes about ${service.duration_min} minutes.${extra} Which day suits you?`),
+        text: greet + info.join(" ") + (info.length ? " " : "") + R(`${service.name} стоит ${money(service.price_kzt)}, длится ${durRu(service.duration_min)}.${extra}${promoFor(service, snap, " ")} На какой день вам удобно?`, `${service.name} costs ${money(service.price_kzt)} and takes about ${service.duration_min} minutes.${extra}${promoFor(service, snap, " ")} Which day suits you?`),
         toolCalls: calls,
       };
     }
 
     // 8. Service and day known: offer free times (and answer the price if asked).
     const offered = await this.offer(conv.id, st, service, call, calls, R, lang);
-    const greet = nlu.isGreeting(text) && conv.messages.filter((m) => m.from === "ai").length === 0 ? R("Здравствуйте! ", "Hello! ") : "";
+    const greet = nlu.isGreeting(text) && conv.messages.filter((m) => m.from === "ai").length === 0 ? this.hello(conv, snap, R) : "";
     let priceLine = "";
     if (nlu.asksPrice(text)) {
       const pp = prepaymentFor(service, snap.biz);
-      priceLine = R(`${service.name} стоит ${money(service.price_kzt)}${pp ? `, предоплата ${money(pp)}` : ""}. `, `${service.name} costs ${money(service.price_kzt)}${pp ? `, prepayment ${money(pp)}` : ""}. `);
+      priceLine = R(`${service.name} стоит ${money(service.price_kzt)}${pp ? `, предоплата ${money(pp)}` : ""}. `, `${service.name} costs ${money(service.price_kzt)}${pp ? `, prepayment ${money(pp)}` : ""}. `) + promoFor(service, snap, "", " ");
     }
     return { ...offered, text: greet + info.join(" ") + (info.length ? " " : "") + priceLine + offered.text };
+  }
+
+  /** Greeting; the first reply in a chat also carries the brand phrase. */
+  private hello(conv: Conversation, snap: CrmSnapshot, R: (ru: string, en: string) => string): string {
+    const first = !conv.messages.some((m) => m.from === "ai");
+    const phrase = first && snap.biz.catchphrase ? ` ${snap.biz.catchphrase}` : "";
+    return R(`Здравствуйте!${phrase} `, `Hello!${phrase} `);
   }
 
   private pickOffer(text: string, st: DialogState, pref: nlu.TimePref | null): Offer | undefined {
@@ -246,13 +273,13 @@ export class OfflineAgent implements AgentEngine {
       await call("create_payment_link", { appointment_id: res.appointment_id, kind: "prepayment" });
       return {
         text: R(
-          `Записала вас ${this.when(o, lang)} к мастеру ${dot(o.master)} Для этой услуги нужна предоплата ${money(res.prepayment_required_kzt)}, кнопка оплаты ниже.`,
-          `You are booked for ${this.when(o, lang)} with ${dot(o.master)} This service needs a prepayment of ${money(res.prepayment_required_kzt)}, the payment button is below.`,
+          `Записала вас ${this.when(o, lang)} к мастеру ${dot(o.master)} Для этой услуги нужна предоплата ${money(res.prepayment_required_kzt)}, кнопка оплаты ниже.${sign(snap)}`,
+          `You are booked for ${this.when(o, lang)} with ${dot(o.master)} This service needs a prepayment of ${money(res.prepayment_required_kzt)}, the payment button is below.${sign(snap)}`,
         ),
         toolCalls: calls,
       };
     }
-    return { text: R(`Готово! Записала вас ${this.when(o, lang)} к мастеру ${dot(o.master)} Ждём вас!`, `Done! You are booked for ${this.when(o, lang)} with ${dot(o.master)} See you!`), toolCalls: calls };
+    return { text: R(`Готово! Записала вас ${this.when(o, lang)} к мастеру ${dot(o.master)} Ждём вас!${sign(snap)}`, `Done! You are booked for ${this.when(o, lang)} with ${dot(o.master)} See you!${sign(snap)}`), toolCalls: calls };
   }
 
   /** "пятницу 30.10", with a preposition: "в пятницу 30.10", "во вторник 03.11", "на пятницу 30.10". */

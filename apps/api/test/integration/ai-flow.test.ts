@@ -111,3 +111,30 @@ describe("NFR-01: every reply is logged with its latency", () => {
     expect(+row.errors).toBe(0);
   });
 });
+
+describe("Teach the AI: free text becomes data the AI uses", () => {
+  it("organises notes into entries and settings", async () => {
+    const r = await api
+      .post("/api/ai/teach")
+      .send({ text: "До конца ноября скидка 15% на педикюр по будням. Наш слоган: «Ваша красота — наша забота»." })
+      .expect(200);
+    expect(r.body.entries).toEqual([expect.objectContaining({ category: "Promotions", content: "До конца ноября скидка 15% на педикюр по будням." })]);
+    expect(r.body.settings).toEqual({ catchphrase: "Ваша красота — наша забота" });
+
+    await api.post("/api/knowledge").send(r.body.entries[0]).expect(201);
+    const biz = (await api.get("/api/settings").expect(200)).body;
+    await api.put("/api/settings").send({ ...biz, ...r.body.settings }).expect(200);
+  });
+
+  it("greets with the brand phrase and mentions the saved promotion", async () => {
+    const c = await say("wa_e2e_teach", "Здравствуйте! Сколько стоит педикюр?");
+    const reply = lastAi(c);
+    expect(reply).toMatch(/^Здравствуйте! Ваша красота — наша забота/);
+    expect(reply).toMatch(/12 000 ₸/);
+    expect(reply).toContain("До конца ноября скидка 15% на педикюр по будням.");
+  });
+
+  it("rejects empty notes", async () => {
+    await api.post("/api/ai/teach").send({ text: "  " }).expect(400);
+  });
+});

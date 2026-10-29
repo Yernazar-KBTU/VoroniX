@@ -11,6 +11,7 @@ Clients write in **Telegram, WhatsApp or Instagram**. The AI answers **only from
 | FR-02 answers from the database | 7 CRM tools; the AI never runs SQL itself | `ai-flow.test.ts` |
 | FR-03 booking and payment | EXCLUDE constraint, payment transaction | `database.test.ts`, `api.test.ts` |
 | NFR-01 reply within 5 s | every AI run logged in `ai_runs` with latency | p95 380 ms under load |
+| Business-specific AI | “Teach the AI”: paste promotions, rules, a slogan; the AI sorts them into knowledge entries and settings in the database and uses them in replies | `teach.test.ts`, `ai-flow.test.ts` |
 | BR-01 no invented prices | prices come from `services`, unknown services are refused | `ai-flow.test.ts` |
 
 ## Quick start
@@ -53,8 +54,8 @@ apps/
       repositories/    SQL per table
       routes/          HTTP + zod validation
       services/        booking and conversation workflows (transactions)
-    test/unit          40 tests, no database
-    test/integration   51 tests on a real PostgreSQL
+    test/unit          45 tests, no database
+    test/integration   54 tests on a real PostgreSQL
   web/                 single-page CRM (12 pages), live updates over SSE
 db/migrations/         001_init.sql (13 tables), 002_reporting.sql (views, read-only role)
 tests/load/            autocannon load test
@@ -77,16 +78,16 @@ Rules the database enforces itself, so neither the AI nor a person can break the
 ## Tests
 
 ```bash
-npm test                 # 91 tests: unit + integration (needs PostgreSQL, uses crm_test)
+npm test                 # 99 tests: unit + integration (needs PostgreSQL, uses crm_test)
 npm start & npm run test:load
 ```
 
 | Suite | Tests | Result |
 |---|---|---|
-| Unit: scheduling, pricing, message understanding | 40 | passed |
+| Unit: scheduling, pricing, message understanding, Teach the AI | 45 | passed |
 | Integration: database rules | 18 | passed |
 | Integration: REST API | 24 | passed |
-| Integration: AI chat funnel | 9 | passed |
+| Integration: AI chat funnel and Teach the AI | 12 | passed |
 
 Load test (single Node process, laptop-class container, 50 connections, 0 errors):
 
