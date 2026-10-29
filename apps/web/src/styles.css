@@ -1,10 +1,10 @@
 /* Layout: Bitrix-style workspace. Icon rail on the left, glass header on a violet gradient, white working panels. AI is marked in violet everywhere. */
 :root{
-  --bg:#0f86a8;
-  --grad:radial-gradient(1200px 700px at 85% 15%,#7ff5e655,transparent 60%),radial-gradient(900px 600px at 10% 90%,#1fb6c955,transparent 60%),linear-gradient(135deg,#0b4a7a 0%,#0f86a8 50%,#2fd1c5 100%);
-  --chrome:#ffffff; --chrome-dim:#d6fbf6; --glass:rgba(255,255,255,.14); --glass-hi:rgba(255,255,255,.26);
+  --bg:#0d3a6e;
+  --grad:radial-gradient(1200px 700px at 85% 15%,#3fd0ff55,transparent 60%),radial-gradient(900px 600px at 10% 90%,#2a6bff44,transparent 60%),linear-gradient(135deg,#0a2350 0%,#0d4f8f 50%,#0f9cc4 100%);
+  --chrome:#ffffff; --chrome-dim:#cfeaff; --glass:rgba(255,255,255,.14); --glass-hi:rgba(255,255,255,.26);
   --panel:#ffffff; --panel2:#f4f6fb; --line:#e2e6ef; --fg:#1d2233; --muted:#6a7186;
-  --accent:#0aa3b8; --accent-soft:#e0f7fa; --green:#4fae33; --green-hi:#5cc23c;
+  --accent:#0b8fd6; --accent-soft:#e3f3fd; --green:#4fae33; --green-hi:#5cc23c;
   --red:#e3484f; --red-soft:#fdecec; --amber:#d98e04; --amber-soft:#fff4dc; --ok-soft:#e7f6e2;
   --ai:#7b4dff; --ai-soft:#f0ebff; --ai-fg:#5a2ee0;
   --tg:#2aa3e0; --wa:#25b860; --ig:#d6338a;
@@ -13,15 +13,15 @@
   --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#06242f; --grad:radial-gradient(1200px 700px at 85% 15%,#2fd1c533,transparent 60%),radial-gradient(900px 600px at 10% 90%,#1f8fb033,transparent 60%),linear-gradient(135deg,#051c2a 0%,#08394a 50%,#0b5560 100%);
-  --panel:#10303c; --panel2:#163b48; --line:#245262; --fg:#e4f4f6; --muted:#9cbfc6;
-  --accent:#2cc6d6; --accent-soft:#11414c; --green:#4fae33; --green-hi:#5cc23c;
+  --bg:#061a33; --grad:radial-gradient(1200px 700px at 85% 15%,#3fd0ff26,transparent 60%),radial-gradient(900px 600px at 10% 90%,#2a6bff26,transparent 60%),linear-gradient(135deg,#05132b 0%,#0a2a55 50%,#0b4a72 100%);
+  --panel:#0f2442; --panel2:#152e52; --line:#23426b; --fg:#e4eef9; --muted:#9db4cf;
+  --accent:#3fb4f0; --accent-soft:#12365a; --green:#4fae33; --green-hi:#5cc23c;
   --red:#ff6b70; --red-soft:#4a2030; --amber:#ffb84a; --amber-soft:#43361a; --ok-soft:#1f3b26;
   --ai:#9b7bff; --ai-soft:#2e2660; --ai-fg:#c3b2ff; --shadow:0 10px 30px rgba(0,0,0,.4); color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#06242f; --grad:radial-gradient(1200px 700px at 85% 15%,#2fd1c533,transparent 60%),radial-gradient(900px 600px at 10% 90%,#1f8fb033,transparent 60%),linear-gradient(135deg,#051c2a 0%,#08394a 50%,#0b5560 100%);
-  --panel:#10303c; --panel2:#163b48; --line:#245262; --fg:#e4f4f6; --muted:#9cbfc6;
-  --accent:#2cc6d6; --accent-soft:#11414c; --green:#4fae33; --green-hi:#5cc23c;
+  --bg:#061a33; --grad:radial-gradient(1200px 700px at 85% 15%,#3fd0ff26,transparent 60%),radial-gradient(900px 600px at 10% 90%,#2a6bff26,transparent 60%),linear-gradient(135deg,#05132b 0%,#0a2a55 50%,#0b4a72 100%);
+  --panel:#0f2442; --panel2:#152e52; --line:#23426b; --fg:#e4eef9; --muted:#9db4cf;
+  --accent:#3fb4f0; --accent-soft:#12365a; --green:#4fae33; --green-hi:#5cc23c;
   --red:#ff6b70; --red-soft:#4a2030; --amber:#ffb84a; --amber-soft:#43361a; --ok-soft:#1f3b26;
   --ai:#9b7bff; --ai-soft:#2e2660; --ai-fg:#c3b2ff; --shadow:0 10px 30px rgba(0,0,0,.4); color-scheme:dark}
 html,body{height:100%}
