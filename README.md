@@ -1,6 +1,6 @@
-# CRM for Small Business
+# Volonix
 
-An AI administrator and CRM for appointment-based businesses (beauty salons, barbershops, clinics).
+**AI CRM for small business.** An AI administrator and CRM for appointment-based businesses (beauty salons, barbershops, clinics).
 Clients write in **Telegram, WhatsApp or Instagram**. The AI answers **only from the CRM database**: real services, real prices, real free time. It books the visit, sends a prepayment link and moves the deal through the sales funnel. Complaints go to a human.
 
 ![Chat: the AI books a visit and takes a prepayment](docs/images/chat_paid.png)
@@ -18,9 +18,9 @@ Clients write in **Telegram, WhatsApp or Instagram**. The AI answers **only from
 
 | | Link | What works |
 |---|---|---|
-| Demo in the browser | [GitHub Pages](https://GITHUB_USER.github.io/crm-small-business/) | The whole CRM with a demo salon; changes stay in your tab, the AI is off |
+| Demo in the browser | [GitHub Pages](https://GITHUB_USER.github.io/volonix/) | The whole CRM with a demo salon; changes stay in your tab, the AI is off |
 | Demo with the AI | [claude.ai](https://claude.ai/artifact/ADSNg68LNiherEJNbSeMdR) | Same CRM with a live AI administrator and a shared database |
-| Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/GITHUB_USER/crm-small-business) | API, web CRM and PostgreSQL from `render.yaml`, free plan |
+| Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/GITHUB_USER/volonix) | API, web CRM and PostgreSQL from `render.yaml`, free plan |
 
 On the first open of a deployed copy, press **Load demo data** in the banner.
 

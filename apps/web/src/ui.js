@@ -65,7 +65,7 @@ export function scheduleRender() {
 }
 
 export function render() {
-  $("#bizName").textContent = biz().name || "CRM for Small Business";
+  $("#bizName").textContent = biz().name || "Volonix";
   renderRail();
   const view = $("#view");
   // Keep typed text, focus and chat scroll position across re-renders.
