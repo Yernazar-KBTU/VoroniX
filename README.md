@@ -82,7 +82,7 @@ apps/
     test/unit          54 tests, no database
     test/integration   65 tests on a real PostgreSQL
   web/                 single-page CRM (12 pages), live updates over SSE
-db/migrations/         001_init.sql (13 tables), 002_reporting.sql (views, read-only role), 003_brand.sql, 004_integrations.sql
+db/migrations/         001_init.sql (13 tables), 002_reporting.sql (views, read-only role), 003_brand.sql, 004_integrations.sql, 005_data_quality.sql (Task 7 rules)
 site/                  browser-only demo published to GitHub Pages
 render.yaml            one-click deploy of the full system to Render
 tests/load/            autocannon load test
@@ -105,7 +105,7 @@ Rules the database enforces itself, so neither the AI nor a person can break the
 ## Tests
 
 ```bash
-npm test                 # 119 tests: unit + integration (needs PostgreSQL, uses crm_test)
+npm test                 # 122 tests: unit + integration (needs PostgreSQL, uses crm_test)
 npm start & npm run test:load
 ```
 

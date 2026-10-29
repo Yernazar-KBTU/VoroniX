@@ -5,12 +5,13 @@ import { mkdir, writeFile } from "node:fs/promises";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
 const DURATION = Number(process.env.DURATION ?? 10);
+const SECRET = process.env.CHANNEL_WEBHOOK_SECRET;
 
 const scenarios = [
   { name: "GET /api/health", path: "/api/health", connections: 50 },
   { name: "GET /api/services", path: "/api/services", connections: 50 },
   { name: "GET /api/appointments (240+ rows)", path: "/api/appointments", connections: 50 },
-  { name: "GET /api/appointments/free-slots", path: `/api/appointments/free-slots?service_code=MN-02&date=${nextWednesday()}`, connections: 50 },
+  { name: "GET /api/appointments/free-slots", path: `/api/appointments/free-slots?service_code=HC-01&date=${nextWednesday()}`, connections: 50 },
   { name: "GET /api/analytics/no-shows (Task 9 view)", path: "/api/analytics/no-shows", connections: 50 },
   { name: "GET /api/bootstrap (all tables)", path: "/api/bootstrap", connections: 20 },
   {
@@ -18,7 +19,7 @@ const scenarios = [
     connections: 20,
     // Each request is a new messenger user, so every message starts a chat and an AI run.
     setupClient: (client) =>
-      client.setBody(JSON.stringify({ external_user_id: `load_${Math.random().toString(36).slice(2)}`, name: "load", text: "Сколько стоит маникюр завтра после 6?" })),
+      client.setBody(JSON.stringify({ external_user_id: `load_${Math.random().toString(36).slice(2)}`, name: "load", text: "Сколько стоит стрижка завтра после 6?" })),
     method: "POST",
     path: "/api/channels/telegram/inbound",
   },
@@ -35,7 +36,7 @@ for (const s of scenarios) {
   const r = await autocannon({
     url: BASE + s.path,
     method: s.method ?? "GET",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...(SECRET ? { "x-channel-secret": SECRET } : {}) },
     connections: s.connections,
     duration: DURATION,
     setupClient: s.setupClient,

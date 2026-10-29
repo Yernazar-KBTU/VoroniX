@@ -27,10 +27,10 @@ afterAll(() => pool.end());
 describe("schema", () => {
   it("applies every migration once, in order", async () => {
     const { rows } = await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-    expect(rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql", "004_integrations.sql"]);
+    expect(rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql", "004_integrations.sql", "005_data_quality.sql"]);
   });
 
-  it("has the 14 tables and 2 reporting views of the design", async () => {
+  it("has the 14 tables and 3 reporting views of the design", async () => {
     const { rows } = await pool.query(
       `SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> 'schema_migrations' ORDER BY 1`,
     );
@@ -38,7 +38,7 @@ describe("schema", () => {
       "ai_runs", "appointments", "business_settings", "client_channels", "clients", "conversations", "integrations", "knowledge_entries",
       "master_accounts", "master_services", "masters", "messages", "payments", "services",
     ]);
-    expect(rows.filter((r) => r.table_type === "VIEW").map((r) => r.table_name)).toEqual(["v_daily_revenue", "v_no_show_by_service"]);
+    expect(rows.filter((r) => r.table_type === "VIEW").map((r) => r.table_name)).toEqual(["v_daily_revenue", "v_no_show_by_service", "v_visits_to_close"]);
   });
 
   it("generates readable ids from sequences", async () => {
@@ -104,6 +104,24 @@ describe("referential integrity and checks", () => {
 
   it("does not delete a service that has visits (ON DELETE RESTRICT)", async () => {
     expect(await code(`DELETE FROM services WHERE service_code = 'VP-07'`)).toMatch(/^23503/);
+  });
+});
+
+describe("data quality problems from Task 7", () => {
+  it("P6: refuses Completed or No-show for a visit that has not started", async () => {
+    expect(await insertVisit("MS-01", "HC-01", "11:00", "Completed")).toBe("23514:appointments_result_after_visit");
+    expect(await insertVisit("MS-01", "HC-01", "11:00", "No-show")).toBe("23514:appointments_result_after_visit");
+  });
+
+  it("P5: lists past visits that are still Booked or Confirmed", async () => {
+    await pool.query(
+      `INSERT INTO appointments (client_id, master_id, service_code, start_at, end_at, status, source)
+       VALUES ('CL-0001', 'MS-02', 'HC-02', date_trunc('hour', now() AT TIME ZONE 'Asia/Almaty') - interval '30 days',
+               date_trunc('hour', now() AT TIME ZONE 'Asia/Almaty') - interval '30 days' + interval '30 minutes', 'Booked', 'Admin')`,
+    );
+    const { rows } = await pool.query(`SELECT status, hours_overdue FROM v_visits_to_close ORDER BY start_at LIMIT 1`);
+    expect(rows[0].status).toBe("Booked");
+    expect(rows[0].hours_overdue).toBeGreaterThan(24 * 29);
   });
 });
 
