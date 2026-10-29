@@ -55,7 +55,7 @@ export const calendar = {
     head(
       "Calendar",
       "",
-      `<button class="btn create" data-act="newAppt">+ New booking</button><div class="tabs"><button data-cal="-1" aria-label="Previous day">←</button><button data-cal="0" class="on">Today</button><button data-cal="1" aria-label="Next day">→</button></div><input type="date" class="inp" id="calPick" data-fresh="1" value="${calDay}" style="width:auto" aria-label="Day">`,
+      `<button class="btn create" data-act="newAppt">+ New booking</button><div class="tabs"><button data-cal="-1" aria-label="Previous day">←</button><button data-cal="0" class="${calDay === ymd(new Date()) ? "on" : ""}">Today</button><button data-cal="1" aria-label="Next day">→</button></div><input type="date" class="inp" id="calPick" data-fresh="1" value="${calDay}" style="width:auto" aria-label="Day">`,
     ),
   body() {
     const M = vals("masters").filter((m) => m.is_active !== false);

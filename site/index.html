@@ -661,7 +661,7 @@ document.addEventListener("drop",e=>{const c=e.target.closest("[data-drop]");if(
 
 /* calendar */
 let calDay=ymd(new Date());
-PAGES.calendar={head:()=>head("Calendar","",`<button class="btn create" data-act="newAppt">+ New booking</button><div class="tabs"><button data-cal="-1">←</button><button data-cal="0" class="on">Today</button><button data-cal="1">→</button></div><input type="date" class="inp" id="calPick" data-fresh="1" value="${calDay}" style="width:auto">`),
+PAGES.calendar={head:()=>head("Calendar","",`<button class="btn create" data-act="newAppt">+ New booking</button><div class="tabs"><button data-cal="-1">←</button><button data-cal="0" class="${calDay===ymd(new Date())?"on":""}">Today</button><button data-cal="1">→</button></div><input type="date" class="inp" id="calPick" data-fresh="1" value="${calDay}" style="width:auto">`),
  body(){
   const M=vals("masters").filter(m=>m.is_active!==false);const day=parseDT(calDay+" 00:00");
   const start=9*60,end=20*60,rows=(end-start)/30,RH=28,HH=48;
