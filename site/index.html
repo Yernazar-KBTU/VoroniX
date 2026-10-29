@@ -6,7 +6,7 @@
 <meta name="description" content="AI CRM for small businesses: the AI administrator answers clients in Telegram, WhatsApp and Instagram using only data from the CRM database.">
 <meta name="theme-color" content="#0d3a6e">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%230b8fd6%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2216%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22Arial%22 font-weight=%22bold%22%3EAI%3C/text%3E%3C/svg%3E">
-<title>Volonix · AI CRM</title>
+<title>VoroniX · AI CRM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -251,7 +251,7 @@ table.t tr.click:hover td{background:var(--panel2)}
   <nav class="rail" id="rail" aria-label="Sections"></nav>
   <div class="main">
     <header class="top">
-      <div class="brand"><span class="dot"></span><span id="bizName">Volonix</span> <small>Volonix</small></div>
+      <div class="brand"><span class="dot"></span><span id="bizName">VoroniX</span> <small>VoroniX</small></div>
       <label class="tsearch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="gsearch" placeholder="Search clients, phones, services"></label>
       <span class="grow"></span>
       <span class="chip ai" id="aiChip"><span class="led"></span>AI administrator</span>
@@ -559,7 +559,7 @@ try{if(localStorage.getItem("crm-wide"))$("#app").classList.add("wide")}catch(_)
 /* ---------- rendering ---------- */
 let rq=false;function scheduleRender(){if(rq)return;rq=true;requestAnimationFrame(()=>{rq=false;render()})}
 function render(){
-  const b=biz();$("#bizName").textContent=b.name||"Volonix";
+  const b=biz();$("#bizName").textContent=b.name||"VoroniX";
   renderRail();
   const view=$("#view");
   const keep={};view.querySelectorAll("input[id]:not([type=checkbox]):not([type=file]):not([type=date]):not([type=month]),textarea[id]").forEach(el=>{keep[el.id]={v:el.value,f:document.activeElement===el,s:el.selectionStart,e:el.selectionEnd}});

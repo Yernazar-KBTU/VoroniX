@@ -74,6 +74,7 @@ export async function createBooking(input: BookingInput, opts: { strict: boolean
     });
   }, db);
   bus.changed("appointments");
+  bus.publish({ type: "domain", name: "appointment.created", data: { ...appt } });
   return appt;
 }
 
@@ -150,12 +151,14 @@ export async function createPaymentLink(appointmentId: string, kind: Payment["ki
  * the chat's deal -> Paid, and a note in the chat. Returns the chats to notify.
  */
 export async function markPaid(paymentId: string, method = "Kaspi QR", db = pool): Promise<{ payment: Payment; conversations: string[] }> {
+  let fresh = false;
   const result = await tx(async (c) => {
     const p = await pays.getPayment(c, paymentId, true);
     if (!p) throw notFound("Payment");
     if (p.status === "Paid") return { payment: p, conversations: [] as string[] };
     if (p.status === "Refunded") throw conflict("This payment was refunded.");
     const paid = (await pays.setPaymentStatus(c, paymentId, "Paid", method))!;
+    fresh = true;
     await c.query(`UPDATE appointments SET status = 'Confirmed' WHERE appointment_id = $1 AND status = 'Booked'`, [p.appointment_id]);
     const { rows } = await c.query<{ id: string }>(
       `UPDATE conversations SET stage = 'Paid', updated_at = now() WHERE appointment_id = $1 RETURNING conversation_id AS id`,
@@ -165,6 +168,7 @@ export async function markPaid(paymentId: string, method = "Kaspi QR", db = pool
     return { payment: paid, conversations: rows.map((r) => r.id) };
   }, db);
   bus.changed("payments", "appointments", "conversations");
+  if (fresh) bus.publish({ type: "domain", name: "payment.paid", data: { ...result.payment } });
   return result;
 }
 

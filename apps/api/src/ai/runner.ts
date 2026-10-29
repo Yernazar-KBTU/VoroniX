@@ -15,6 +15,10 @@ export function createEngine(): AgentEngine {
 
 let engine: AgentEngine = createEngine();
 export const getEngine = () => engine;
+/** Picks the engine again, after the Claude key was connected or removed. */
+export const resetEngine = () => {
+  engine = createEngine();
+};
 /** Tests swap in a fake or a specific engine. */
 export const setEngine = (e: AgentEngine) => {
   engine = e;

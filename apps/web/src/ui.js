@@ -26,13 +26,14 @@ const ICONS = {
   database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   business:
     '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.5 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.6 14H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+  integrations: '<path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/>',
   menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
 };
 const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
 const NAV = [
   ["dashboard", "Dashboard"], ["inbox", "Chats"], ["pipeline", "Sales funnel"], ["calendar", "Calendar"], ["clients", "Clients"], ["sep"],
   ["services", "Services"], ["staff", "Staff"], ["payments", "Payments"], ["sep"],
-  ["knowledge", "AI knowledge base"], ["analytics", "Analytics"], ["database", "Database"], ["business", "Business setup"],
+  ["knowledge", "AI knowledge base"], ["analytics", "Analytics"], ["database", "Database"], ["integrations", "Integrations"], ["business", "Business setup"],
 ];
 
 export function go(r) {
@@ -65,7 +66,7 @@ export function scheduleRender() {
 }
 
 export function render() {
-  $("#bizName").textContent = biz().name || "Volonix";
+  $("#bizName").textContent = biz().name || "VoroniX";
   renderRail();
   const view = $("#view");
   // Keep typed text, focus and chat scroll position across re-renders.

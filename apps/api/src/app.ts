@@ -13,6 +13,7 @@ import { catalogRouter } from "./routes/catalog.routes.js";
 import { conversationsRouter } from "./routes/conversations.routes.js";
 import { crmRouter } from "./routes/crm.routes.js";
 import { insightsRouter } from "./routes/insights.routes.js";
+import { integrationsRouter } from "./routes/integrations.routes.js";
 import { getEngine } from "./ai/runner.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -21,7 +22,7 @@ const WEB_DIST = process.env.WEB_DIST ?? path.resolve(here, "../../web/dist");
 /** HTTP basic auth for the admin UI when BASIC_AUTH_USER/PASSWORD are set. Webhooks use their own secret. */
 const basicAuth: RequestHandler = (req, res, next) => {
   if (!config.BASIC_AUTH_USER || !config.BASIC_AUTH_PASSWORD) return next();
-  if (req.path.startsWith("/api/channels/") || req.path === "/api/health") return next();
+  if (req.path.startsWith("/api/channels/") || req.path === "/api/health" || req.path === "/api/integrations/calendar.ics") return next();
   const [type, value] = (req.headers.authorization ?? "").split(" ");
   const [user, pass] = type === "Basic" && value ? Buffer.from(value, "base64").toString().split(":") : [];
   if (user === config.BASIC_AUTH_USER && pass === config.BASIC_AUTH_PASSWORD) return next();
@@ -53,7 +54,7 @@ export function createApp() {
     res.json({ status: "ok", db_ms: Math.round(performance.now() - started), ai_engine: getEngine().name, time: new Date().toISOString() });
   });
   app.get("/api/events", sseHandler);
-  app.use("/api", catalogRouter, crmRouter, conversationsRouter, insightsRouter);
+  app.use("/api", catalogRouter, crmRouter, conversationsRouter, insightsRouter, integrationsRouter);
   app.use("/api", (_req, res) => {
     res.status(404).json({ error: "not_found", message: "No such API route" });
   });

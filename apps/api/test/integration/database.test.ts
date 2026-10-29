@@ -27,15 +27,15 @@ afterAll(() => pool.end());
 describe("schema", () => {
   it("applies every migration once, in order", async () => {
     const { rows } = await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-    expect(rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql"]);
+    expect(rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql", "004_integrations.sql"]);
   });
 
-  it("has the 13 tables and 2 reporting views of the design", async () => {
+  it("has the 14 tables and 2 reporting views of the design", async () => {
     const { rows } = await pool.query(
       `SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> 'schema_migrations' ORDER BY 1`,
     );
     expect(rows.filter((r) => r.table_type === "BASE TABLE").map((r) => r.table_name)).toEqual([
-      "ai_runs", "appointments", "business_settings", "client_channels", "clients", "conversations", "knowledge_entries",
+      "ai_runs", "appointments", "business_settings", "client_channels", "clients", "conversations", "integrations", "knowledge_entries",
       "master_accounts", "master_services", "masters", "messages", "payments", "services",
     ]);
     expect(rows.filter((r) => r.table_type === "VIEW").map((r) => r.table_name)).toEqual(["v_daily_revenue", "v_no_show_by_service"]);

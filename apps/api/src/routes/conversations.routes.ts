@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { Router } from "express";
+import { channelSecret } from "../integrations/manager.js";
 import { config } from "../config.js";
 import { pool } from "../db/pool.js";
 import { MESSENGERS, type Messenger } from "../domain/types.js";
@@ -87,7 +88,8 @@ conversationsRouter.post("/conversations/:id/resolve", async (req, res) => {
 conversationsRouter.post("/channels/:messenger/inbound", async (req, res) => {
   const messenger = MESSENGERS.find((m) => m.toLowerCase() === req.params.messenger.toLowerCase()) as Messenger | undefined;
   if (!messenger) throw notFound("Messenger");
-  if (config.CHANNEL_WEBHOOK_SECRET && req.get("x-channel-secret") !== config.CHANNEL_WEBHOOK_SECRET) throw new HttpError(401, "Bad channel secret", "unauthorized");
+  const secrets = [config.CHANNEL_WEBHOOK_SECRET, await channelSecret(messenger)].filter(Boolean);
+  if (secrets.length && !secrets.includes(req.get("x-channel-secret"))) throw new HttpError(401, "Bad channel secret", "unauthorized");
   const body = InboundBody.parse(req.body);
   const { conversation, created } = await receiveInbound({ messenger, ...body });
   res.status(created ? 201 : 200).json({ conversation_id: conversation.id, client_id: conversation.client_id, ai_enabled: conversation.ai_enabled });

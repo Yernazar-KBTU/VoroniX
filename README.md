@@ -1,4 +1,4 @@
-# Volonix
+# VoroniX
 
 **AI CRM for small business.** An AI administrator and CRM for appointment-based businesses (beauty salons, barbershops, clinics).
 Clients write in **Telegram, WhatsApp or Instagram**. The AI answers **only from the CRM database**: real services, real prices, real free time. It books the visit, sends a prepayment link and moves the deal through the sales funnel. Complaints go to a human.
@@ -18,11 +18,26 @@ Clients write in **Telegram, WhatsApp or Instagram**. The AI answers **only from
 
 | | Link | What works |
 |---|---|---|
-| Demo in the browser | [GitHub Pages](https://GITHUB_USER.github.io/volonix/) | The whole CRM with the demo barbershop Barberista; changes stay in your tab, the AI is off |
+| Demo in the browser | [GitHub Pages](https://GITHUB_USER.github.io/voronix/) | The whole CRM with the demo barbershop Barberista; changes stay in your tab, the AI is off |
 | Demo with the AI | [claude.ai](https://claude.ai/artifact/ADSNg68LNiherEJNbSeMdR) | Same CRM with a live AI administrator and a shared database |
-| Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/GITHUB_USER/volonix) | API, web CRM and PostgreSQL from `render.yaml`, free plan |
+| Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/GITHUB_USER/voronix) | API, web CRM and PostgreSQL from `render.yaml`, free plan |
 
 On the first open of a deployed copy, press **Load demo data** in the banner to fill it with Barberista: 8 services, 4 barbers, 30 clients, 8 weeks of visits and 4 chats.
+
+## Integrations
+
+![Integrations page](docs/images/integrations.png)
+
+The **Integrations** page connects the CRM to outside services. Tokens are checked against the real service, stored in the `integrations` table, never sent back in full and hidden from the read-only SQL console.
+
+| Service | What it does | How |
+|---|---|---|
+| Telegram | The AI answers clients in your bot | Paste the @BotFather token; the bot starts at once |
+| Claude AI | Claude writes the replies instead of the rule engine | Paste an Anthropic API key; checked and switched on at once |
+| WhatsApp, Instagram | Messages land in Chats | Ready webhook address with its own `x-channel-secret` for Meta, 360dialog, Wazzup, Make or n8n |
+| Google Calendar | Every visit in the barbers' calendars | Private iCal address, add it in Google or Apple Calendar |
+| Webhook | New bookings and payments go to Make, Zapier, n8n, 1C, Google Sheets | Paste a URL; a test event is sent on connect |
+| Kaspi Pay | Prepayment buttons lead to Kaspi QR | Merchant ID and key are stored; buttons stay in test mode until the contract is active |
 
 ## Quick start
 
@@ -64,10 +79,10 @@ apps/
       repositories/    SQL per table
       routes/          HTTP + zod validation
       services/        booking and conversation workflows (transactions)
-    test/unit          45 tests, no database
-    test/integration   54 tests on a real PostgreSQL
+    test/unit          54 tests, no database
+    test/integration   65 tests on a real PostgreSQL
   web/                 single-page CRM (12 pages), live updates over SSE
-db/migrations/         001_init.sql (13 tables), 002_reporting.sql (views, read-only role), 003_brand.sql
+db/migrations/         001_init.sql (13 tables), 002_reporting.sql (views, read-only role), 003_brand.sql, 004_integrations.sql
 site/                  browser-only demo published to GitHub Pages
 render.yaml            one-click deploy of the full system to Render
 tests/load/            autocannon load test
@@ -90,16 +105,17 @@ Rules the database enforces itself, so neither the AI nor a person can break the
 ## Tests
 
 ```bash
-npm test                 # 99 tests: unit + integration (needs PostgreSQL, uses crm_test)
+npm test                 # 119 tests: unit + integration (needs PostgreSQL, uses crm_test)
 npm start & npm run test:load
 ```
 
 | Suite | Tests | Result |
 |---|---|---|
-| Unit: scheduling, pricing, message understanding, Teach the AI | 45 | passed |
+| Unit: scheduling, pricing, message understanding, Teach the AI | 54 | passed |
 | Integration: database rules | 18 | passed |
 | Integration: REST API | 24 | passed |
 | Integration: AI chat funnel and Teach the AI | 12 | passed |
+| Integration: Integrations page, webhooks, calendar feed | 11 | passed |
 
 Load test (single Node process, laptop-class container, 50 connections, 0 errors):
 

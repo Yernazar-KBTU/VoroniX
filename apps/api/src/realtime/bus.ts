@@ -16,7 +16,8 @@ export type Resource =
 export type BusEvent =
   | { type: "changed"; resources: Resource[] }
   | { type: "ai"; conversation_id: string; status: string | null }
-  | { type: "message"; conversation_id: string; from: string; text: string; messenger: string; external_user_id: string };
+  | { type: "message"; conversation_id: string; from: string; text: string; messenger: string; external_user_id: string }
+  | { type: "domain"; name: "appointment.created" | "payment.paid"; data: Record<string, unknown> };
 
 class Bus extends EventEmitter {
   publish(e: BusEvent) {
