@@ -242,6 +242,18 @@ table.t tr.click:hover td{background:var(--panel2)}
   .tsearch{flex:1 1 100%;order:3}
   .rail{scrollbar-width:none}.rail::-webkit-scrollbar{display:none}
 }
+.intwrap{grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr);align-items:start}
+.igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.icard{display:flex;align-items:flex-start;gap:12px;text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--panel);color:var(--fg);cursor:pointer;font:inherit}
+.icard:hover{border-color:var(--accent)}
+.icard.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.icard .ibody{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.icard .pill{flex:none}
+.ilogo{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex:none}
+.ilogo svg{width:24px;height:24px}
+.ipanel{position:sticky;top:12px}
+.answer.bad{background:var(--red-soft);color:var(--red)}
+@media (max-width:900px){.intwrap{grid-template-columns:1fr}.ipanel{position:static}}
 </style>
 </head>
 <body>
@@ -538,11 +550,12 @@ const ICONS={
  knowledge:'<path d="M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h6M8 12h6"/>',
  files:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
  analytics:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+ integrations:'<path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/>',
  database:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
  business:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.5 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.6 14H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
  menu:'<path d="M3 6h18M3 12h18M3 18h18"/>'};
 const icon=n=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
-const NAV=[["dashboard","Dashboard"],["inbox","Chats"],["pipeline","Sales funnel"],["calendar","Calendar"],["clients","Clients"],["sep"],["services","Services"],["staff","Staff"],["payments","Payments"],["sep"],["knowledge","AI knowledge base"],["files","AI files"],["analytics","Analytics"],["database","Database"],["business","Business setup"]];
+const NAV=[["dashboard","Dashboard"],["inbox","Chats"],["pipeline","Sales funnel"],["calendar","Calendar"],["clients","Clients"],["sep"],["services","Services"],["staff","Staff"],["payments","Payments"],["sep"],["knowledge","AI knowledge base"],["files","AI files"],["analytics","Analytics"],["database","Database"],["integrations","Integrations"],["business","Business setup"]];
 let route="dashboard";
 function go(r){if(location.hash!=="#"+r)location.hash=r;else{route=r;render()}}
 window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(PAGES[h]){route=h;render()}});
@@ -837,6 +850,57 @@ JOIN services s ON s.service_code = a.service_code
 WHERE a.status IN ('Completed', 'No-show')
 GROUP BY s.name
 ORDER BY no_show_pct DESC;`,sqlOut="";
+
+/* ---------- integrations ---------- */
+// Same page as in the VoroniX server. In this browser demo nothing secret is
+// stored: tokens are only checked for format and kept as the last 4 characters.
+// Google Calendar works for real here: it downloads an .ics file of the visits.
+const INT_CAT=[{"id": "telegram", "name": "Telegram", "group": "Messengers", "description": "Clients write to your bot, the AI answers in the same chat.", "mode": "live", "fields": [{"key": "token", "label": "Bot token", "placeholder": "123456789:AA...", "secret": true, "required": true}], "steps": ["Open @BotFather in Telegram and send /newbot.", "Copy the token it gives you and paste it here.", "Press Connect. Write to the bot to test it."]}, {"id": "whatsapp", "name": "WhatsApp", "group": "Messengers", "description": "Messages from WhatsApp Business come into Chats.", "mode": "bridge", "fields": [{"key": "phone", "label": "Business phone", "placeholder": "+7 700 000 0000"}], "steps": ["Connect your number to WhatsApp Business API (Meta, 360dialog or Wazzup).", "Set the incoming webhook to the address below and add the header x-channel-secret.", "Send {external_user_id, name, text} as JSON. Replies come back through the outgoing webhook."]}, {"id": "instagram", "name": "Instagram", "group": "Messengers", "description": "Direct messages from your Instagram business account.", "mode": "bridge", "fields": [{"key": "account", "label": "Instagram account", "placeholder": "@barberista.almaty"}], "steps": ["Link the Instagram business account to a Facebook page in Meta Business Suite.", "In Make, n8n or your Meta app, forward new direct messages to the address below with the header x-channel-secret.", "Send {external_user_id, name, text} as JSON."]}, {"id": "claude", "name": "Claude AI", "group": "AI", "description": "Claude writes the replies instead of the built-in rule engine.", "mode": "live", "fields": [{"key": "key", "label": "Anthropic API key", "placeholder": "sk-ant-...", "secret": true, "required": true}], "steps": ["Create a key at console.anthropic.com → API keys.", "Paste it here and press Connect. The next reply is written by Claude."]}, {"id": "kaspi", "name": "Kaspi Pay", "group": "Payments", "description": "Prepayment buttons in the chat lead to Kaspi QR.", "mode": "bridge", "fields": [{"key": "merchant", "label": "Merchant ID", "placeholder": "from the Kaspi Pay cabinet", "required": true}, {"key": "api_key", "label": "API key", "secret": true}], "steps": ["Sign the Kaspi Pay contract for online payments.", "Copy the merchant ID and API key from the Kaspi Pay cabinet.", "Until the contract is active, payment buttons work in test mode."]}, {"id": "google_calendar", "name": "Google Calendar", "group": "Calendar", "description": "Every visit appears in the barbers' Google or Apple calendar.", "mode": "live", "fields": [], "steps": ["Press Connect to get a private calendar address.", "Google Calendar → Other calendars → + → From URL, paste the address.", "Google refreshes it every few hours. Apple Calendar: File → New Calendar Subscription."]}, {"id": "webhook", "name": "Webhook", "group": "Automation", "description": "Send new bookings and payments to Make, Zapier, n8n, 1C or Google Sheets.", "mode": "live", "fields": [{"key": "url", "label": "URL", "placeholder": "https://hook.eu1.make.com/...", "required": true}, {"key": "events", "label": "Events (empty = all)", "placeholder": "appointment.created, payment.paid"}], "steps": ["Create a webhook trigger in Make, Zapier or n8n and copy its URL.", "Paste it here and press Connect: a test event is sent at once.", "Each event is JSON {event, at, data}; the header x-voronix-secret proves it came from your CRM."]}];
+const INT_LOGO={telegram:["#2aa3e0",'<path d="M21 4 3 11l6 2 2 6 3-4 5 4z" fill="#fff"/>'],whatsapp:["#25b860",'<path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3z" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M9 8c0 4 3 7 7 7l1-2-2-1-1 1c-1-.5-2-1.5-2.5-2.5l1-1-1-2z" fill="#fff"/>'],instagram:["#d6338a",'<rect x="5" y="5" width="14" height="14" rx="4" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="16.3" cy="7.7" r="1" fill="#fff"/>'],claude:["#d97757",'<path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>'],kaspi:["#f14635",'<rect x="5" y="7" width="14" height="10" rx="2" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M5 11h14" stroke="#fff" stroke-width="1.8"/>'],google_calendar:["#4285f4",'<rect x="4" y="5" width="16" height="15" rx="2" fill="#fff"/><path d="M4 9h16" stroke="#4285f4" stroke-width="2"/><text x="12" y="18" text-anchor="middle" font-size="7" font-weight="700" fill="#4285f4" font-family="Arial">31</text>'],webhook:["#6a5cff",'<circle cx="7" cy="16" r="2.4" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="17" cy="16" r="2.4" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="7" r="2.4" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M11 9.2 8 14M13 9.2l3 4.8M9.4 16h5.2" stroke="#fff" stroke-width="1.8"/>']};
+const intLogo=id=>`<span class="ilogo" style="background:${INT_LOGO[id][0]}"><svg viewBox="0 0 24 24">${INT_LOGO[id][1]}</svg></span>`;
+const INT_ST={connected:["Connected","Paid"],ready:["Ready","ai"],error:["Error","No-show"],off:["Not connected","Cancelled"]};
+const intPill=s=>`<span class="pill ${INT_ST[s][1]}">${INT_ST[s][0]}</span>`;
+let intSel="telegram";
+const intState=()=>S.settings.integrations||{};
+const intOf=id=>({...INT_CAT.find(p=>p.id===id),status:"off",detail:"",hint:"",at:"",settings:{},...(intState()[id]||{})});
+const INT_CHECK={
+  telegram:(f,sec)=>/^\d{6,12}:[\w-]{30,}$/.test(sec)?["ready","Token format is valid. The bot starts as soon as this token is saved in the VoroniX server."]:["error","This does not look like a bot token. It is like 123456789:AA… from @BotFather."],
+  claude:(f,sec)=>/^sk-ant-[\w-]{20,}$/.test(sec)?["ready","Key format is valid. In the VoroniX server Claude writes the replies right after it is saved. Here on claude.ai the AI already runs on Claude."]:["error","An Anthropic key starts with sk-ant-."],
+  whatsapp:()=>["ready","The webhook address and secret are created by the VoroniX server. This demo shows the page only."],
+  instagram:()=>["ready","The webhook address and secret are created by the VoroniX server. This demo shows the page only."],
+  kaspi:f=>f.merchant?["ready","Saved. Payment buttons stay in test mode until the Kaspi Pay contract is active."]:["error","Merchant ID is required."],
+  google_calendar:()=>["connected","Works here too: download the .ics file and import it into Google or Apple Calendar."],
+  webhook:f=>/^https:\/\//.test(f.url||"")?["ready","Saved. The VoroniX server sends new bookings and payments to this URL."]:["error","The URL must start with https://"],
+};
+function intDetails(p){const conn=p.status!=="off";
+  const fields=p.fields.map(f=>{const ph=f.secret&&p.hint?`Checked ${p.hint}. Paste a new one to replace it`:(f.placeholder||"");return `<div class="f"><label for="if_${f.key}">${esc(f.label)}${f.required?"":' <span class="muted">(optional)</span>'}</label><input class="inp" id="if_${f.key}" data-fresh="1" ${f.secret?'type="password" autocomplete="off"':""} value="${f.secret?"":esc(p.settings[f.key]||"")}" placeholder="${esc(ph)}"></div>`}).join("");
+  const extra=p.id==="google_calendar"&&conn?`<button class="btn primary" type="button" id="icsDl">Download visits (.ics)</button>`:"";
+  return `<section class="panel ipanel"><div class="ph">${intLogo(p.id)}<div style="min-width:0"><h3>${esc(p.name)}</h3><span class="muted small">${esc(p.group)}</span></div><span class="grow"></span>${intPill(p.status)}</div>
+  <div class="pad" style="display:flex;flex-direction:column;gap:12px"><p style="margin:0">${esc(p.description)}</p>
+  ${p.detail?`<div class="answer ${p.status==="error"?"bad":""}">${esc(p.detail)}${p.at?`<span class="muted small"> · ${fmtAt(p.at)}</span>`:""}</div>`:""}
+  <form id="intForm" data-int="${p.id}" style="display:flex;flex-direction:column;gap:10px">${fields}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn create" type="submit">${conn?"Save and check":"Connect"}</button>${conn?`<button class="btn danger" type="button" data-intoff="${p.id}">Disconnect</button>`:""}</div></form>
+  ${extra}<h4 class="muted small" style="margin:4px 0 0">How to connect</h4><ol class="small muted" style="margin:0;padding-left:18px">${p.steps.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>
+  <p class="small muted" style="margin:0">Demo page: tokens are checked for format only and are not stored. Live connections run in the VoroniX server from the repository.</p></div></section>`}
+PAGES.integrations={head:()=>head("Integrations","Connect messengers, AI, payments and your calendar. Most take one token and one click.",""),
+ body(){const L=INT_CAT.map(p=>intOf(p.id));const sel=intOf(intSel);const on=L.filter(p=>p.status!=="off"&&p.status!=="error").length;const groups=[...new Set(L.map(p=>p.group))];
+  return `<div class="grid intwrap"><section class="panel"><div class="ph"><h3>Services</h3><span class="grow"></span><span class="muted small">${on} of ${L.length} set up</span></div><div class="pad" style="display:flex;flex-direction:column;gap:16px">${groups.map(g=>`<div><h4 class="muted small" style="margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em">${esc(g)}</h4><div class="igrid">${L.filter(p=>p.group===g).map(p=>`<button class="icard ${p.id===intSel?"on":""}" data-intsel="${p.id}">${intLogo(p.id)}<span class="ibody"><b>${esc(p.name)}</b><span class="muted small">${esc(p.description)}</span></span>${intPill(p.status)}</button>`).join("")}</div></div>`).join("")}</div></section>${intDetails(sel)}</div>`}};
+function saveInt(id,v){const all={...intState()};if(v)all[id]=v;else delete all[id];put("settings","integrations",all);S.settings.integrations=all}
+document.addEventListener("submit",e=>{if(e.target.id!=="intForm")return;e.preventDefault();const id=e.target.dataset.int;const p=intOf(id);const f={};let sec="";
+  for(const x of p.fields){const v=$("#if_"+x.key).value.trim();if(x.secret)sec=v;else f[x.key]=v}
+  if(!sec&&p.fields.some(x=>x.secret&&x.required)&&!p.hint)return toast(p.fields.find(x=>x.secret).label+" is required");
+  const [status,detail]=sec||!p.fields.some(x=>x.secret&&x.required)?INT_CHECK[id](f,sec):[p.status,p.detail];
+  saveInt(id,{status,detail,hint:sec?"••••"+sec.slice(-4):p.hint,at:new Date().toISOString(),settings:f});toast(`${p.name}: ${INT_ST[status][0].toLowerCase()}`)});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-intsel],[data-intoff],#icsDl");if(!t)return;
+  if(t.dataset.intsel){intSel=t.dataset.intsel;render();if(matchMedia("(max-width: 900px)").matches)$(".ipanel")?.scrollIntoView({behavior:"smooth"})}
+  else if(t.dataset.intoff){saveInt(t.dataset.intoff,null);toast("Disconnected")}
+  else dl("visits.ics",icsText())});
+function icsText(){const b=biz();const f=s=>s.replace(/[-: ]/g,"").slice(0,13)+"00";const e=s=>String(s).replace(/[\;,]/g,m=>"\\"+m);
+  const from=dt(addDays(new Date(),-30)),to=dt(addDays(new Date(),90));
+  const rows=vals("appointments").filter(a=>a.status!=="Cancelled"&&a.start_datetime>=from&&a.start_datetime<to).sort((a,b)=>a.start_datetime<b.start_datetime?-1:1);
+  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//VoroniX//CRM//EN",`X-WR-CALNAME:${e(b.name||"VoroniX")} visits`,"X-WR-TIMEZONE:Asia/Almaty"];
+  for(const a of rows){const sv=svc(a.service_code)||{};const end=dt(new Date(parseDT(a.start_datetime).getTime()+(sv.duration_min||60)*60000));
+    L.push("BEGIN:VEVENT",`UID:${a.id}@voronix`,`DTSTAMP:${new Date().toISOString().replace(/[-:]/g,"").slice(0,15)}Z`,`DTSTART;TZID=Asia/Almaty:${f(a.start_datetime)}`,`DTEND;TZID=Asia/Almaty:${f(end)}`,`SUMMARY:${e((sv.name||a.service_code)+" · "+(cli(a.client_id)?.display_name||a.client_id))}`,`DESCRIPTION:${e((mst(a.master_id)?.full_name||a.master_id)+" · "+a.status+" · "+a.id)}`,...(b.address?[`LOCATION:${e(b.address)}`]:[]),"END:VEVENT")}
+  L.push("END:VCALENDAR");return L.join("\r\n")+"\r\n"}
 PAGES.database={head:()=>head("Database","The live CRM tables behind every screen. Same schema as in our Task 9 report.",""),
  body(){
   const t=SCHEMA.find(x=>x[0]===dbTable);const pkName=t[1];const rows=vals(t[0]).slice(0,60);const cols=[...t[2].map(f=>f[0]),...t[3]];
