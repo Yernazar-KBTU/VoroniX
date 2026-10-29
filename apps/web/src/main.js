@@ -20,7 +20,7 @@ function setChips() {
 function showEmptyBanner() {
   $("#banner").innerHTML = vals("services").length
     ? ""
-    : `<div class="banner"><b>The database is empty.</b> Load the demo salon to try the CRM. <button class="btn sm create" data-act="resetDemo">Load demo data</button></div>`;
+    : `<div class="banner"><b>The database is empty.</b> Load the demo barbershop to try the CRM. <button class="btn sm create" data-act="resetDemo">Load demo data</button></div>`;
 }
 
 let dropped = false;

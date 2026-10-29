@@ -24,13 +24,13 @@ export const knowledge = {
   <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
   <section class="panel"><div class="ph"><h3>Teach the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
    <p class="muted small" style="margin:0">Paste anything about your business: a promotion, discounts, rules, your slogan, FAQ. The AI sorts it into entries and settings, you check them, and they are saved to the database.</p>
-   <textarea class="inp" id="teachT" style="min-height:120px" aria-label="Notes about your business" placeholder="Например: до конца ноября скидка 15% на маникюр по будням до 14:00. Опоздание больше 15 минут — запись переносится. Наш слоган: «Красота начинается с заботы»."></textarea>
+   <textarea class="inp" id="teachT" style="min-height:120px" aria-label="Notes about your business" placeholder="Например: до конца ноября скидка 15% на бритьё по будням до 14:00. Опоздание больше 15 минут — запись переносится. Наш слоган: «Barberista — стиль без компромиссов»."></textarea>
    <div style="display:flex;gap:8px"><button class="btn ai" id="teachGo" type="button">Organise with AI</button></div>
    <div id="teachOut"></div>
   </div></section>
   <section class="panel"><div class="ph"><h3>Test the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
    <p class="muted small" style="margin:0">Ask the way a client would. The AI answers only from the services table and this knowledge base.</p>
-   <form id="kbAsk" style="display:flex;gap:8px"><input class="inp" id="kbQ" aria-label="Question" placeholder="e.g. у меня волосы до пояса, сколько будет покраска?"><button class="btn ai" type="submit">Ask</button></form>
+   <form id="kbAsk" style="display:flex;gap:8px"><input class="inp" id="kbQ" aria-label="Question" placeholder="e.g. у меня борода 10 см, сколько будет оформление?"><button class="btn ai" type="submit">Ask</button></form>
    <div class="answer" id="kbA"><span class="muted">The answer appears here.</span></div>
    <h4 class="muted small" style="margin:6px 0 0">How the AI uses this</h4>
    <ol class="small muted" style="margin:0;padding-left:18px"><li>The backend reads services, staff, free slots and these entries from the database.</li><li>It sends them to the AI together with the client's message.</li><li>The AI writes the reply and calls CRM actions (book, payment link, hand over to a human). It never touches the database directly.</li></ol>

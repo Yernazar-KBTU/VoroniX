@@ -337,27 +337,30 @@ function revenueOf(list){return list.filter(a=>a.status==="Completed").reduce((s
 /* ---------- demo data ---------- */
 function demoData(){
   const D={};COLS.forEach(c=>D[c]={});
-  D.settings.business={name:"Lumière Beauty Studio",type:"Beauty salon",city:"Almaty",address:"Abay Ave 10, 2nd floor (demo address)",hours:"Mon–Sat 09:00–20:00, Sunday closed",phone:"+7 700 000 0000 (demo)",tone:"Warm, short and polite. Address clients formally. Use at most one emoji.",languages:"Russian, Kazakh, English",staff_label:"Master",service_label:"Service",prepay_percent:30,prepay_min_price:20000,ai_tier:"quick",autopilot:true};
-  const SV=[["HC-01","Women's haircut",60,8000,"Hair"],["HC-02","Men's haircut",45,5000,"Hair"],["CO-03","Hair colouring",150,25000,"Hair"],["MN-02","Manicure with gel polish",90,10000,"Nails"],["PD-04","Pedicure",90,12000,"Nails"],["BR-05","Brow shaping and tint",30,4000,"Brows"],["ST-06","Evening styling",60,9000,"Hair"]];
+  D.settings.business={name:"Barberista",type:"Barbershop",city:"Almaty",address:"Panfilov St 98 (demo address)",hours:"Daily 10:00–21:00",phone:"+7 700 000 0000 (demo)",tone:"Friendly and to the point, like a good barber. Address clients formally. Use at most one emoji.",languages:"Russian, Kazakh, English",staff_label:"Barber",service_label:"Service",prepay_percent:30,prepay_min_price:20000,ai_tier:"quick",autopilot:true,catchphrase:"Barberista — стиль без компромиссов 💈"};
+  const SV=[["HC-01","Men's haircut",60,7000,"Haircut"],["HC-02","Clipper cut",30,4000,"Haircut"],["KD-03","Kids haircut",45,5000,"Haircut"],["BD-04","Beard trim and shaping",45,5000,"Beard"],["CB-05","Haircut + beard",90,11000,"Combo"],["SH-06","Royal hot-towel shave",45,6000,"Shave"],["VP-07","VIP ritual",150,22000,"Combo"],["CM-08","Grey camouflage",30,5000,"Colour"]];
   SV.forEach(([c,n,d,p,cat])=>D.services[c]={name:n,duration_min:d,price_kzt:p,category:cat,is_active:true});
-  const MS=[["MS-01","Aigerim S.","Hair stylist","09:00","20:00",[1,2,3,4,5,6]],["MS-02","Dana K.","Nail artist","10:00","20:00",[1,2,3,4,5,6]],["MS-03","Timur B.","Barber","09:00","19:00",[2,3,4,5,6]],["MS-04","Madina A.","Brow and styling artist","10:00","19:00",[1,2,3,4,5]]];
+  const MS=[["MS-01","Timur B.","Senior barber","10:00","21:00",[1,2,3,4,5,6]],["MS-02","Arman K.","Barber","10:00","21:00",[1,2,3,4,5,6]],["MS-03","Daniyar S.","Barber","12:00","21:00",[0,2,3,4,5,6]],["MS-04","Yerzhan M.","Shave master","10:00","19:00",[1,2,3,4,5]]];
   MS.forEach(([id,n,sp,ws,we,days])=>D.masters[id]={full_name:n,specialization:sp,is_active:true,work_start:ws,work_end:we,days});
-  [["MS-01","HC-01","Senior"],["MS-01","CO-03","Senior"],["MS-01","ST-06","Senior"],["MS-02","MN-02","Senior"],["MS-02","PD-04","Senior"],["MS-03","HC-02","Senior"],["MS-03","HC-01","Junior"],["MS-04","BR-05","Senior"],["MS-04","ST-06","Junior"]].forEach(([m,s,l])=>D.master_services[m+"__"+s]={master_id:m,service_code:s,skill_level:l,since_date:"2025-03-01"});
-  const NAMES=["Aliya K.","Bekzat T.","Saule M.","Asel N.","Dinara Zh.","Erlan S.","Kamila B.","Madina O.","Nurlan A.","Aruzhan T.","Gulnara E.","Zarina U.","Daulet K.","Togzhan R.","Ainur S.","Meruert D.","Yerlan B.","Akmaral I.","Sabina L.","Raushan P.","Aidana F.","Timur Zh.","Laura V.","Assem G.","Bota M.","Janna Y.","Inkar T.","Dias R.","Karina S.","Malika N."];
+  [["MS-01","HC-01","Senior"],["MS-01","BD-04","Senior"],["MS-01","CB-05","Senior"],["MS-01","VP-07","Senior"],["MS-01","CM-08","Senior"],["MS-02","HC-01","Senior"],["MS-02","HC-02","Senior"],["MS-02","KD-03","Senior"],["MS-02","CB-05","Junior"],["MS-03","HC-01","Junior"],["MS-03","HC-02","Senior"],["MS-03","BD-04","Senior"],["MS-03","KD-03","Junior"],["MS-04","SH-06","Senior"],["MS-04","BD-04","Senior"],["MS-04","VP-07","Junior"]].forEach(([m,s,l])=>D.master_services[m+"__"+s]={master_id:m,service_code:s,skill_level:l,since_date:"2025-03-01"});
+  const NAMES=["Arman T.","Bekzat T.","Saule M.","Aslan N.","Daniyar Zh.","Erlan S.","Kamal B.","Marat O.","Nurlan A.","Azamat T.","Galym E.","Zhandos U.","Daulet K.","Temirlan R.","Ainur S.","Miras D.","Yerlan B.","Alibek I.","Sanzhar L.","Ruslan P.","Aidos F.","Timur Zh.","Batyr V.","Asset G.","Bauyrzhan M.","Zhan Y.","Islam T.","Dias R.","Kairat S.","Madi N."];
   const MSG=["WhatsApp","Telegram","Instagram"];
   let r=7;const rnd=()=>(r=(r*9301+49297)%233280)/233280;
   const today=new Date();today.setHours(0,0,0,0);
   let ch=0;
-  NAMES.forEach((n,i)=>{const id="CL-"+String(i+1).padStart(4,"0");D.clients[id]={display_name:n,phone:i%5===3?"":"+7 70"+(i%9)+" 000 "+String(1000+i*37).slice(-4),created_at:dt(addDays(today,-60+i)),notes:i===2?"Prefers Aigerim. Sensitive scalp.":"",prefs:i===0?[{text:"Окрашивание только у Айгерим, волосы ниже плеч",at:new Date(Date.now()-11400000).toISOString(),source:"Telegram"},{text:"Удобно по пятницам после 14:00",at:new Date(Date.now()-11100000).toISOString(),source:"Telegram"}]:i===2?[{text:"Чувствительная кожа головы, мягкие средства",at:new Date(Date.now()-180000000).toISOString(),source:"WhatsApp"}]:[]};
+  NAMES.forEach((n,i)=>{const id="CL-"+String(i+1).padStart(4,"0");D.clients[id]={display_name:n,phone:i%5===3?"":"+7 70"+(i%9)+" 000 "+String(1000+i*37).slice(-4),created_at:dt(addDays(today,-60+i)),notes:i===2?"Brings her son Alikhan (7). Scissors only, he is afraid of the clipper.":"",prefs:i===0?[{text:"Стрижка и борода только у Тимура, фейд 0,5 по бокам",at:new Date(Date.now()-11400000).toISOString(),source:"Telegram"},{text:"Удобно по пятницам после 18:00",at:new Date(Date.now()-11100000).toISOString(),source:"Telegram"}]:i===2?[{text:"Сын Алихан, 7 лет: стричь ножницами, машинки боится",at:new Date(Date.now()-180000000).toISOString(),source:"WhatsApp"}]:[]};
     const m=MSG[i%3];D.client_channels["CH-"+String(++ch).padStart(4,"0")]={client_id:id,messenger:m,external_user_id:m.slice(0,2).toLowerCase()+"_"+(5000+i*13)};
     if(i%6===0){const m2=MSG[(i+1)%3];D.client_channels["CH-"+String(++ch).padStart(4,"0")]={client_id:id,messenger:m2,external_user_id:m2.slice(0,2).toLowerCase()+"_"+(7000+i*11)}}});
-  const NS={"CO-03":.25,"MN-02":.1,"HC-01":.05,"HC-02":.06,"PD-04":.08,"BR-05":.04,"ST-06":.1};
+  const NS={"VP-07":.25,"CB-05":.1,"HC-01":.06,"HC-02":.05,"KD-03":.12,"BD-04":.05,"SH-06":.08,"CM-08":.05};
   let ap=1000,pay=0;const busy={};
   const book=(day,mid,code,status,src)=>{const m=D.masters[mid];if(!m.days.includes(day.getDay()))return null;const dur=D.services[code].duration_min;
     for(let k=0;k<8;k++){const t=toMin(m.work_start)+Math.floor(rnd()*((toMin(m.work_end)-dur-toMin(m.work_start))/30+1))*30;const key=mid+ymd(day);busy[key]=busy[key]||[];if(busy[key].some(([b,e])=>t<e&&t+dur>b))continue;busy[key].push([t,t+dur]);
-      const id="AP-"+(++ap);const cid="CL-"+String(1+Math.floor(rnd()*30)).padStart(4,"0");const start=ymd(day)+" "+pad(Math.floor(t/60))+":"+pad(t%60);
+      const id="AP-"+(++ap);const cid="CL-"+String(2+Math.floor(rnd()*29)).padStart(4,"0");const start=ymd(day)+" "+pad(Math.floor(t/60))+":"+pad(t%60);
       D.appointments[id]={client_id:cid,master_id:mid,service_code:code,start_datetime:start,status,source:src,created_at:dt(addDays(day,-3))};return id}return null};
   const pairs=Object.values(D.master_services);
+  {const fri=addDays(today,((5-today.getDay()+7)%7)||7);busy["MS-01"+ymd(fri)]=[[18*60,18*60+150]];const id="AP-"+(++ap);
+    D.appointments[id]={client_id:"CL-0001",master_id:"MS-01",service_code:"VP-07",start_datetime:ymd(fri)+" 18:00",status:"Confirmed",source:"Telegram",created_at:dt(new Date())};
+    D.payments["PM-"+String(++pay).padStart(5,"0")]={appointment_id:id,amount_kzt:6600,kind:"prepayment",method:"Kaspi QR",status:"Paid",created_at:dt(new Date()),paid_at:dt(new Date())}}
   for(let d=-45;d<=10;d++){const day=addDays(today,d);const n=d<0?6:(d===0?6:3);
     for(let j=0;j<n;j++){const pr=pairs[Math.floor(rnd()*pairs.length)];let st;
       if(d<0){const x=rnd();st=x<NS[pr.service_code]?"No-show":(x>.96?"Cancelled":"Completed");if(d>=-2&&j===0)st="Booked"}
@@ -368,31 +371,31 @@ function demoData(){
       if(id&&d>=0&&st==="Confirmed"&&D.services[pr.service_code].price_kzt>=20000){const a=D.appointments[id];D.payments["PM-"+String(++pay).padStart(5,"0")]={appointment_id:id,amount_kzt:Math.round(D.services[a.service_code].price_kzt*.3),kind:"prepayment",method:"Kaspi QR",status:"Paid",created_at:a.created_at,paid_at:a.created_at}}
     }}
   const t0=addDays(new Date(),0);const ago=min=>new Date(t0.getTime()-min*60000).toISOString();
-  D.conversations["CV-0001"]={messenger:"Telegram",contact:"Aliya K.",external_user_id:"te_5000",client_id:"CL-0001",stage:"Paid",ai_enabled:true,needs_human:false,updated_at:ago(180),messages:[
-    {from:"client",text:"Здравствуйте! хочу покраситься на этой неделе, сколько стоит?",at:ago(200)},
-    {from:"ai",text:"Здравствуйте, Алия! Окрашивание волос стоит 25 000 ₸, процедура длится около 2,5 часов. Для длинных волос ниже плеч доплата 5 000 ₸. На какой день вам удобно?",at:ago(199)},
-    {from:"client",text:"в пятницу после обеда можно?",at:ago(195)},
-    {from:"ai",text:"В пятницу к мастеру Айгерим свободно 14:00 и 15:30. Какое время выбрать?",at:ago(194)},
-    {from:"client",text:"14:00",at:ago(190)},
-    {from:"system",text:"AI booked Hair colouring with Aigerim S. and sent a prepayment link (30%).",at:ago(189)},
-    {from:"ai",text:"Записала вас на пятницу в 14:00 к Айгерим. Для окрашивания нужна предоплата 30% — 7 500 ₸, ссылка ниже.",at:ago(189)},
-    {from:"system",text:"Payment received: 7 500 ₸ (Kaspi QR). Booking confirmed.",at:ago(182)},
-    {from:"ai",text:"Оплата получена, спасибо! Ждём вас в пятницу в 14:00. Напомню за день до визита.",at:ago(181)}]};
+  D.conversations["CV-0001"]={messenger:"Telegram",contact:"Arman T.",external_user_id:"te_5000",client_id:"CL-0001",appointment_id:"AP-1001",stage:"Paid",ai_enabled:true,needs_human:false,updated_at:ago(180),messages:[
+    {from:"client",text:"Салем! хочу на вип-комплекс в эту пятницу, сколько стоит?",at:ago(200)},
+    {from:"ai",text:"Здравствуйте, Арман! VIP-ритуал: стрижка, борода, королевское бритьё и уход за лицом. Стоит 22 000 ₸, длится около 2,5 часов. На какое время в пятницу удобно?",at:ago(199)},
+    {from:"client",text:"после 6 вечера можно?",at:ago(195)},
+    {from:"ai",text:"В пятницу к Тимуру свободно 18:00 и 18:30. Какое время выбрать?",at:ago(194)},
+    {from:"client",text:"18:00",at:ago(190)},
+    {from:"system",text:"AI booked VIP ritual with Timur B. and sent a prepayment link (30%).",at:ago(189)},
+    {from:"ai",text:"Записали вас на пятницу в 18:00 к Тимуру. Для VIP-ритуала нужна предоплата 30% — 6 600 ₸, ссылка ниже.",at:ago(189)},
+    {from:"system",text:"Payment received: 6 600 ₸ (Kaspi QR). Booking confirmed.",at:ago(182)},
+    {from:"ai",text:"Оплата получена, спасибо! Ждём вас в пятницу в 18:00. Напомним за день до визита. Barberista — стиль без компромиссов 💈",at:ago(181)}]};
   D.conversations["CV-0002"]={messenger:"Instagram",contact:"guest_ig_8841",external_user_id:"in_8841",client_id:null,stage:"In dialog",ai_enabled:false,needs_human:true,updated_at:ago(55),messages:[
-    {from:"client",text:"мне вчера сделали маникюр и уже скол на двух ногтях. это нормально вообще??",at:ago(60)},
-    {from:"ai",text:"Очень жаль, что так получилось. Я передаю ваш вопрос администратору, он свяжется с вами в течение 15 минут и предложит бесплатную коррекцию.",at:ago(59)},
+    {from:"client",text:"вчера стригся у вас, фейд с одной стороны неровный. это нормально вообще??",at:ago(60)},
+    {from:"ai",text:"Очень жаль, что так вышло. Передаю ваш вопрос администратору: он свяжется с вами в течение 15 минут и предложит бесплатную коррекцию.",at:ago(59)},
     {from:"system",text:"AI handed the chat to a human: complaint about quality.",at:ago(59)}]};
   D.conversations["CV-0003"]={messenger:"WhatsApp",contact:"Saule M.",external_user_id:"wh_5026",client_id:"CL-0003",stage:"In dialog",ai_enabled:true,needs_human:false,updated_at:ago(20),messages:[
-    {from:"client",text:"добрый день, а у вас есть мужская стрижка? для мужа хочу записать на субботу",at:ago(22)},
-    {from:"ai",text:"Добрый день, Сауле! Да, мужская стрижка стоит 5 000 ₸ и длится 45 минут, её делает барбер Тимур. Подобрать время на субботу?",at:ago(21)}]};
-  D.conversations["CV-0004"]={messenger:"Instagram",contact:"aigul.style",external_user_id:"in_9120",client_id:null,stage:"New",ai_enabled:true,needs_human:false,updated_at:ago(3),messages:[
-    {from:"client",text:"здравствуйте а можно к вам завтра после работы на брови? и сколько это",at:ago(3)}]};
-  const KB=[["About the salon","General","Lumière Beauty Studio, Abay Ave 10, 2nd floor (demo address). Entrance from the yard, free parking for 6 cars. Mon–Sat 09:00–20:00, Sunday closed. Payment: Kaspi QR, card, cash."],
-    ["Prepayment rule","Policy","Services that cost 20 000 ₸ or more (hair colouring) need a 30% prepayment through the payment link. Booking is confirmed after the prepayment. Introduced after the October no-show report: colouring had 25% no-shows."],
-    ["Cancellation and late arrival","Policy","Clients can cancel or move a visit free of charge up to 24 hours before. Prepayment is returned if cancelled more than 24 h before. If a client is more than 15 minutes late, the master may shorten the service or move it."],
-    ["Colouring by hair length","Prices","Base price 25 000 ₸ is for hair up to the shoulders. Hair below the shoulders: +5 000 ₸. Very long hair (below the waist): +10 000 ₸, final price confirmed by the master. Allergy test is free and recommended 48 h before first colouring."],
-    ["Promotions","Prices","Birthday: 10% off any one service within 7 days of the birthday, show ID. First visit by Instagram: free brow tint with any haircut. No other discounts can be promised."],
-    ["FAQ","FAQ","Kids haircuts from 5 years old, same price as men's haircut. Gel polish lasts 2–3 weeks; free correction within 5 days if a nail chips. We use Wella and Kapous products. Coffee and tea are free while you wait."]];
+    {from:"client",text:"добрый день, а детей стрижете? сыну 7 лет, хочу на субботу",at:ago(22)},
+    {from:"ai",text:"Добрый день, Сауле! Да, детская стрижка стоит 5 000 ₸ и длится 45 минут, детей стрижёт Арман. Подобрать время на субботу?",at:ago(21)}]};
+  D.conversations["CV-0004"]={messenger:"Instagram",contact:"aidos.fit",external_user_id:"in_9120",client_id:null,stage:"New",ai_enabled:true,needs_human:false,updated_at:ago(3),messages:[
+    {from:"client",text:"здарова, можно сегодня вечером бороду оформить? и сколько это",at:ago(3)}]};
+  const KB=[["About the barbershop","General","Barberista, Panfilov St 98 (demo address). Open daily 10:00–21:00. Parking in front for 4 cars. Payment: Kaspi QR, card, cash. Walk-ins are welcome when a barber is free, but evenings are best booked."],
+    ["Prepayment rule","Policy","Services that cost 20 000 ₸ or more (VIP ritual) need a 30% prepayment through the payment link. Booking is confirmed after the prepayment. Introduced after the October no-show report: the VIP ritual had 25% no-shows."],
+    ["Cancellation and late arrival","Policy","Clients can cancel or move a visit free of charge up to 3 hours before. Prepayment is returned if cancelled more than 24 h before. If a client is more than 15 minutes late, the barber may shorten the service or move it."],
+    ["Extra charges","Prices","Long hair (below the ears) with a men's haircut: +2 000 ₸. Beard longer than 5 cm: +1 000 ₸ to the beard trim. Grey camouflage can be added to any haircut for 5 000 ₸."],
+    ["Promotions","Prices","Every 6th haircut is free (loyalty card in the CRM). Father and son: 15% off the kids haircut when booked together with a men's haircut. Birthday: 10% off one service within 7 days, show ID. No other discounts can be promised."],
+    ["FAQ","FAQ","Kids from 4 years old. We use Reuzel and Layrite products and a hot towel with every shave. Coffee, tea and PlayStation are free while you wait. A fade is best refreshed every 2–3 weeks."]];
   KB.forEach(([t,c,x],i)=>D.knowledge["KB-"+(i+1)]={title:t,category:c,content:x,updated_at:ago(60*24*(6-i))});
   return D;
 }
@@ -629,7 +632,7 @@ PAGES.inbox={head:()=>head("Chats","Telegram, WhatsApp and Instagram in one plac
       <button class="btn ai sm" data-aireply="${c.id}">Ask AI to reply</button></div>
       <div class="msgs" id="msgs">${msgs}<div id="typing"></div></div>
       <div class="composer"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="seg"><button data-as="client" class="${composeAs==="client"?"on":""}">Write as client</button><button data-as="admin" class="${composeAs==="admin"?"on":""}">Write as administrator</button></div><span class="muted small">${composeAs==="client"?"Simulates a message from "+esc(c.messenger):"Your reply goes to the client and pauses nothing"}</span></div>
-      <form class="row" id="sendForm"><textarea id="composeText" rows="1" placeholder="${composeAs==="client"?"e.g. здравствуйте а можно завтра после 6 на маникюр?":"Type a reply"}"></textarea><button class="btn primary" type="submit">Send</button></form></div></div>`;
+      <form class="row" id="sendForm"><textarea id="composeText" rows="1" placeholder="${composeAs==="client"?"e.g. здравствуйте можно завтра после 6 подстричься?":"Type a reply"}"></textarea><button class="btn primary" type="submit">Send</button></form></div></div>`;
     const cc=c.client_id?cli(c.client_id):null;const ap=convClientAppts(c).filter(a=>parseDT(a.start_datetime)>=addDays(new Date(),-1));
     const pays=vals("payments").filter(p=>ap.some(a=>a.id===p.appointment_id));
     info=`<aside class="info"><div><h4>Deal stage</h4><select class="inp" id="stageSel" data-stage="${c.id}">${STAGES.map(s=>`<option ${s[0]===c.stage?"selected":""}>${s[0]}</option>`).join("")}</select></div>
@@ -746,13 +749,13 @@ PAGES.knowledge={head:()=>head("AI knowledge base","Everything you add here beco
   <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
   <section class="panel"><div class="ph"><h3>Teach the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
    <p class="muted small" style="margin:0">Paste anything about your business in any form: a promotion, discounts, rules, your slogan, FAQ, a price list. The AI sorts it into entries and settings, you check them, and they are saved to the database.</p>
-   <textarea class="inp" id="teachT" style="min-height:120px" placeholder="Например: до конца ноября скидка 15% на маникюр по будням до 14:00. Опоздание больше 15 минут — запись переносится. Наш слоган: «Красота начинается с заботы»."></textarea>
+   <textarea class="inp" id="teachT" style="min-height:120px" placeholder="Например: до конца ноября скидка 15% на бритьё по будням до 14:00. Опоздание больше 15 минут — запись переносится. Наш слоган: «Barberista — стиль без компромиссов»."></textarea>
    <div style="display:flex;gap:8px"><button class="btn ai" id="teachGo" type="button">Organise with AI</button><span class="grow"></span></div>
    <div id="teachOut"></div>
   </div></section>
   <section class="panel"><div class="ph"><h3>Test the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
    <p class="muted small" style="margin:0">Ask the way a client would. The AI answers only from the services table and this knowledge base.</p>
-   <form id="kbAsk" style="display:flex;gap:8px"><input class="inp" id="kbQ" placeholder="e.g. у меня волосы до пояса, сколько будет покраска?"><button class="btn ai" type="submit">Ask</button></form>
+   <form id="kbAsk" style="display:flex;gap:8px"><input class="inp" id="kbQ" placeholder="e.g. у меня борода 10 см, сколько будет оформление?"><button class="btn ai" type="submit">Ask</button></form>
    <div class="answer" id="kbA"><span class="muted">The answer appears here.</span></div>
    <h4 class="muted small" style="margin:6px 0 0">How the AI uses this</h4>
    <ol class="small muted" style="margin:0;padding-left:18px"><li>The backend reads services, staff, free slots and these entries from the database.</li><li>It sends them to the AI together with the client's message.</li><li>The AI writes the reply and calls CRM actions (book, payment link, hand over to a human). It never touches the database directly.</li></ol>
@@ -887,7 +890,7 @@ async function runSQL(){
 /* business setup */
 PAGES.business={head:()=>head("Business setup","Make the CRM fit your business. The AI reads all of this.",""),
  body(){const b=biz();return `<form class="panel" id="bizForm"><div class="ph"><h3>Business profile</h3></div><div class="pad" style="display:flex;flex-direction:column;gap:14px">
-  <div class="frow"><div class="f"><label for="b_name">Business name</label><input id="b_name" value="${esc(b.name)}"></div><div class="f"><label for="b_type">Type of business</label><input id="b_type" value="${esc(b.type)}" placeholder="Beauty salon, dental clinic, car service…"></div><div class="f"><label for="b_city">City</label><input id="b_city" value="${esc(b.city)}"></div></div>
+  <div class="frow"><div class="f"><label for="b_name">Business name</label><input id="b_name" value="${esc(b.name)}"></div><div class="f"><label for="b_type">Type of business</label><input id="b_type" value="${esc(b.type)}" placeholder="Barbershop, beauty salon, dental clinic…"></div><div class="f"><label for="b_city">City</label><input id="b_city" value="${esc(b.city)}"></div></div>
   <div class="frow"><div class="f"><label for="b_address">Address</label><input id="b_address" value="${esc(b.address)}"></div><div class="f"><label for="b_hours">Opening hours</label><input id="b_hours" value="${esc(b.hours)}"></div><div class="f"><label for="b_phone">Phone</label><input id="b_phone" value="${esc(b.phone)}"></div></div>
   <div class="frow"><div class="f"><label for="b_staff">What you call staff</label><input id="b_staff" value="${esc(b.staff_label)}" placeholder="Master, Doctor, Trainer"></div><div class="f"><label for="b_svc">What you call services</label><input id="b_svc" value="${esc(b.service_label)}" placeholder="Service, Procedure, Class"></div><div class="f"><label for="b_lang">Client languages</label><input id="b_lang" value="${esc(b.languages)}"></div></div>
  </div><div class="ph" style="border-top:1px solid var(--line)"><h3>AI administrator</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:14px">
@@ -956,7 +959,7 @@ function kbModal(id){const k=id?S.knowledge[id]:{title:"",category:"General",con
   `${id?`<button class="btn danger" data-delkb="${id}">Delete</button>`:""}<span style="flex:1"></span><button class="btn" data-close>Close</button><button class="btn create" data-savekb="${id||""}">Save</button>`,true)}
 function newConvModal(){modal("New chat",`<p class="muted small" style="margin:0">Simulates a client who writes to the business from a messenger. In the real system this comes from the messenger API (FR-01).</p>
   <div class="frow"><div class="f"><label for="nc_m">Messenger</label><select id="nc_m"><option>Telegram</option><option>WhatsApp</option><option>Instagram</option></select></div><div class="f"><label for="nc_n">Contact name in the messenger</label><input id="nc_n" placeholder="e.g. tetya_gulya"></div></div>
-  <div class="f"><label for="nc_t">First message from the client</label><textarea id="nc_t" placeholder="добрый вечер подскажите пожалуйста у вас окрашивание сколько стоит и когда можно прийти">добрый вечер подскажите пожалуйста у вас окрашивание сколько стоит и когда можно прийти</textarea></div>`,
+  <div class="f"><label for="nc_t">First message from the client</label><textarea id="nc_t" placeholder="добрый вечер подскажите сколько стоит стрижка с бородой и когда можно прийти">добрый вечер подскажите сколько стоит стрижка с бородой и когда можно прийти</textarea></div>`,
   `<span style="flex:1"></span><button class="btn" data-close>Cancel</button><button class="btn create" data-createconv>Start chat</button>`)}
 
 document.addEventListener("click",async e=>{
@@ -968,7 +971,7 @@ document.addEventListener("click",async e=>{
   if(d.act==="newMaster")return masterModal(null);
   if(d.act==="newKb")return kbModal(null);
   if(d.act==="newConv")return newConvModal();
-  if(d.act==="resetDemo")return modal("Reset demo data?",`<p style="margin:0">This replaces every table with the demo salon data. Chats, clients and bookings you added will be lost.</p>`,`<span style="flex:1"></span><button class="btn" data-close>Cancel</button><button class="btn danger" data-confirmreset>Reset</button>`);
+  if(d.act==="resetDemo")return modal("Reset demo data?",`<p style="margin:0">This replaces every table with the demo barbershop data. Chats, clients and bookings you added will be lost.</p>`,`<span style="flex:1"></span><button class="btn" data-close>Cancel</button><button class="btn danger" data-confirmreset>Reset</button>`);
   if("confirmreset" in d){closeModal();await seedAll(true);return}
   if("saveappt" in d)return saveAppt(d.saveappt||null);
   if("appt" in d)return apptModal(d.appt);
@@ -1030,7 +1033,7 @@ function setBanner(){
   const b=$("#banner");
   if(!live){b.innerHTML=`<div class="banner"><span>Demo on GitHub Pages: changes stay in this browser tab and the AI is off. <a href="https://claude.ai/artifact/ADSNg68LNiherEJNbSeMdR" target="_blank" rel="noopener">Open the live version with the AI</a> or run the full system from the repository.</span></div>`;return}
   if(seeding)return;
-  if(loaded.size===COLS.length&&!Object.keys(S.services).length){b.innerHTML=`<div class="banner"><b>The database is empty.</b> Load the demo salon (services, staff, 30 clients, 6 weeks of bookings, sample chats) to try the CRM.${canWrite?' <button class="btn create sm" data-loaddemo>Load demo data</button>':""}</div>`;return}
+  if(loaded.size===COLS.length&&!Object.keys(S.services).length){b.innerHTML=`<div class="banner"><b>The database is empty.</b> Load the demo barbershop (services, staff, 30 clients, 6 weeks of bookings, sample chats) to try the CRM.${canWrite?' <button class="btn create sm" data-loaddemo>Load demo data</button>':""}</div>`;return}
   b.innerHTML="";
 }
 document.addEventListener("click",e=>{if(e.target.closest("[data-loaddemo]"))seedAll(false)});

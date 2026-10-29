@@ -31,11 +31,11 @@ describe("FR-01..03: chat to booking to payment", () => {
   let conv: Conv;
 
   it("answers price and free times from the database (BR-01: real prices only)", async () => {
-    conv = await say("wa_e2e_1", "Здравствуйте! Сколько стоит окрашивание? Можно в среду после обеда?");
+    conv = await say("wa_e2e_1", "Здравствуйте! Сколько стоит VIP-ритуал? Можно в среду вечером?");
     const reply = lastAi(conv);
-    expect(reply).toMatch(/Окрашивание волос стоит 25 000 ₸/);
-    expect(reply).toMatch(/предоплата 7 500 ₸/);
-    expect(reply).toMatch(/\b1[3-6]:[03]0\b/);
+    expect(reply).toMatch(/VIP-ритуал стоит 22 000 ₸/);
+    expect(reply).toMatch(/предоплата 6 600 ₸/);
+    expect(reply).toMatch(/\b1[78]:[03]0\b/);
     expect(conv.stage).toBe("In dialog");
   });
 
@@ -58,7 +58,7 @@ describe("FR-01..03: chat to booking to payment", () => {
        WHERE a.appointment_id = $1`,
       [conv.appointment_id],
     );
-    expect(rows[0]).toMatchObject({ display_name: "Жанар", phone: "+7 701 555 1122", service_code: "CO-03", status: "Booked", amount_kzt: 7500, pay_status: "Pending" });
+    expect(rows[0]).toMatchObject({ display_name: "Жанар", phone: "+7 701 555 1122", service_code: "VP-07", status: "Booked", amount_kzt: 6600, pay_status: "Pending" });
   });
 
   it("thanks the client after the payment and moves the deal to Paid", async () => {
@@ -72,32 +72,32 @@ describe("FR-01..03: chat to booking to payment", () => {
   });
 
   it("recognises the same person on the next visit by the messenger id", async () => {
-    const again = await say("wa_e2e_1", "А маникюр у вас сколько стоит?");
+    const again = await say("wa_e2e_1", "А бороду оформить сколько стоит?");
     expect(again.id).toBe(conv.id);
     expect(again.client_id).toBe(conv.client_id);
-    expect(lastAi(again)).toMatch(/10 000 ₸/);
+    expect(lastAi(again)).toMatch(/5 000 ₸/);
   });
 });
 
 describe("safety rules", () => {
   it("hands a complaint to a human and stops answering", async () => {
-    const c = await say("ig_e2e_2", "Сделали маникюр вчера, сегодня уже скололся, это ужас", "instagram");
+    const c = await say("ig_e2e_2", "Вчера стригся у вас, фейд кривой, это ужас", "instagram");
     expect(c.needs_human).toBe(true);
     expect(c.ai_enabled).toBe(false);
     const after = await say("ig_e2e_2", "Алло?", "instagram");
     expect(after.messages.filter((m) => m.from === "ai")).toHaveLength(1);
   });
 
-  it("does not invent a service the salon does not have", async () => {
+  it("does not invent a service the barbershop does not have", async () => {
     const c = await say("tg_e2e_3", "Сколько стоит массаж спины?", "telegram");
     const reply = lastAi(c);
     expect(reply).not.toMatch(/массаж[^?]*₸/i);
-    expect(reply).toMatch(/женская стрижка \(8 000 ₸\)/i);
+    expect(reply).toMatch(/мужская стрижка \(7 000 ₸\)/i);
   });
 
   it("answers in English when the client writes in English", async () => {
-    const c = await say("tg_e2e_4", "Hi! How much is a manicure tomorrow evening?", "telegram");
-    expect(lastAi(c)).toMatch(/costs 10 000 ₸/i);
+    const c = await say("tg_e2e_4", "Hi! How much is a beard trim tomorrow evening?", "telegram");
+    expect(lastAi(c)).toMatch(/costs 5 000 ₸/i);
   });
 });
 
@@ -116,10 +116,10 @@ describe("Teach the AI: free text becomes data the AI uses", () => {
   it("organises notes into entries and settings", async () => {
     const r = await api
       .post("/api/ai/teach")
-      .send({ text: "До конца ноября скидка 15% на педикюр по будням. Наш слоган: «Ваша красота — наша забота»." })
+      .send({ text: "До конца ноября скидка 15% на бритьё по будням. Наш слоган: «Борода — это характер»." })
       .expect(200);
-    expect(r.body.entries).toEqual([expect.objectContaining({ category: "Promotions", content: "До конца ноября скидка 15% на педикюр по будням." })]);
-    expect(r.body.settings).toEqual({ catchphrase: "Ваша красота — наша забота" });
+    expect(r.body.entries).toEqual([expect.objectContaining({ category: "Promotions", content: "До конца ноября скидка 15% на бритьё по будням." })]);
+    expect(r.body.settings).toEqual({ catchphrase: "Борода — это характер" });
 
     await api.post("/api/knowledge").send(r.body.entries[0]).expect(201);
     const biz = (await api.get("/api/settings").expect(200)).body;
@@ -127,11 +127,11 @@ describe("Teach the AI: free text becomes data the AI uses", () => {
   });
 
   it("greets with the brand phrase and mentions the saved promotion", async () => {
-    const c = await say("wa_e2e_teach", "Здравствуйте! Сколько стоит педикюр?");
+    const c = await say("wa_e2e_teach", "Здравствуйте! Сколько стоит королевское бритьё?");
     const reply = lastAi(c);
-    expect(reply).toMatch(/^Здравствуйте! Ваша красота — наша забота/);
-    expect(reply).toMatch(/12 000 ₸/);
-    expect(reply).toContain("До конца ноября скидка 15% на педикюр по будням.");
+    expect(reply).toMatch(/^Здравствуйте! Борода — это характер/);
+    expect(reply).toMatch(/6 000 ₸/);
+    expect(reply).toContain("До конца ноября скидка 15% на бритьё по будням.");
   });
 
   it("rejects empty notes", async () => {

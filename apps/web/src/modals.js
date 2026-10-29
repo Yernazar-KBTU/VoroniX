@@ -101,7 +101,7 @@ function kbModal(id) {
 }
 
 function newConvModal() {
-  const sample = "добрый вечер подскажите пожалуйста у вас окрашивание сколько стоит и когда можно прийти";
+  const sample = "добрый вечер подскажите сколько стоит стрижка с бородой и когда можно прийти";
   modal(
     "New chat",
     `<p class="muted small" style="margin:0">Simulates a client who writes to the business from a messenger. Real messages arrive through the channel webhook <span class="code">POST /api/channels/:messenger/inbound</span> (FR-01).</p>
@@ -114,7 +114,7 @@ function newConvModal() {
 const resetModal = () =>
   modal(
     "Reset demo data?",
-    `<p style="margin:0">This replaces every table with the demo salon data. Chats, clients and bookings you added will be lost.</p>`,
+    `<p style="margin:0">This replaces every table with the demo barbershop data. Chats, clients and bookings you added will be lost.</p>`,
     `<span style="flex:1"></span><button class="btn" data-close>Cancel</button><button class="btn danger" data-confirmreset>Reset</button>`,
   );
 

@@ -29,7 +29,7 @@ WHERE month = date_trunc('month', now())::date
 ORDER BY no_show_pct DESC;
 ```
 
-October 2026: hair colouring has 46.7% no-shows and lost 175 000 ₸. Decision: 30% prepayment for services from 20 000 ₸; the AI sends the payment link when booking.
+Barberista demo data, October 2026 (generated relative to today, so the numbers move a little): the VIP ritual leads with 18.2% no-shows and 44 000 ₸ lost. Decision: 30% prepayment for services from 20 000 ₸; the AI sends the payment link when booking.
 
 ## Payment transaction
 

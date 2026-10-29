@@ -34,7 +34,7 @@ export const inbox = {
       <button class="btn ai sm" data-aireply="${c.id}">Ask AI to reply</button></div>
       <div class="msgs" id="msgs">${msgs}<div id="typing"></div></div>
       <div class="composer"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="seg"><button data-as="client" class="${ui.composeAs === "client" ? "on" : ""}">Write as client</button><button data-as="admin" class="${ui.composeAs === "admin" ? "on" : ""}">Write as administrator</button></div><span class="muted small">${ui.composeAs === "client" ? "Simulates a message from " + esc(c.messenger) : "Your reply goes to the client"}</span></div>
-      <form class="row" id="sendForm"><textarea id="composeText" rows="1" aria-label="Message" placeholder="${ui.composeAs === "client" ? "e.g. здравствуйте а можно завтра после 6 на маникюр?" : "Type a reply"}"></textarea><button class="btn primary" type="submit">Send</button></form></div></div>`;
+      <form class="row" id="sendForm"><textarea id="composeText" rows="1" aria-label="Message" placeholder="${ui.composeAs === "client" ? "e.g. здравствуйте можно завтра после 6 подстричься?" : "Type a reply"}"></textarea><button class="btn primary" type="submit">Send</button></form></div></div>`;
       const cc = c.client_id ? cli(c.client_id) : null;
       const ap = convClientAppts(c).filter((a) => parseDT(a.start_datetime) >= addDays(new Date(), -1));
       const pays = vals("payments").filter((p) => ap.some((a) => a.id === p.appointment_id));

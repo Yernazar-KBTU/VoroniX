@@ -49,6 +49,22 @@ describe("matchService", () => {
     ["how much is a manicure", "MN-02"],
   ])("%s -> %s", (text, code) => expect(matchService(text, services)?.id).toBe(code));
 
+  const barbershop = [
+    S("HC-01", "Мужская стрижка"), S("HC-02", "Стрижка машинкой"), S("KD-03", "Детская стрижка"), S("BD-04", "Оформление бороды"),
+    S("CB-05", "Стрижка и борода"), S("SH-06", "Королевское бритьё"), S("VP-07", "VIP-ритуал"), S("CM-08", "Камуфляж седины"),
+  ];
+  it.each([
+    ["хочу подстричься", "HC-01"],
+    ["под машинку можно?", "HC-02"],
+    ["сына подстричь, ему 7", "KD-03"],
+    ["бороду оформить", "BD-04"],
+    ["стрижка и борода вместе", "CB-05"],
+    ["хочу побриться опасной бритвой", "SH-06"],
+    ["вип комплекс сколько", "VP-07"],
+    ["закрасить седину", "CM-08"],
+    ["how much is a beard trim", "BD-04"],
+  ])("barbershop: %s -> %s", (text, code) => expect(matchService(text, barbershop)?.id).toBe(code));
+
   it("ignores hidden services and unrelated text", () => {
     expect(matchService("массаж спины", services)).toBeNull();
     expect(matchService("педикюр", services.map((s) => ({ ...s, is_active: s.id !== "PD-04" })))).toBeNull();

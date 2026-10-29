@@ -6,7 +6,7 @@ import { migrate } from "./migrate.js";
 import { pool, tx } from "./pool.js";
 
 /**
- * Demo salon "Lumière Beauty Studio": 7 services, 4 masters, 30 clients,
+ * Demo barbershop "Barberista": 8 services, 4 barbers, 30 clients,
  * about 300 visits from 45 days ago to 10 days ahead, payments, 4 chats and a
  * knowledge base. Data is generated relative to `today` with a fixed random
  * seed, so every run gives the same picture.
@@ -18,29 +18,30 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
   const rnd = () => (r = (r * 9301 + 49297) % 233280) / 233280;
 
   const services: [string, string, number, number, string][] = [
-    ["HC-01", "Женская стрижка", 60, 8000, "Hair"],
-    ["HC-02", "Мужская стрижка", 45, 5000, "Hair"],
-    ["CO-03", "Окрашивание волос", 150, 25000, "Hair"],
-    ["MN-02", "Маникюр с гель-лаком", 90, 10000, "Nails"],
-    ["PD-04", "Педикюр", 90, 12000, "Nails"],
-    ["BR-05", "Коррекция и тонирование бровей", 30, 4000, "Brows"],
-    ["ST-06", "Вечерняя укладка", 60, 9000, "Hair"],
+    ["HC-01", "Мужская стрижка", 60, 7000, "Haircut"],
+    ["HC-02", "Стрижка машинкой", 30, 4000, "Haircut"],
+    ["KD-03", "Детская стрижка", 45, 5000, "Haircut"],
+    ["BD-04", "Оформление бороды", 45, 5000, "Beard"],
+    ["CB-05", "Стрижка и борода", 90, 11000, "Combo"],
+    ["SH-06", "Королевское бритьё", 45, 6000, "Shave"],
+    ["VP-07", "VIP-ритуал", 150, 22000, "Combo"],
+    ["CM-08", "Камуфляж седины", 30, 5000, "Colour"],
   ];
   const duration = Object.fromEntries(services.map((s) => [s[0], s[2]]));
   const price = Object.fromEntries(services.map((s) => [s[0], s[3]]));
   const masters: [string, string, string, string, string, number[]][] = [
-    ["MS-01", "Айгерим С.", "Стилист-парикмахер", "09:00", "20:00", [1, 2, 3, 4, 5, 6]],
-    ["MS-02", "Дана К.", "Мастер маникюра", "10:00", "20:00", [1, 2, 3, 4, 5, 6]],
-    ["MS-03", "Тимур Б.", "Барбер", "09:00", "19:00", [2, 3, 4, 5, 6]],
-    ["MS-04", "Мадина А.", "Бровист, стилист", "10:00", "19:00", [1, 2, 3, 4, 5]],
+    ["MS-01", "Тимур Б.", "Старший барбер", "10:00", "21:00", [1, 2, 3, 4, 5, 6]],
+    ["MS-02", "Арман К.", "Барбер", "10:00", "21:00", [1, 2, 3, 4, 5, 6]],
+    ["MS-03", "Данияр С.", "Барбер", "12:00", "21:00", [0, 2, 3, 4, 5, 6]],
+    ["MS-04", "Ержан М.", "Мастер бритья", "10:00", "19:00", [1, 2, 3, 4, 5]],
   ];
   const links: [string, string, string][] = [
-    ["MS-01", "HC-01", "Senior"], ["MS-01", "CO-03", "Senior"], ["MS-01", "ST-06", "Senior"],
-    ["MS-02", "MN-02", "Senior"], ["MS-02", "PD-04", "Senior"],
-    ["MS-03", "HC-02", "Senior"], ["MS-03", "HC-01", "Junior"],
-    ["MS-04", "BR-05", "Senior"], ["MS-04", "ST-06", "Junior"],
+    ["MS-01", "HC-01", "Senior"], ["MS-01", "BD-04", "Senior"], ["MS-01", "CB-05", "Senior"], ["MS-01", "VP-07", "Senior"], ["MS-01", "CM-08", "Senior"],
+    ["MS-02", "HC-01", "Senior"], ["MS-02", "HC-02", "Senior"], ["MS-02", "KD-03", "Senior"], ["MS-02", "CB-05", "Junior"],
+    ["MS-03", "HC-01", "Junior"], ["MS-03", "HC-02", "Senior"], ["MS-03", "BD-04", "Senior"], ["MS-03", "KD-03", "Junior"],
+    ["MS-04", "SH-06", "Senior"], ["MS-04", "BD-04", "Senior"], ["MS-04", "VP-07", "Junior"],
   ];
-  const names = ["Алия К.", "Бекзат Т.", "Сауле М.", "Асель Н.", "Динара Ж.", "Ерлан С.", "Камила Б.", "Мадина О.", "Нурлан А.", "Аружан Т.", "Гульнара Е.", "Зарина У.", "Даулет К.", "Тогжан Р.", "Айнур С.", "Меруерт Д.", "Ерлан Б.", "Акмарал И.", "Сабина Л.", "Раушан П.", "Айдана Ф.", "Тимур Ж.", "Лаура В.", "Асем Г.", "Бота М.", "Жанна Ю.", "Инкар Т.", "Диас Р.", "Карина С.", "Малика Н."];
+  const names = ["Арман Т.", "Бекзат Т.", "Сауле М.", "Аслан Н.", "Данияр Ж.", "Ерлан С.", "Камал Б.", "Марат О.", "Нурлан А.", "Азамат Т.", "Галым Е.", "Жандос У.", "Даулет К.", "Темирлан Р.", "Айнур С.", "Мирас Д.", "Ерлан Б.", "Алибек И.", "Санжар Л.", "Руслан П.", "Айдос Ф.", "Тимур Ж.", "Батыр В.", "Асет Г.", "Бауыржан М.", "Жан Ю.", "Ислам Т.", "Диас Р.", "Кайрат С.", "Мади Н."];
   const MSG = ["WhatsApp", "Telegram", "Instagram"] as const;
 
   const clients = names.map((n, i) => ({
@@ -48,7 +49,7 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
     name: n,
     phone: i % 5 === 3 ? null : `+7 70${i % 9} 000 ${String(1000 + i * 37).slice(-4)}`,
     created: dt(addDays(day0, -60 + i)),
-    notes: i === 2 ? "Предпочитает Айгерим. Чувствительная кожа головы." : "",
+    notes: i === 2 ? "Приводит сына Алихана (7 лет). Стричь только ножницами, машинки боится." : "",
   }));
   const channels: [string, string, string][] = [];
   clients.forEach((c, i) => {
@@ -74,13 +75,13 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
     return true;
   };
 
-  // The visit from the paid demo chat: hair colouring next Friday at 14:00.
+  // The visit from the paid demo chat: VIP ritual next Friday at 18:00.
   const friday = addDays(day0, ((5 - day0.getDay() + 7) % 7) || 7);
-  reserve(friday, "MS-01", 14 * 60, 150);
-  const aliyaVisit: Appt = { id: `AP-${++apSeq}`, client: "CL-0001", master: "MS-01", service: "CO-03", start: `${ymd(friday)} 14:00`, status: "Confirmed", source: "Telegram", created: dt(today) };
-  appts.push(aliyaVisit);
+  reserve(friday, "MS-01", 18 * 60, 150);
+  const armanVisit: Appt = { id: `AP-${++apSeq}`, client: "CL-0001", master: "MS-01", service: "VP-07", start: `${ymd(friday)} 18:00`, status: "Confirmed", source: "Telegram", created: dt(today) };
+  appts.push(armanVisit);
 
-  const noShowRate: Record<string, number> = { "CO-03": 0.25, "MN-02": 0.1, "HC-01": 0.05, "HC-02": 0.06, "PD-04": 0.08, "BR-05": 0.04, "ST-06": 0.1 };
+  const noShowRate: Record<string, number> = { "VP-07": 0.25, "CB-05": 0.1, "HC-01": 0.06, "HC-02": 0.05, "KD-03": 0.12, "BD-04": 0.05, "SH-06": 0.08, "CM-08": 0.05 };
   const book = (day: Date, master: string, code: string, status: string, source: string) => {
     const m = masters.find((x) => x[0] === master)!;
     if (!m[5].includes(day.getDay())) return null;
@@ -90,7 +91,7 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
       if (!reserve(day, master, t, dur)) continue;
       const a: Appt = {
         id: `AP-${++apSeq}`,
-        client: `CL-${pad4(1 + Math.floor(rnd() * 30))}`,
+        client: `CL-${pad4(2 + Math.floor(rnd() * 29))}`, // CL-0001 only has the visit from the demo chat
         master,
         service: code,
         start: `${ymd(day)} ${pad(Math.floor(t / 60))}:${pad(t % 60)}`,
@@ -108,7 +109,7 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
   const pays: Pay[] = [];
   let pmSeq = 0;
   const pay = (p: Omit<Pay, "id">) => pays.push({ id: `PM-${String(++pmSeq).padStart(5, "0")}`, ...p });
-  pay({ appt: aliyaVisit.id, amount: 7500, kind: "prepayment", method: "Kaspi QR", status: "Paid", created: dt(today), paid: dt(today) });
+  pay({ appt: armanVisit.id, amount: 6600, kind: "prepayment", method: "Kaspi QR", status: "Paid", created: dt(today), paid: dt(today) });
 
   for (let d = -45; d <= 10; d++) {
     const day = addDays(day0, d);
@@ -137,48 +138,48 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
   const fri = `${ymd(friday).slice(8)}.${ymd(friday).slice(5, 7)}`;
   const conversations = [
     {
-      id: "CV-0001", messenger: "Telegram", ext: "te_5000", contact: "Алия К.", client: "CL-0001", appt: aliyaVisit.id, stage: "Paid", ai: true, human: false,
+      id: "CV-0001", messenger: "Telegram", ext: "te_5000", contact: "Арман Т.", client: "CL-0001", appt: armanVisit.id, stage: "Paid", ai: true, human: false,
       msgs: [
-        ["client", "Здравствуйте! хочу покраситься на этой неделе, сколько стоит?", 200],
-        ["ai", "Здравствуйте, Алия! Окрашивание волос стоит 25 000 ₸, процедура длится около 2,5 часов. Для длинных волос ниже плеч доплата 5 000 ₸. На какой день вам удобно?", 199],
-        ["client", "в пятницу после обеда можно?", 195],
-        ["ai", `В пятницу ${fri} к мастеру Айгерим С. свободно 14:00 и 16:30. Какое время выбрать?`, 194],
-        ["client", "14:00", 190],
-        ["system", `AI booked Окрашивание волос with Айгерим С. on ${aliyaVisit.start} (${aliyaVisit.id}).`, 189],
-        ["ai", "Записала вас на пятницу в 14:00 к Айгерим С. Для окрашивания нужна предоплата 30%: 7 500 ₸, кнопка оплаты ниже.", 189],
-        ["pay", "Payment for Окрашивание волос", 189, "PM-00001"],
-        ["system", "Payment received: 7 500 ₸ (Kaspi QR). Booking confirmed.", 182],
-        ["ai", "Оплата получена, спасибо! Ждём вас в пятницу в 14:00. Напомним за день до визита.", 181],
+        ["client", "Салем! хочу на вип-комплекс в эту пятницу, сколько стоит?", 200],
+        ["ai", "Здравствуйте, Арман! VIP-ритуал: стрижка, борода, королевское бритьё и уход за лицом. Стоит 22 000 ₸, длится около 2,5 часов. На какое время в пятницу удобно?", 199],
+        ["client", "после 6 вечера можно?", 195],
+        ["ai", `В пятницу ${fri} к Тимуру Б. свободно 18:00 и 18:30. Какое время выбрать?`, 194],
+        ["client", "18:00", 190],
+        ["system", `AI booked VIP-ритуал with Тимур Б. on ${armanVisit.start} (${armanVisit.id}).`, 189],
+        ["ai", "Записали вас на пятницу в 18:00 к Тимуру Б. Для VIP-ритуала нужна предоплата 30%: 6 600 ₸, кнопка оплаты ниже.", 189],
+        ["pay", "Payment for VIP-ритуал", 189, "PM-00001"],
+        ["system", "Payment received: 6 600 ₸ (Kaspi QR). Booking confirmed.", 182],
+        ["ai", "Оплата получена, спасибо! Ждём вас в пятницу в 18:00. Напомним за день до визита. Barberista — стиль без компромиссов 💈", 181],
       ],
     },
     {
       id: "CV-0002", messenger: "Instagram", ext: "in_8841", contact: "guest_ig_8841", client: null, appt: null, stage: "In dialog", ai: false, human: true,
       msgs: [
-        ["client", "мне вчера сделали маникюр и уже скол на двух ногтях. это нормально вообще??", 60],
-        ["ai", "Очень жаль, что так получилось. Я передаю ваш вопрос администратору, он свяжется с вами в течение 15 минут и предложит бесплатную коррекцию.", 59],
+        ["client", "вчера стригся у вас, фейд с одной стороны неровный. это нормально вообще??", 60],
+        ["ai", "Очень жаль, что так вышло. Передаю ваш вопрос администратору: он свяжется с вами в течение 15 минут и предложит бесплатную коррекцию.", 59],
         ["system", "AI handed the chat to a human: complaint about quality.", 59],
       ],
     },
     {
       id: "CV-0003", messenger: "WhatsApp", ext: "wh_5026", contact: "Сауле М.", client: "CL-0003", appt: null, stage: "In dialog", ai: true, human: false,
       msgs: [
-        ["client", "добрый день, а у вас есть мужская стрижка? для мужа хочу записать на субботу", 22],
-        ["ai", "Добрый день, Сауле! Да, мужская стрижка стоит 5 000 ₸ и длится 45 минут, её делает барбер Тимур Б. Подобрать время на субботу?", 21],
+        ["client", "добрый день, а детей стрижете? сыну 7 лет, хочу на субботу", 22],
+        ["ai", "Добрый день, Сауле! Да, детская стрижка стоит 5 000 ₸ и длится 45 минут, детей стрижёт Арман К. Подобрать время на субботу?", 21],
       ],
     },
     {
-      id: "CV-0004", messenger: "Instagram", ext: "in_9120", contact: "aigul.style", client: null, appt: null, stage: "New", ai: true, human: false,
-      msgs: [["client", "здравствуйте а можно к вам завтра после работы на брови? и сколько это", 3]],
+      id: "CV-0004", messenger: "Instagram", ext: "in_9120", contact: "aidos.fit", client: null, appt: null, stage: "New", ai: true, human: false,
+      msgs: [["client", "здарова, можно сегодня вечером бороду оформить? и сколько это", 3]],
     },
   ] as const;
 
   const kb: [string, string, string][] = [
-    ["О салоне", "Общее", "Lumière Beauty Studio, пр. Абая 10, 2 этаж (демо-адрес). Вход со двора, бесплатная парковка на 6 машин. Работаем пн–сб 09:00–20:00, воскресенье выходной. Оплата: Kaspi QR, карта, наличные."],
-    ["Правило предоплаты", "Правила", "Для услуг от 20 000 ₸ (окрашивание волос) нужна предоплата 30% по ссылке. Запись подтверждается после предоплаты. Правило введено после отчёта по неявкам за октябрь: у окрашивания было 25% неявок."],
-    ["Отмена и опоздание", "Правила", "Отменить или перенести визит можно бесплатно за 24 часа. Предоплата возвращается, если отмена больше чем за 24 часа. Если клиент опаздывает больше чем на 15 минут, мастер может сократить услугу или перенести её."],
-    ["Окрашивание по длине волос", "Цены", "Базовая цена 25 000 ₸ для волос до плеч. Волосы ниже плеч: +5 000 ₸. Очень длинные волосы (ниже пояса): +10 000 ₸, итоговую цену подтверждает мастер. Перед первым окрашиванием рекомендуем бесплатный тест на аллергию за 48 часов."],
-    ["Акции", "Цены", "День рождения: скидка 10% на одну услугу в течение 7 дней от дня рождения, нужно показать удостоверение. Первый визит из Instagram: бесплатное тонирование бровей к любой стрижке. Другие скидки обещать нельзя."],
-    ["Частые вопросы", "FAQ", "Детские стрижки с 5 лет, цена как у мужской стрижки. Гель-лак держится 2–3 недели; если ноготь сколется в течение 5 дней, коррекция бесплатно. Работаем на косметике Wella и Kapous. Кофе и чай бесплатно, пока вы ждёте."],
+    ["О барбершопе", "Общее", "Barberista, ул. Панфилова 98 (демо-адрес). Работаем каждый день 10:00–21:00. Парковка у входа на 4 машины. Оплата: Kaspi QR, карта, наличные. Без записи примем, если барбер свободен, но вечером лучше записаться."],
+    ["Правило предоплаты", "Правила", "Для услуг от 20 000 ₸ (VIP-ритуал) нужна предоплата 30% по ссылке. Запись подтверждается после предоплаты. Правило введено после отчёта по неявкам за октябрь: у VIP-ритуала было 25% неявок."],
+    ["Отмена и опоздание", "Правила", "Отменить или перенести визит можно бесплатно за 3 часа. Предоплата возвращается, если отмена больше чем за 24 часа. Если клиент опаздывает больше чем на 15 минут, барбер может сократить услугу или перенести её."],
+    ["Доплаты", "Цены", "Длинные волосы (ниже ушей) к мужской стрижке: +2 000 ₸. Борода длиннее 5 см: +1 000 ₸ к оформлению бороды. Камуфляж седины можно добавить к любой стрижке за 5 000 ₸."],
+    ["Акции", "Цены", "Каждая 6-я стрижка бесплатно (карта лояльности в CRM). Папа и сын: скидка 15% на детскую стрижку, если записаться вместе с мужской стрижкой. День рождения: скидка 10% на одну услугу в течение 7 дней, нужно показать удостоверение. Другие скидки обещать нельзя."],
+    ["Частые вопросы", "FAQ", "Детей стрижём с 4 лет. Работаем на косметике Reuzel и Layrite, горячее полотенце к каждому бритью. Кофе, чай и PlayStation бесплатно, пока вы ждёте. Фейд лучше освежать раз в 2–3 недели."],
   ];
 
   await tx(async (c) => {
@@ -186,13 +187,13 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
       client_channels, clients, services, knowledge_entries, business_settings RESTART IDENTITY CASCADE`);
     await c.query(
       `INSERT INTO business_settings (id, name, business_type, city, address, hours, phone, tone, languages, prepay_percent, prepay_min_price_kzt, autopilot, catchphrase)
-       VALUES (1, 'Lumière Beauty Studio', 'Beauty salon', 'Almaty', 'пр. Абая 10, 2 этаж (демо-адрес)', 'пн–сб 09:00–20:00, воскресенье выходной',
-               '+7 700 000 0000 (demo)', 'Тепло, коротко и вежливо. Обращаться на «вы». Не больше одного эмодзи.', 'Russian, Kazakh, English', 30, 20000, TRUE, 'Красота начинается с заботы ✨')`,
+       VALUES (1, 'Barberista', 'Barbershop', 'Almaty', 'ул. Панфилова 98 (демо-адрес)', 'ежедневно 10:00–21:00',
+               '+7 700 000 0000 (demo)', 'Дружелюбно и по делу, как хороший барбер. Обращаться на «вы». Не больше одного эмодзи.', 'Russian, Kazakh, English', 30, 20000, TRUE, 'Barberista — стиль без компромиссов 💈')`,
     );
     await insertMany(c, "services (service_code, name, duration_min, price_kzt, category)", services);
     await insertMany(c, "masters (master_id, full_name, specialization, work_start, work_end, work_days)", masters);
     await insertMany(c, "master_services (master_id, service_code, skill_level, since_date)", links.map((l) => [...l, "2025-03-01"]));
-    await insertMany(c, "master_accounts (master_id, login, password_hash)", masters.map((m) => [m[0], ["aigerim", "dana", "timur", "madina"][masters.indexOf(m)], "$2b$12$demo.hash.not.a.real.password"]));
+    await insertMany(c, "master_accounts (master_id, login, password_hash)", masters.map((m) => [m[0], ["timur", "arman", "daniyar", "yerzhan"][masters.indexOf(m)], "$2b$12$demo.hash.not.a.real.password"]));
     await insertMany(c, "clients (client_id, display_name, phone, created_at, notes)", clients.map((x) => [x.id, x.name, x.phone, x.created, x.notes]));
     await insertMany(c, "client_channels (client_id, messenger, external_user_id)", channels);
     await insertMany(

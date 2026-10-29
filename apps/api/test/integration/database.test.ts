@@ -51,12 +51,12 @@ describe("schema", () => {
 
 describe("double booking (exclusion constraint)", () => {
   it("allows back-to-back visits for one master", async () => {
-    expect(await insertVisit("MS-02", "MN-02", "10:00")).toBe("ok"); // 90 min -> 11:30
-    expect(await insertVisit("MS-02", "PD-04", "11:30")).toBe("ok");
+    expect(await insertVisit("MS-02", "CB-05", "10:00")).toBe("ok"); // 90 min -> 11:30
+    expect(await insertVisit("MS-02", "HC-01", "11:30")).toBe("ok");
   });
 
   it("refuses an overlapping visit for the same master", async () => {
-    expect(await insertVisit("MS-02", "PD-04", "11:00")).toBe("23P01:appointments_no_overlap");
+    expect(await insertVisit("MS-02", "HC-01", "11:00")).toBe("23P01:appointments_no_overlap");
   });
 
   it("lets a cancelled visit free its time", async () => {
@@ -73,8 +73,8 @@ describe("double booking (exclusion constraint)", () => {
 
 describe("referential integrity and checks", () => {
   it("refuses a master who does not do the service (composite FK to master_services)", async () => {
-    // Тимур Б. (MS-03) is a barber and is not linked to manicure.
-    expect(await insertVisit("MS-03", "MN-02", "16:00")).toBe("23503:appointments_master_id_service_code_fkey");
+    // Ержан М. (MS-04) is the shave master and does not cut kids.
+    expect(await insertVisit("MS-04", "KD-03", "16:00")).toBe("23503:appointments_master_id_service_code_fkey");
   });
 
   it("refuses a visit for an unknown client", async () => {
@@ -103,7 +103,7 @@ describe("referential integrity and checks", () => {
   });
 
   it("does not delete a service that has visits (ON DELETE RESTRICT)", async () => {
-    expect(await code(`DELETE FROM services WHERE service_code = 'CO-03'`)).toMatch(/^23503/);
+    expect(await code(`DELETE FROM services WHERE service_code = 'VP-07'`)).toMatch(/^23503/);
   });
 });
 

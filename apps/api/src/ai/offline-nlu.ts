@@ -14,7 +14,13 @@ const norm = (s: string) => ` ${s.toLowerCase().replace(/ё/g, "е").replace(/[^
 // key; the client's text matches when it contains one of the stems.
 const GROUPS: Record<string, string[]> = {
   haircut: ["стриж", "подстри", "постри", "haircut", "hair cut", "трим"],
-  "men's": ["мужск", "муж ", "мужу", "мужа", "барбер", "парн", "сына", " men", " man ", "barber"],
+  "men's": ["мужск", "муж ", "мужу", "мужа", "барбер", "парн", " men", " man ", "barber"],
+  kids: ["детск", "ребен", "сын", "дочк", "kid", "child", "son "],
+  clipper: ["машинк", "под ноль", "clipper", "buzz"],
+  beard: ["бород", "усы", "beard"],
+  shave: ["брить", "бритье", "побри", "shave"],
+  vip: ["вип", "vip", "ритуал"],
+  camouflage: ["камуфл", "седин", "grey", "gray"],
   "women's": ["женск", "women", "woman"],
   colouring: ["окраш", "покрас", "краск", "цвет", "колор", "colour", "color", "dye"],
   manicure: ["маникюр", "ногт", "ноготоч", "гель лак", "гельлак", "manicure", "nails"],

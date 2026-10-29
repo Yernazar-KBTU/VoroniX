@@ -27,11 +27,11 @@ describe("health and bootstrap", () => {
 
   it("returns every collection the web app needs in one call", async () => {
     const r = await api.get("/api/bootstrap").expect(200);
-    expect(r.body.services).toHaveLength(7);
+    expect(r.body.services).toHaveLength(8);
     expect(r.body.masters).toHaveLength(4);
     expect(r.body.clients.length).toBe(seeded.clients);
     expect(r.body.appointments.length).toBe(seeded.appointments);
-    expect(r.body.settings.name).toBe("Lumière Beauty Studio");
+    expect(r.body.settings.name).toBe("Barberista");
   });
 
   it("answers unknown API paths with JSON 404", async () => {
@@ -44,32 +44,32 @@ describe("booking", () => {
   let id: string;
 
   it("lists free times per master who does the service", async () => {
-    const r = await api.get(`/api/appointments/free-slots?service_code=MN-02&date=${day}`).expect(200);
-    expect(r.body.slots.map((s: { master_id: string }) => s.master_id)).toEqual(["MS-02"]);
+    const r = await api.get(`/api/appointments/free-slots?service_code=SH-06&date=${day}`).expect(200);
+    expect(r.body.slots.map((s: { master_id: string }) => s.master_id)).toEqual(["MS-04"]);
     expect(r.body.slots[0].times[0]).toBe("10:00");
   });
 
   it("books a free slot and computes the end time from the service", async () => {
     const r = await api
       .post("/api/appointments")
-      .send({ client_id: "CL-0002", master_id: "MS-02", service_code: "MN-02", start_datetime: `${day} 10:00` })
+      .send({ client_id: "CL-0002", master_id: "MS-04", service_code: "SH-06", start_datetime: `${day} 10:00` })
       .expect(201);
     id = r.body.id;
     expect(id).toMatch(/^AP-\d+$/);
-    expect(r.body.end_datetime).toBe(`${day} 11:30`);
+    expect(r.body.end_datetime).toBe(`${day} 10:45`);
   });
 
   it("removes the booked time from the free list", async () => {
-    const r = await api.get(`/api/appointments/free-slots?service_code=MN-02&date=${day}`).expect(200);
+    const r = await api.get(`/api/appointments/free-slots?service_code=SH-06&date=${day}`).expect(200);
     expect(r.body.slots[0].times).not.toContain("10:00");
-    expect(r.body.slots[0].times).not.toContain("11:00");
-    expect(r.body.slots[0].times).toContain("11:30");
+    expect(r.body.slots[0].times).not.toContain("10:30");
+    expect(r.body.slots[0].times).toContain("11:00");
   });
 
   it("answers 409 with a readable reason for a double booking", async () => {
     const r = await api
       .post("/api/appointments")
-      .send({ client_id: "CL-0003", master_id: "MS-02", service_code: "PD-04", start_datetime: `${day} 11:00` })
+      .send({ client_id: "CL-0003", master_id: "MS-04", service_code: "BD-04", start_datetime: `${day} 10:30` })
       .expect(409);
     expect(r.body.error).toBe("slot_taken");
   });
@@ -77,7 +77,7 @@ describe("booking", () => {
   it("answers 400 when the master does not do the service", async () => {
     const r = await api
       .post("/api/appointments")
-      .send({ client_id: "CL-0003", master_id: "MS-03", service_code: "MN-02", start_datetime: `${day} 15:00` })
+      .send({ client_id: "CL-0003", master_id: "MS-04", service_code: "KD-03", start_datetime: `${day} 15:00` })
       .expect(400);
     expect(r.body.message).toMatch(/does not do this service/);
   });
@@ -98,10 +98,10 @@ describe("payment confirms the booking in one transaction", () => {
   let apptId: string;
 
   beforeAll(async () => {
-    // A chat that booked colouring (25 000 ₸, needs 30% prepayment) and got a payment link.
+    // A chat that booked the VIP ritual (22 000 ₸, needs 30% prepayment) and got a payment link.
     const appt = await api
       .post("/api/appointments")
-      .send({ client_id: "CL-0004", master_id: "MS-01", service_code: "CO-03", start_datetime: `${day} 12:00` })
+      .send({ client_id: "CL-0004", master_id: "MS-01", service_code: "VP-07", start_datetime: `${day} 12:00` })
       .expect(201);
     apptId = appt.body.id;
     await pool.query(`UPDATE conversations SET client_id = 'CL-0004', appointment_id = $1, stage = 'Booked' WHERE conversation_id = 'CV-0002'`, [apptId]);
@@ -111,7 +111,7 @@ describe("payment confirms the booking in one transaction", () => {
 
   it("creates the prepayment as Pending for 30% of the price", async () => {
     const p = (await api.get("/api/payments").expect(200)).body.find((x: { id: string }) => x.id === paymentId);
-    expect(p).toMatchObject({ status: "Pending", amount_kzt: 7500, kind: "prepayment" });
+    expect(p).toMatchObject({ status: "Pending", amount_kzt: 6600, kind: "prepayment" });
   });
 
   it("marks the payment Paid, the visit Confirmed and the chat Paid", async () => {
@@ -121,7 +121,7 @@ describe("payment confirms the booking in one transaction", () => {
 
     const conv = (await api.get("/api/conversations/CV-0002").expect(200)).body;
     expect(conv.stage).toBe("Paid");
-    expect(conv.messages.filter((m: { from: string; text: string }) => m.from === "system" && /Payment received: 7 500 ₸/.test(m.text))).toHaveLength(1);
+    expect(conv.messages.filter((m: { from: string; text: string }) => m.from === "system" && /Payment received: 6 600 ₸/.test(m.text))).toHaveLength(1);
     const appt = (await api.get("/api/appointments").expect(200)).body.find((a: { id: string }) => a.id === apptId);
     expect(appt.status).toBe("Confirmed");
   });
@@ -143,7 +143,7 @@ describe("payment confirms the booking in one transaction", () => {
 describe("SQL console (read-only role)", () => {
   it("runs a SELECT", async () => {
     const r = await api.post("/api/sql").send({ query: "SELECT COUNT(*) AS n FROM services" }).expect(200);
-    expect(r.body).toMatchObject({ columns: ["n"], rows: [[7]], row_count: 1 });
+    expect(r.body).toMatchObject({ columns: ["n"], rows: [[8]], row_count: 1 });
   });
 
   it.each([
@@ -174,8 +174,8 @@ describe("analytics", () => {
 
 describe("settings and catalogue", () => {
   it("validates and saves a service", async () => {
-    await api.put("/api/services/NS-07").send({ name: "Ламинирование ресниц", category: "Brows", duration_min: 60, price_kzt: 12000 }).expect(201);
-    await api.put("/api/services/NS-07").send({ name: "Ламинирование ресниц", category: "Brows", duration_min: 60, price_kzt: 13000 }).expect(200);
+    await api.put("/api/services/NS-07").send({ name: "Чёрная маска для лица", category: "Care", duration_min: 30, price_kzt: 4000 }).expect(201);
+    await api.put("/api/services/NS-07").send({ name: "Чёрная маска для лица", category: "Care", duration_min: 30, price_kzt: 4500 }).expect(200);
     await api.put("/api/services/NS-08").send({ name: "X", duration_min: 5, price_kzt: 12000 }).expect(400);
     await api.put("/api/services/bad").send({ name: "X", duration_min: 60, price_kzt: 12000 }).expect(400);
   });
@@ -183,9 +183,9 @@ describe("settings and catalogue", () => {
   it("updates the bridge table when a master's services change", async () => {
     await api
       .put("/api/masters/MS-04")
-      .send({ full_name: "Мадина А.", specialization: "Бровист", work_start: "10:00", work_end: "19:00", days: [1, 2, 3, 4, 5], service_codes: ["BR-05", "NS-07"] })
+      .send({ full_name: "Ержан М.", specialization: "Мастер бритья", work_start: "10:00", work_end: "19:00", days: [1, 2, 3, 4, 5], service_codes: ["SH-06", "NS-07"] })
       .expect(200);
     const r = await api.get("/api/master-services").expect(200);
-    expect(r.body.filter((x: { master_id: string }) => x.master_id === "MS-04").map((x: { service_code: string }) => x.service_code).sort()).toEqual(["BR-05", "NS-07"]);
+    expect(r.body.filter((x: { master_id: string }) => x.master_id === "MS-04").map((x: { service_code: string }) => x.service_code).sort()).toEqual(["NS-07", "SH-06"]);
   });
 });
