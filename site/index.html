@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="AI CRM for small businesses: the AI administrator answers clients in Telegram, WhatsApp and Instagram using only data from the CRM database.">
+<meta name="theme-color" content="#0d3a6e">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%230b8fd6%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2216%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22Arial%22 font-weight=%22bold%22%3EAI%3C/text%3E%3C/svg%3E">
+<title>CRM for Small Business</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: Bitrix-style workspace. Icon rail on the left, glass header on a violet gradient, white working panels. AI is marked in violet everywhere. */
+:root{
+  --bg:#0d3a6e;
+  --grad:radial-gradient(1200px 700px at 85% 15%,#3fd0ff55,transparent 60%),radial-gradient(900px 600px at 10% 90%,#2a6bff44,transparent 60%),linear-gradient(135deg,#0a2350 0%,#0d4f8f 50%,#0f9cc4 100%);
+  --chrome:#ffffff; --chrome-dim:#cfeaff; --glass:rgba(255,255,255,.14); --glass-hi:rgba(255,255,255,.26);
+  --panel:#ffffff; --panel2:#f4f6fb; --line:#e2e6ef; --fg:#1d2233; --muted:#6a7186;
+  --accent:#0b8fd6; --accent-soft:#e3f3fd; --green:#4fae33; --green-hi:#5cc23c;
+  --red:#e3484f; --red-soft:#fdecec; --amber:#d98e04; --amber-soft:#fff4dc; --ok-soft:#e7f6e2;
+  --ai:#7b4dff; --ai-soft:#f0ebff; --ai-fg:#5a2ee0;
+  --tg:#2aa3e0; --wa:#25b860; --ig:#d6338a;
+  --shadow:0 10px 30px rgba(8,40,60,.18);
+  --sans:"Open Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#061a33; --grad:radial-gradient(1200px 700px at 85% 15%,#3fd0ff26,transparent 60%),radial-gradient(900px 600px at 10% 90%,#2a6bff26,transparent 60%),linear-gradient(135deg,#05132b 0%,#0a2a55 50%,#0b4a72 100%);
+  --panel:#0f2442; --panel2:#152e52; --line:#23426b; --fg:#e4eef9; --muted:#9db4cf;
+  --accent:#3fb4f0; --accent-soft:#12365a; --green:#4fae33; --green-hi:#5cc23c;
+  --red:#ff6b70; --red-soft:#4a2030; --amber:#ffb84a; --amber-soft:#43361a; --ok-soft:#1f3b26;
+  --ai:#9b7bff; --ai-soft:#2e2660; --ai-fg:#c3b2ff; --shadow:0 10px 30px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#061a33; --grad:radial-gradient(1200px 700px at 85% 15%,#3fd0ff26,transparent 60%),radial-gradient(900px 600px at 10% 90%,#2a6bff26,transparent 60%),linear-gradient(135deg,#05132b 0%,#0a2a55 50%,#0b4a72 100%);
+  --panel:#0f2442; --panel2:#152e52; --line:#23426b; --fg:#e4eef9; --muted:#9db4cf;
+  --accent:#3fb4f0; --accent-soft:#12365a; --green:#4fae33; --green-hi:#5cc23c;
+  --red:#ff6b70; --red-soft:#4a2030; --amber:#ffb84a; --amber-soft:#43361a; --ok-soft:#1f3b26;
+  --ai:#9b7bff; --ai-soft:#2e2660; --ai-fg:#c3b2ff; --shadow:0 10px 30px rgba(0,0,0,.4); color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);background-image:var(--grad);background-attachment:fixed;color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.45}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.app{display:grid;grid-template-columns:auto minmax(0,1fr);align-content:start;gap:16px;min-height:100%;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
+/* rail */
+.rail{position:sticky;top:12px;align-self:start;display:flex;flex-direction:column;gap:4px;width:56px;transition:width .18s}
+.app.wide .rail{width:220px}
+.rail button{position:relative;display:flex;align-items:center;gap:12px;height:40px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:var(--chrome-dim);cursor:pointer;white-space:nowrap;overflow:hidden;text-align:left}
+.rail button:hover{background:var(--glass);color:var(--chrome)}
+.rail button.on{background:var(--glass-hi);color:var(--chrome)}
+.rail svg{flex:none;width:20px;height:20px}
+.rail .lbl{opacity:0;transition:opacity .15s}
+.app.wide .rail .lbl{opacity:1}
+.rail .sep{height:1px;background:var(--glass);margin:6px 8px}
+.rail .badge{margin-left:auto;background:var(--red);color:#fff;border-radius:9px;font-size:11px;padding:0 6px;line-height:18px}
+.app:not(.wide) .rail .badge{position:absolute;margin:0;transform:translate(12px,-10px)}
+/* top */
+.main{min-width:0;display:flex;flex-direction:column;gap:14px}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:var(--chrome)}
+.brand{font-weight:700;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.brand small{font-weight:500;font-size:12px;color:var(--chrome-dim)}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--green-hi);box-shadow:0 0 0 3px #ffffff33}
+.top .grow{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:5px 12px;background:var(--glass);color:var(--chrome);border:1px solid #ffffff22;font-size:13px;white-space:nowrap}
+.chip.ai{background:#7b4dff55;border-color:#b9a4ff55}
+.chip .led{width:8px;height:8px;border-radius:50%;background:var(--green-hi)}
+.chip .led.off{background:#ffb84a}
+.tsearch{display:flex;align-items:center;gap:8px;background:var(--glass);border:1px solid #ffffff22;border-radius:20px;padding:5px 12px;min-width:0;flex:0 1 280px}
+.tsearch input{background:transparent;border:0;outline:0;color:var(--chrome);width:100%}
+.tsearch input::placeholder{color:var(--chrome-dim)}
+/* page head */
+.phead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:var(--chrome)}
+.phead h1{margin:0;font-size:26px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.phead .sub{color:var(--chrome-dim);font-size:13px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.create{background:var(--green);border-color:var(--green);color:#fff}
+.btn.create:hover{background:var(--green-hi)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ai{background:var(--ai);border-color:var(--ai);color:#fff}
+.btn.ghost{background:var(--glass);border-color:#ffffff22;color:var(--chrome)}
+.btn.danger{color:var(--red)}
+.btn.sm{padding:4px 10px;font-size:12px;font-weight:600}
+.btn:disabled{opacity:.5;cursor:default}
+.tabs{display:flex;gap:2px;background:var(--glass);border-radius:8px;padding:3px;flex-wrap:wrap}
+.tabs button{border:0;background:transparent;color:var(--chrome-dim);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px}
+.tabs button.on{background:var(--glass-hi);color:var(--chrome)}
+/* panels */
+.panel{background:var(--panel);border-radius:14px;box-shadow:var(--shadow);min-width:0}
+.pad{padding:18px}
+.ph{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.ph h2,.ph h3{margin:0;font-size:15px;font-weight:600}
+.ph .grow{flex:1}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g2{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2,.g3{grid-template-columns:minmax(0,1fr)}}
+.kpi{padding:16px 18px;border-radius:14px;color:#fff;min-height:118px;display:flex;flex-direction:column;justify-content:space-between}
+.kpi .k{font-size:13px;opacity:.92}
+.kpi .v{font-size:34px;font-weight:300;font-variant-numeric:tabular-nums;line-height:1.1;text-align:right}
+.kpi .s{font-size:12px;opacity:.9}
+.kpi.b{background:#3fa9f5}.kpi.g{background:#7fb63a}.kpi.vi{background:#7b4dff}.kpi.r{background:#f05a50}
+.tw{overflow-x:auto}
+table.t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.t th{text-align:left;font-weight:500;color:var(--muted);font-size:13px;padding:11px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel)}
+table.t td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+table.t tr.click{cursor:pointer}
+table.t tr.click:hover td{background:var(--panel2)}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:12px;padding:1px 9px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--panel2);color:var(--muted)}
+.pill.Booked{background:var(--accent-soft);color:var(--accent)}
+.pill.Confirmed,.pill.Paid,.pill.Completed{background:var(--ok-soft);color:var(--green)}
+.pill.Cancelled,.pill.Refunded{background:var(--panel2);color:var(--muted)}
+.pill.No-show,.pill.human{background:var(--red-soft);color:var(--red)}
+.pill.Pending,.pill.warn{background:var(--amber-soft);color:var(--amber)}
+.pill.ai{background:var(--ai-soft);color:var(--ai-fg)}
+.code{font-family:var(--mono);font-size:12px}
+.ms{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;color:#fff;font-size:11px;font-weight:700;flex:none}
+.ms.Telegram{background:var(--tg)}.ms.WhatsApp{background:var(--wa)}.ms.Instagram{background:var(--ig)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--fg);font-size:18px;font-weight:500;margin-bottom:6px}
+.list{display:flex;flex-direction:column}
+.li{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:0}
+.li .grow{flex:1;min-width:0}
+.time{font-family:var(--mono);font-size:12px;color:var(--muted);width:46px;flex:none}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* inbox */
+.inbox{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;height:clamp(480px,calc(100vh - 190px),780px);height:clamp(480px,calc(100dvh - 190px),780px);overflow:hidden}
+.convs{border-right:1px solid var(--line);overflow-y:auto;min-height:0}
+.conv{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.conv:hover{background:var(--panel2)}
+.conv.on{background:var(--accent-soft)}
+.conv .grow{flex:1;min-width:0}
+.conv .nm{font-weight:600;display:flex;gap:6px;align-items:center}
+.conv .last{color:var(--muted);font-size:12.5px}
+.chat{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--panel2)}
+.chead{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chead .grow{flex:1;min-width:0}
+.msgs{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px;display:flex;flex-direction:column;gap:8px}
+.m{max-width:78%;padding:8px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;position:relative}
+.m .who{font-size:11px;font-weight:700;margin-bottom:2px;letter-spacing:.02em}
+.m .at{font-size:10.5px;color:var(--muted);margin-top:3px;text-align:right}
+.m.client{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:4px}
+.m.ai{align-self:flex-end;background:var(--ai-soft);border:1px solid transparent;border-bottom-right-radius:4px}
+.m.ai .who{color:var(--ai-fg)}
+.m.admin{align-self:flex-end;background:var(--ok-soft);border-bottom-right-radius:4px}
+.m.admin .who{color:var(--green)}
+.m.system{align-self:center;background:transparent;color:var(--muted);font-size:12px;text-align:center;max-width:90%;padding:2px 8px}
+.paycard{align-self:flex-end;background:var(--panel);border:1px solid var(--ai);border-radius:14px;padding:12px 14px;min-width:240px;max-width:78%}
+.paycard .amt{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.typing{align-self:flex-end;background:var(--ai-soft);color:var(--ai-fg);border-radius:14px;padding:8px 12px;font-size:12.5px;display:flex;gap:8px;align-items:center}
+.dots span{display:inline-block;width:6px;height:6px;margin:0 1px;border-radius:50%;background:var(--ai);animation:b 1s infinite}
+.dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.composer{background:var(--panel);border-top:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.composer .row{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;resize:none;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--panel2);min-height:40px;max-height:120px}
+.seg{display:inline-flex;background:var(--panel2);border-radius:8px;padding:2px;border:1px solid var(--line)}
+.seg button{border:0;background:transparent;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--muted)}
+.seg button.on{background:var(--panel);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.info{border-left:1px solid var(--line);overflow-y:auto;min-height:0;padding:14px;display:flex;flex-direction:column;gap:14px}
+.info h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;font-size:13px}
+.kv span:nth-child(odd){color:var(--muted)}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px}
+.switch input{appearance:none;width:34px;height:20px;border-radius:10px;background:var(--line);position:relative;cursor:pointer;margin:0}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.switch input:checked{background:var(--ai)}
+.switch input:checked::after{left:16px}
+@media (max-width:1100px){.inbox{grid-template-columns:260px minmax(0,1fr)}.info{display:none}}
+@media (max-width:760px){.inbox{grid-template-columns:minmax(0,1fr);height:clamp(420px,calc(100dvh - 150px),680px)}.inbox.open .convs{display:none}.inbox:not(.open) .chat{display:none}}
+/* pipeline */
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,1fr);gap:12px;overflow-x:auto;padding-bottom:6px}
+.col{background:var(--panel);border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:360px}
+.col .hd{padding:10px 12px;border-top:4px solid var(--c);border-radius:12px 12px 0 0;font-weight:600;display:flex;justify-content:space-between}
+.col .bd{padding:8px;display:flex;flex-direction:column;gap:8px;flex:1}
+.col.over{outline:2px dashed var(--accent);outline-offset:-4px}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;cursor:grab;display:flex;flex-direction:column;gap:6px}
+.card:hover{border-color:var(--accent)}
+/* calendar */
+.cal{display:grid;min-width:640px;position:relative}
+.cal .hh{position:sticky;top:0;background:var(--panel);z-index:2;height:48px;overflow:hidden;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px}
+.cal .tm{font-family:var(--mono);font-size:11px;color:var(--muted);padding:2px 6px;border-top:1px solid var(--line);height:28px}
+.cal .cell{border-top:1px solid var(--line);border-left:1px solid var(--line);height:28px;cursor:pointer}
+.cal .cell:hover{background:var(--accent-soft)}
+.cal .cell.half{border-top-style:dashed}
+.ev{position:absolute;border-radius:8px;padding:4px 7px;font-size:12px;overflow:hidden;cursor:pointer;border-left:4px solid var(--accent);background:var(--accent-soft);color:var(--fg);line-height:1.3}
+.ev.Completed{border-color:var(--green);background:var(--ok-soft)}
+.ev.Confirmed{border-color:var(--ai);background:var(--ai-soft)}
+.ev.No-show{border-color:var(--red);background:var(--red-soft)}
+.ev.Cancelled{opacity:.45;border-color:var(--muted);background:var(--panel2)}
+.nowline{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3;pointer-events:none}
+/* kb */
+.kbwrap{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}.dbwrap{grid-template-columns:minmax(0,240px) minmax(0,1fr)}
+@media (max-width:1100px){.kbwrap,.dbwrap{grid-template-columns:minmax(0,1fr)}}
+.filebtn{display:block;width:100%;text-align:left;background:none;border:0;padding:6px 8px;border-radius:8px;cursor:pointer;font:inherit;color:inherit}.filebtn:hover{background:var(--panel2)}.filebtn.on{background:var(--ai-soft,#efeafe);font-weight:600}.doc h2{margin:0 0 8px}.doc h3{margin:14px 0 4px;font-size:15px}.memory li{margin:2px 0}
+.kbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.kbc{border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:6px;background:var(--panel)}
+.kbc:hover{border-color:var(--ai)}
+.kbc p{margin:0;color:var(--muted);font-size:13px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.answer{white-space:pre-wrap;background:var(--ai-soft);border-radius:10px;padding:10px 12px;min-height:44px}
+/* forms */
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:12px;color:var(--muted);font-weight:600}
+.f input,.f select,.f textarea,.inp{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel2);color:var(--fg);width:100%;min-width:0}
+.f textarea{min-height:90px;resize:vertical}
+.frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.checks label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:13px;cursor:pointer}
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(10,12,40,.5);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);width:min(640px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column}
+.modal.wide{width:min(880px,100%)}
+.modal .mb{padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.modal .mf{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.x{border:0;background:transparent;cursor:pointer;font-size:20px;color:var(--muted);line-height:1}
+.toast{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:#1d2233;color:#fff;padding:10px 16px;border-radius:10px;z-index:60;box-shadow:var(--shadow);max-width:360px}
+.banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-radius:12px;background:var(--amber-soft);color:var(--fg)}
+.bars{display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:8px}
+.bars div{flex:1;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px;position:relative}
+.bars div:hover{background:var(--ai)}
+.hbar{height:8px;border-radius:4px;background:var(--panel2);overflow:hidden}
+.hbar i{display:block;height:100%;background:var(--red)}
+.sql{width:100%;min-height:120px;font-family:var(--mono);font-size:12.5px;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--panel2);resize:vertical}
+.tbl-list{display:flex;flex-direction:column;gap:6px}
+.tbl-list button{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;cursor:pointer;text-align:left}
+.tbl-list button.on{border-color:var(--accent);background:var(--accent-soft)}
+.key{font-family:var(--mono);font-size:10.5px;font-weight:700;border-radius:4px;padding:0 4px;margin-right:4px}
+.key.pk{background:var(--red-soft);color:var(--red)}.key.fk{background:var(--ok-soft);color:var(--green)}
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .rail{position:static;flex-direction:row;width:auto!important;overflow-x:auto}
+  .rail .lbl,.rail .sep,.rail .menu{display:none}
+  .phead h1{font-size:22px}
+  .kpi .v{font-size:24px;white-space:nowrap}
+  .kpi{min-height:100px}
+  #clock,#modeChip{display:none}
+  .tsearch{flex:1 1 100%;order:3}
+  .rail{scrollbar-width:none}.rail::-webkit-scrollbar{display:none}
+}
+</style>
+</head>
+<body>
+
+
+<div class="app" id="app">
+  <nav class="rail" id="rail" aria-label="Sections"></nav>
+  <div class="main">
+    <header class="top">
+      <div class="brand"><span class="dot"></span><span id="bizName">CRM for Small Business</span> <small>AI CRM</small></div>
+      <label class="tsearch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="gsearch" placeholder="Search clients, phones, services"></label>
+      <span class="grow"></span>
+      <span class="chip ai" id="aiChip"><span class="led"></span>AI administrator</span>
+      <span class="chip" id="modeChip">Connecting…</span>
+      <span class="chip" id="clock"></span>
+    </header>
+    <div class="phead" id="phead"></div>
+    <div id="banner"></div>
+    <main id="view"></main>
+  </div>
+</div>
+<div id="modal"></div>
+<div id="toast" class="toast" hidden></div>
+<script>
+"use strict";
+/* ---------- utilities ---------- */
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const hm=d=>pad(d.getHours())+":"+pad(d.getMinutes());
+const dt=d=>ymd(d)+" "+hm(d);
+const parseDT=s=>{const m=/^(\d{4})-(\d\d)-(\d\d)[ T](\d\d):(\d\d)/.exec(s||"");return m?new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5]):null};
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const money=n=>(Math.round(+n||0)).toLocaleString("ru-RU").replace(/ /g," ")+" ₸";
+const toMin=t=>{const [h,m]=String(t).split(":").map(Number);return h*60+(m||0)};
+const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const nowISO=()=>new Date().toISOString();
+const fmtAt=iso=>{const d=new Date(iso);return isNaN(d)?"":(ymd(d)===ymd(new Date())?hm(d):pad(d.getDate())+"."+pad(d.getMonth()+1)+" "+hm(d))};
+let toastT;function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,3200)}
+const MSG_ICON={Telegram:"T",WhatsApp:"W",Instagram:"I"};
+const ms=m=>`<span class="ms ${esc(m)}" title="${esc(m)}">${MSG_ICON[m]||"?"}</span>`;
+const pill=(s,cls)=>`<span class="pill ${esc(cls||s)}">${esc(s)}</span>`;
+
+/* ---------- data store (db capability, or in-memory demo) ---------- */
+const COLS=["settings","services","masters","master_services","clients","client_channels","appointments","payments","conversations","knowledge"];
+const S={};COLS.forEach(c=>S[c]={});
+let db=null,live=false,canWrite=true,loaded=new Set();
+const pending={},inflight={},deleting={};
+function put(col,id,data){
+  S[col][id]=data;scheduleRender();
+  if(!live)return Promise.resolve();
+  const key=col+"/"+id;inflight[key]=(inflight[key]||0)+1;
+  pending[key]=(pending[key]||Promise.resolve()).then(()=>db.collection(col).doc(id).set(S[col][id]??data)).finally(()=>{inflight[key]--}).catch(e=>{if(e&&e.code==="invalid_argument"){canWrite=false;toast("You have view-only access, so changes are not saved.")}else toast("Could not save: "+(e&&e.message||e))});
+  return pending[key];
+}
+function patch(col,id,p){return put(col,id,{...(S[col][id]||{}),...p})}
+function del(col,id){delete S[col][id];scheduleRender();if(live){const key=col+"/"+id;deleting[key]=1;return db.collection(col).doc(id).delete().catch(e=>toast("Could not delete: "+(e.message||e))).finally(()=>{delete deleting[key]})}}
+const vals=col=>Object.entries(S[col]).map(([id,v])=>({id,...v}));
+const biz=()=>S.settings.business||{};
+function nextId(col,prefix,width,start){let max=start||0;for(const id of Object.keys(S[col])){const m=new RegExp("^"+prefix+"(\\d+)$").exec(id);if(m)max=Math.max(max,+m[1])}return prefix+String(max+1).padStart(width,"0")}
+
+/* ---------- derived helpers ---------- */
+const svc=code=>S.services[code];
+const mst=id=>S.masters[id];
+const cli=id=>S.clients[id];
+const mastersFor=code=>vals("master_services").filter(x=>x.service_code===code).map(x=>x.master_id).filter(id=>mst(id)&&mst(id).is_active!==false);
+const servicesOf=mid=>vals("master_services").filter(x=>x.master_id===mid).map(x=>x.service_code);
+const active=a=>a.status!=="Cancelled";
+function apptEnd(a){const st=parseDT(a.start_datetime);const d=(svc(a.service_code)||{}).duration_min||60;return new Date(st.getTime()+d*60000)}
+function prepayFor(code){const b=biz(),s=svc(code);if(!s)return 0;return s.price_kzt>=(+b.prepay_min_price||Infinity)?Math.round(s.price_kzt*(+b.prepay_percent||0)/100):0}
+function freeSlots(code,dateStr,masterId){
+  const s=svc(code);if(!s)return {error:"Unknown service_code "+code};
+  const day=parseDT(dateStr+" 00:00");if(!day)return {error:"date must be YYYY-MM-DD"};
+  const now=new Date(),dur=s.duration_min||60,out=[];
+  for(const mid of (masterId?[masterId]:mastersFor(code))){
+    const m=mst(mid);if(!m||!mastersFor(code).includes(mid))continue;
+    if(!(m.days||[1,2,3,4,5,6]).includes(day.getDay()))continue;
+    const busy=vals("appointments").filter(a=>a.master_id===mid&&active(a)&&a.start_datetime.startsWith(dateStr)).map(a=>[toMin(a.start_datetime.slice(11)),toMin(hm(apptEnd(a)))]);
+    const times=[];
+    for(let t=toMin(m.work_start||"09:00");t+dur<=toMin(m.work_end||"20:00");t+=30){
+      const slot=new Date(day.getTime()+t*60000);if(slot<=now)continue;
+      if(busy.some(([b,e])=>t<e&&t+dur>b))continue;
+      times.push(pad(Math.floor(t/60))+":"+pad(t%60));
+    }
+    if(times.length)out.push({master_id:mid,master:m.full_name,times});
+  }
+  return {service:s.name,duration_min:dur,date:dateStr,weekday:DOW[day.getDay()],slots:out};
+}
+function convClientAppts(conv){if(!conv.client_id)return [];return vals("appointments").filter(a=>a.client_id===conv.client_id).sort((a,b)=>a.start_datetime<b.start_datetime?-1:1)}
+function revenueOf(list){return list.filter(a=>a.status==="Completed").reduce((s,a)=>s+((svc(a.service_code)||{}).price_kzt||0),0)}
+
+/* ---------- demo data ---------- */
+function demoData(){
+  const D={};COLS.forEach(c=>D[c]={});
+  D.settings.business={name:"Lumière Beauty Studio",type:"Beauty salon",city:"Almaty",address:"Abay Ave 10, 2nd floor (demo address)",hours:"Mon–Sat 09:00–20:00, Sunday closed",phone:"+7 700 000 0000 (demo)",tone:"Warm, short and polite. Address clients formally. Use at most one emoji.",languages:"Russian, Kazakh, English",staff_label:"Master",service_label:"Service",prepay_percent:30,prepay_min_price:20000,ai_tier:"quick",autopilot:true};
+  const SV=[["HC-01","Women's haircut",60,8000,"Hair"],["HC-02","Men's haircut",45,5000,"Hair"],["CO-03","Hair colouring",150,25000,"Hair"],["MN-02","Manicure with gel polish",90,10000,"Nails"],["PD-04","Pedicure",90,12000,"Nails"],["BR-05","Brow shaping and tint",30,4000,"Brows"],["ST-06","Evening styling",60,9000,"Hair"]];
+  SV.forEach(([c,n,d,p,cat])=>D.services[c]={name:n,duration_min:d,price_kzt:p,category:cat,is_active:true});
+  const MS=[["MS-01","Aigerim S.","Hair stylist","09:00","20:00",[1,2,3,4,5,6]],["MS-02","Dana K.","Nail artist","10:00","20:00",[1,2,3,4,5,6]],["MS-03","Timur B.","Barber","09:00","19:00",[2,3,4,5,6]],["MS-04","Madina A.","Brow and styling artist","10:00","19:00",[1,2,3,4,5]]];
+  MS.forEach(([id,n,sp,ws,we,days])=>D.masters[id]={full_name:n,specialization:sp,is_active:true,work_start:ws,work_end:we,days});
+  [["MS-01","HC-01","Senior"],["MS-01","CO-03","Senior"],["MS-01","ST-06","Senior"],["MS-02","MN-02","Senior"],["MS-02","PD-04","Senior"],["MS-03","HC-02","Senior"],["MS-03","HC-01","Junior"],["MS-04","BR-05","Senior"],["MS-04","ST-06","Junior"]].forEach(([m,s,l])=>D.master_services[m+"__"+s]={master_id:m,service_code:s,skill_level:l,since_date:"2025-03-01"});
+  const NAMES=["Aliya K.","Bekzat T.","Saule M.","Asel N.","Dinara Zh.","Erlan S.","Kamila B.","Madina O.","Nurlan A.","Aruzhan T.","Gulnara E.","Zarina U.","Daulet K.","Togzhan R.","Ainur S.","Meruert D.","Yerlan B.","Akmaral I.","Sabina L.","Raushan P.","Aidana F.","Timur Zh.","Laura V.","Assem G.","Bota M.","Janna Y.","Inkar T.","Dias R.","Karina S.","Malika N."];
+  const MSG=["WhatsApp","Telegram","Instagram"];
+  let r=7;const rnd=()=>(r=(r*9301+49297)%233280)/233280;
+  const today=new Date();today.setHours(0,0,0,0);
+  let ch=0;
+  NAMES.forEach((n,i)=>{const id="CL-"+String(i+1).padStart(4,"0");D.clients[id]={display_name:n,phone:i%5===3?"":"+7 70"+(i%9)+" 000 "+String(1000+i*37).slice(-4),created_at:dt(addDays(today,-60+i)),notes:i===2?"Prefers Aigerim. Sensitive scalp.":"",prefs:i===0?[{text:"Окрашивание только у Айгерим, волосы ниже плеч",at:new Date(Date.now()-11400000).toISOString(),source:"Telegram"},{text:"Удобно по пятницам после 14:00",at:new Date(Date.now()-11100000).toISOString(),source:"Telegram"}]:i===2?[{text:"Чувствительная кожа головы, мягкие средства",at:new Date(Date.now()-180000000).toISOString(),source:"WhatsApp"}]:[]};
+    const m=MSG[i%3];D.client_channels["CH-"+String(++ch).padStart(4,"0")]={client_id:id,messenger:m,external_user_id:m.slice(0,2).toLowerCase()+"_"+(5000+i*13)};
+    if(i%6===0){const m2=MSG[(i+1)%3];D.client_channels["CH-"+String(++ch).padStart(4,"0")]={client_id:id,messenger:m2,external_user_id:m2.slice(0,2).toLowerCase()+"_"+(7000+i*11)}}});
+  const NS={"CO-03":.25,"MN-02":.1,"HC-01":.05,"HC-02":.06,"PD-04":.08,"BR-05":.04,"ST-06":.1};
+  let ap=1000,pay=0;const busy={};
+  const book=(day,mid,code,status,src)=>{const m=D.masters[mid];if(!m.days.includes(day.getDay()))return null;const dur=D.services[code].duration_min;
+    for(let k=0;k<8;k++){const t=toMin(m.work_start)+Math.floor(rnd()*((toMin(m.work_end)-dur-toMin(m.work_start))/30+1))*30;const key=mid+ymd(day);busy[key]=busy[key]||[];if(busy[key].some(([b,e])=>t<e&&t+dur>b))continue;busy[key].push([t,t+dur]);
+      const id="AP-"+(++ap);const cid="CL-"+String(1+Math.floor(rnd()*30)).padStart(4,"0");const start=ymd(day)+" "+pad(Math.floor(t/60))+":"+pad(t%60);
+      D.appointments[id]={client_id:cid,master_id:mid,service_code:code,start_datetime:start,status,source:src,created_at:dt(addDays(day,-3))};return id}return null};
+  const pairs=Object.values(D.master_services);
+  for(let d=-45;d<=10;d++){const day=addDays(today,d);const n=d<0?6:(d===0?6:3);
+    for(let j=0;j<n;j++){const pr=pairs[Math.floor(rnd()*pairs.length)];let st;
+      if(d<0){const x=rnd();st=x<NS[pr.service_code]?"No-show":(x>.96?"Cancelled":"Completed");if(d>=-2&&j===0)st="Booked"}
+      else st=rnd()<.5?"Confirmed":"Booked";
+      const src=["WhatsApp","Telegram","Instagram","Admin"][Math.floor(rnd()*4)];
+      const id=book(day,pr.master_id,pr.service_code,st,src);
+      if(id&&st==="Completed"){const a=D.appointments[id];D.payments["PM-"+String(++pay).padStart(5,"0")]={appointment_id:id,amount_kzt:D.services[a.service_code].price_kzt,kind:"full",method:["Kaspi QR","Card","Cash"][Math.floor(rnd()*3)],status:"Paid",created_at:a.start_datetime,paid_at:a.start_datetime}}
+      if(id&&d>=0&&st==="Confirmed"&&D.services[pr.service_code].price_kzt>=20000){const a=D.appointments[id];D.payments["PM-"+String(++pay).padStart(5,"0")]={appointment_id:id,amount_kzt:Math.round(D.services[a.service_code].price_kzt*.3),kind:"prepayment",method:"Kaspi QR",status:"Paid",created_at:a.created_at,paid_at:a.created_at}}
+    }}
+  const t0=addDays(new Date(),0);const ago=min=>new Date(t0.getTime()-min*60000).toISOString();
+  D.conversations["CV-0001"]={messenger:"Telegram",contact:"Aliya K.",external_user_id:"te_5000",client_id:"CL-0001",stage:"Paid",ai_enabled:true,needs_human:false,updated_at:ago(180),messages:[
+    {from:"client",text:"Здравствуйте! хочу покраситься на этой неделе, сколько стоит?",at:ago(200)},
+    {from:"ai",text:"Здравствуйте, Алия! Окрашивание волос стоит 25 000 ₸, процедура длится около 2,5 часов. Для длинных волос ниже плеч доплата 5 000 ₸. На какой день вам удобно?",at:ago(199)},
+    {from:"client",text:"в пятницу после обеда можно?",at:ago(195)},
+    {from:"ai",text:"В пятницу к мастеру Айгерим свободно 14:00 и 15:30. Какое время выбрать?",at:ago(194)},
+    {from:"client",text:"14:00",at:ago(190)},
+    {from:"system",text:"AI booked Hair colouring with Aigerim S. and sent a prepayment link (30%).",at:ago(189)},
+    {from:"ai",text:"Записала вас на пятницу в 14:00 к Айгерим. Для окрашивания нужна предоплата 30% — 7 500 ₸, ссылка ниже.",at:ago(189)},
+    {from:"system",text:"Payment received: 7 500 ₸ (Kaspi QR). Booking confirmed.",at:ago(182)},
+    {from:"ai",text:"Оплата получена, спасибо! Ждём вас в пятницу в 14:00. Напомню за день до визита.",at:ago(181)}]};
+  D.conversations["CV-0002"]={messenger:"Instagram",contact:"guest_ig_8841",external_user_id:"in_8841",client_id:null,stage:"In dialog",ai_enabled:false,needs_human:true,updated_at:ago(55),messages:[
+    {from:"client",text:"мне вчера сделали маникюр и уже скол на двух ногтях. это нормально вообще??",at:ago(60)},
+    {from:"ai",text:"Очень жаль, что так получилось. Я передаю ваш вопрос администратору, он свяжется с вами в течение 15 минут и предложит бесплатную коррекцию.",at:ago(59)},
+    {from:"system",text:"AI handed the chat to a human: complaint about quality.",at:ago(59)}]};
+  D.conversations["CV-0003"]={messenger:"WhatsApp",contact:"Saule M.",external_user_id:"wh_5026",client_id:"CL-0003",stage:"In dialog",ai_enabled:true,needs_human:false,updated_at:ago(20),messages:[
+    {from:"client",text:"добрый день, а у вас есть мужская стрижка? для мужа хочу записать на субботу",at:ago(22)},
+    {from:"ai",text:"Добрый день, Сауле! Да, мужская стрижка стоит 5 000 ₸ и длится 45 минут, её делает барбер Тимур. Подобрать время на субботу?",at:ago(21)}]};
+  D.conversations["CV-0004"]={messenger:"Instagram",contact:"aigul.style",external_user_id:"in_9120",client_id:null,stage:"New",ai_enabled:true,needs_human:false,updated_at:ago(3),messages:[
+    {from:"client",text:"здравствуйте а можно к вам завтра после работы на брови? и сколько это",at:ago(3)}]};
+  const KB=[["About the salon","General","Lumière Beauty Studio, Abay Ave 10, 2nd floor (demo address). Entrance from the yard, free parking for 6 cars. Mon–Sat 09:00–20:00, Sunday closed. Payment: Kaspi QR, card, cash."],
+    ["Prepayment rule","Policy","Services that cost 20 000 ₸ or more (hair colouring) need a 30% prepayment through the payment link. Booking is confirmed after the prepayment. Introduced after the October no-show report: colouring had 25% no-shows."],
+    ["Cancellation and late arrival","Policy","Clients can cancel or move a visit free of charge up to 24 hours before. Prepayment is returned if cancelled more than 24 h before. If a client is more than 15 minutes late, the master may shorten the service or move it."],
+    ["Colouring by hair length","Prices","Base price 25 000 ₸ is for hair up to the shoulders. Hair below the shoulders: +5 000 ₸. Very long hair (below the waist): +10 000 ₸, final price confirmed by the master. Allergy test is free and recommended 48 h before first colouring."],
+    ["Promotions","Prices","Birthday: 10% off any one service within 7 days of the birthday, show ID. First visit by Instagram: free brow tint with any haircut. No other discounts can be promised."],
+    ["FAQ","FAQ","Kids haircuts from 5 years old, same price as men's haircut. Gel polish lasts 2–3 weeks; free correction within 5 days if a nail chips. We use Wella and Kapous products. Coffee and tea are free while you wait."]];
+  KB.forEach(([t,c,x],i)=>D.knowledge["KB-"+(i+1)]={title:t,category:c,content:x,updated_at:ago(60*24*(6-i))});
+  return D;
+}
+
+/* ---------- AI administrator ---------- */
+let sample=null;const aiBusy={},aiAgain={};
+function catalogText(){
+  return vals("services").filter(s=>s.is_active!==false).map(s=>`- ${s.id} | ${s.name} | ${s.duration_min} min | ${s.price_kzt} KZT | masters: ${mastersFor(s.id).map(m=>m+" "+mst(m).full_name+" ("+mst(m).specialization+")").join(", ")||"none"}${prepayFor(s.id)?" | prepayment "+prepayFor(s.id)+" KZT required":""}`).join("\n");
+}
+function kbText(limit=14000){let t="";for(const k of vals("knowledge")){const add=`### ${k.title} [${k.category||"General"}]\n${k.content}\n\n`;if(t.length+add.length>limit)break;t+=add}return t||"(empty)"}
+function staffText(){return vals("masters").filter(m=>m.is_active!==false).map(m=>`- ${m.id} ${m.full_name}, ${m.specialization}, works ${(m.days||[]).map(d=>DOW[d]).join("/")} ${m.work_start}-${m.work_end}`).join("\n")}
+function rulesFor(conv){
+  const b=biz(),now=new Date();const c=conv.client_id?cli(conv.client_id):null;
+  const appts=convClientAppts(conv).filter(a=>parseDT(a.start_datetime)>=addDays(now,-1)).map(a=>`- ${a.id} ${a.start_datetime} ${svc(a.service_code)?.name} with ${mst(a.master_id)?.full_name} [${a.status}]`).join("\n");
+  return `You are the AI administrator of "${b.name}", a ${b.type} in ${b.city}. You are chatting with a client in ${conv.messenger}. You work inside the business's CRM and you take the client all the way: greeting -> understand what they need -> offer services, prices and free times -> collect their name -> book -> send a payment link when prepayment is required or the client wants to pay -> confirm.
+
+RULES
+1. Use ONLY facts from the CRM data below and from tool results. Never invent services, prices, discounts, masters or free times. If the data has no answer, say you will check with the administrator and call handoff_to_human.
+2. People write in any style: typos, no punctuation, voice-message style, vague requests like "after work tomorrow" or "something for my hair". Understand them kindly, guess the most likely meaning and ask at most ONE short clarifying question at a time.
+3. Before offering times ALWAYS call find_free_slots. Offer 2-4 concrete options.
+4. Before booking: call link_client with the client's name (ask for it if unknown; a phone number is optional). Then confirm service, master and time with the client, then call create_appointment.
+5. If create_appointment says prepayment is required, call create_payment_link with kind "prepayment" and tell the client the amount. The client pays by the button in the chat.
+6. Complaints, refunds, medical questions, angry clients, or requests you cannot do: apologise and call handoff_to_human.
+7. Reply in the client's language (Russian, Kazakh or English). Messenger style: 1-4 short sentences, no markdown, no tables, no lists of IDs. Never show internal codes like HC-01 or AP-1001 to the client.
+8. Tone: ${b.tone}${b.catchphrase?`
+9. Brand phrase: "${b.catchphrase}". Use it naturally, for example in the first greeting or when you confirm a booking, not in every message.`:""}
+10. The knowledge base is the owner's word: follow its rules exactly, and when a client asks about prices or books, mention a promotion that applies to them. Never promise a discount that is not written there.
+11. Client memory: when the client tells you something lasting about themselves (favourite master, preferred days or times, allergies or sensitive skin, hair or nail style, how they like to be addressed, what they did not like), call remember_preference once the card is linked. Use what you remember: suggest their favourite master and usual time first, respect allergies, and say so briefly ("как обычно, к Дане?").
+
+Now: ${DOW[now.getDay()]} ${dt(now)} (Almaty time). Business hours: ${b.hours}. Address: ${b.address}.
+
+SERVICES (from the CRM database):
+${catalogText()}
+
+STAFF:
+${staffText()}
+
+KNOWLEDGE BASE (written by the business owner):
+${kbText()}
+
+THIS CLIENT: ${c?`linked card ${conv.client_id}, name ${c.display_name}, phone ${c.phone||"unknown"}, notes: ${c.notes||"none"}. Remembered preferences: ${(c.prefs||[]).map(p=>p.text).join("; ")||"none yet"}. Recent and upcoming visits:\n${appts||"none"}`:`not linked to a client card yet (contact name in ${conv.messenger}: ${conv.contact}).`}
+
+The conversation follows. Write only your next message to the client.`;
+}
+function toolsFor(convId,progress){
+  const conv=()=>S.conversations[convId];
+  const sys=t=>pushMsg(convId,{from:"system",text:t});
+  const list=[
+    {name:"find_free_slots",description:"Free start times for a service on a date, per master, from the live schedule. Returns {slots:[{master_id,master,times[]}]}; empty slots means fully booked or day off.",inputSchema:{type:"object",properties:{service_code:{type:"string"},date:{type:"string",description:"YYYY-MM-DD"},master_id:{type:"string",description:"optional"}},required:["service_code","date"]},
+      execute(i){progress("Checking free slots…");const r=freeSlots(String(i.service_code),String(i.date),i.master_id?String(i.master_id):"");if(!r.error&&!r.slots.length){for(let k=1;k<=14;k++){const d=ymd(addDays(parseDT(String(i.date)+" 00:00"),k));const n=freeSlots(String(i.service_code),d,i.master_id?String(i.master_id):"");if(n.slots&&n.slots.length){r.nearest_available={date:d,weekday:n.weekday,slots:n.slots.map(s=>({...s,times:s.times.slice(0,6)}))};break}}}if(r.slots)r.slots=r.slots.map(s=>({...s,times:s.times.slice(0,14)}));return r}},
+    {name:"link_client",description:"Find or create the client card for this chat and link it. Returns {client_id,is_new,visits}.",inputSchema:{type:"object",properties:{name:{type:"string"},phone:{type:"string"}},required:["name"]},
+      execute(i){progress("Linking client card…");const c=conv();if(c.client_id&&cli(c.client_id))return {client_id:c.client_id,is_new:false,name:cli(c.client_id).display_name};
+        const phone=String(i.phone||"").trim();let id=null;
+        const byCh=vals("client_channels").find(x=>x.messenger===c.messenger&&x.external_user_id===c.external_user_id);if(byCh)id=byCh.client_id;
+        const digits=phone.replace(/\D/g,"").slice(-10);if(!id&&digits.length>=7){const f=vals("clients").find(x=>(x.phone||"").replace(/\D/g,"").slice(-10)===digits);if(f)id=f.id}
+        let isNew=false;if(!id){id=nextId("clients","CL-",4);isNew=true;put("clients",id,{display_name:String(i.name).slice(0,50),phone,created_at:dt(new Date()),notes:""})}
+        if(!byCh)put("client_channels",nextId("client_channels","CH-",4),{client_id:id,messenger:c.messenger,external_user_id:c.external_user_id});
+        patch("conversations",convId,{client_id:id,contact:isNew?String(i.name):c.contact});
+        sys(isNew?`AI created client card ${id} (${i.name}).`:`AI linked this chat to existing client ${id}.`);
+        return {client_id:id,is_new:isNew,visits:vals("appointments").filter(a=>a.client_id===id).length}}},
+    {name:"create_appointment",description:"Book a visit for the linked client. start_datetime 'YYYY-MM-DD HH:MM'. Checks the master does the service, working hours and that the slot is free. Returns the appointment and prepayment_required_kzt.",inputSchema:{type:"object",properties:{service_code:{type:"string"},master_id:{type:"string"},start_datetime:{type:"string"}},required:["service_code","master_id","start_datetime"]},
+      execute(i){progress("Creating the booking…");const c=conv();if(!c.client_id)throw new Error("Link the client first with link_client.");
+        const code=String(i.service_code),mid=String(i.master_id),st=String(i.start_datetime).replace("T"," ").slice(0,16);
+        const fs=freeSlots(code,st.slice(0,10),mid);if(fs.error)throw new Error(fs.error);
+        if(!(fs.slots[0]&&fs.slots[0].times.includes(st.slice(11))))throw new Error("This time is not free for this master. Call find_free_slots again and offer other times.");
+        const id=nextId("appointments","AP-",4,1000);
+        put("appointments",id,{client_id:c.client_id,master_id:mid,service_code:code,start_datetime:st,status:"Booked",source:c.messenger,created_at:dt(new Date())});
+        patch("conversations",convId,{stage:"Booked",appointment_id:id});
+        const pp=prepayFor(code);sys(`AI booked ${svc(code).name} with ${mst(mid).full_name} on ${st} (${id}).`);
+        return {appointment_id:id,service:svc(code).name,master:mst(mid).full_name,start_datetime:st,price_kzt:svc(code).price_kzt,prepayment_required_kzt:pp}}},
+    {name:"create_payment_link",description:"Send the client a payment button in the chat for an appointment. kind 'prepayment' (the required %) or 'full'. Returns the amount.",inputSchema:{type:"object",properties:{appointment_id:{type:"string"},kind:{type:"string",enum:["prepayment","full"]}},required:["appointment_id","kind"]},
+      execute(i){progress("Preparing payment link…");const a=S.appointments[String(i.appointment_id)];if(!a)throw new Error("Unknown appointment_id");
+        const full=svc(a.service_code).price_kzt;const amt=i.kind==="full"?full:(prepayFor(a.service_code)||Math.round(full*.3));
+        const pid=nextId("payments","PM-",5);put("payments",pid,{appointment_id:String(i.appointment_id),amount_kzt:amt,kind:String(i.kind),method:"Kaspi QR",status:"Pending",created_at:dt(new Date()),paid_at:""});
+        pushMsg(convId,{from:"pay",payment_id:pid,text:`Payment for ${svc(a.service_code).name}`});
+        return {payment_id:pid,amount_kzt:amt,status:"Pending"}}},
+    {name:"get_client_appointments",description:"List the linked client's visits (past and upcoming) with ids and statuses.",inputSchema:{type:"object",properties:{}},
+      execute(){const c=conv();if(!c.client_id)return {appointments:[],note:"client not linked"};return {appointments:convClientAppts(c).slice(-8).map(a=>({appointment_id:a.id,start_datetime:a.start_datetime,service:svc(a.service_code)?.name,master:mst(a.master_id)?.full_name,status:a.status}))}}},
+    {name:"cancel_or_move_appointment",description:"Cancel or move one of this client's appointments. For move give new_start_datetime 'YYYY-MM-DD HH:MM' (must be free).",inputSchema:{type:"object",properties:{appointment_id:{type:"string"},action:{type:"string",enum:["cancel","move"]},new_start_datetime:{type:"string"}},required:["appointment_id","action"]},
+      execute(i){const c=conv();const id=String(i.appointment_id);const a=S.appointments[id];if(!a||a.client_id!==c.client_id)throw new Error("Appointment not found for this client");
+        if(i.action==="cancel"){patch("appointments",id,{status:"Cancelled"});sys(`AI cancelled ${id}.`);return {ok:true,status:"Cancelled"}}
+        const st=String(i.new_start_datetime||"").replace("T"," ").slice(0,16);const saved={...a};patch("appointments",id,{status:"Cancelled"});
+        const fs=freeSlots(a.service_code,st.slice(0,10),a.master_id);if(!(fs.slots&&fs.slots[0]&&fs.slots[0].times.includes(st.slice(11)))){put("appointments",id,saved);throw new Error("New time is not free")}
+        put("appointments",id,{...saved,start_datetime:st,status:saved.status});sys(`AI moved ${id} to ${st}.`);return {ok:true,start_datetime:st}}},
+    {name:"remember_preference",description:"Save a lasting preference or fact about the linked client to their card, so you and other administrators remember it next time (favourite master, preferred time, allergies, style, how to address them). One short sentence in the client's language.",inputSchema:{type:"object",properties:{preference:{type:"string"}},required:["preference"]},
+      execute(i){progress("Remembering…");const c=conv();if(!c.client_id||!cli(c.client_id))throw new Error("Link the client first with link_client, then remember the preference.");
+        const text=String(i.preference||"").trim().slice(0,200);if(!text)throw new Error("preference is empty");const cl=cli(c.client_id);const prefs=(cl.prefs||[]).filter(p=>p.text.toLowerCase()!==text.toLowerCase());
+        prefs.push({text,at:nowISO(),source:c.messenger});put("clients",c.client_id,{...cl,prefs:prefs.slice(-30)});sys(`AI remembered for ${cl.display_name}: ${text}`);return {ok:true,remembered:prefs.length}}},
+    {name:"handoff_to_human",description:"Pass the chat to a human administrator and stop answering. Use for complaints, refunds, medical questions or anything outside the data.",inputSchema:{type:"object",properties:{reason:{type:"string"}},required:["reason"]},
+      execute(i){progress("Handing over to a human…");patch("conversations",convId,{needs_human:true,ai_enabled:false});sys("AI handed the chat to a human: "+String(i.reason));return {ok:true}}}
+  ];
+  return list.map(t=>({...t,execute:(i,c)=>{progress.cut&&progress.cut();return t.execute(i||{},c)}}));
+}
+function pushMsg(convId,m){const c=S.conversations[convId];if(!c)return;const msgs=[...(c.messages||[]),{at:nowISO(),...m}].slice(-200);return patch("conversations",convId,{messages:msgs,updated_at:nowISO()})}
+function turnsFor(conv){
+  const out=[{role:"user",content:rulesFor(conv)}];
+  for(const m of conv.messages||[]){
+    if(m.from==="client")out.push({role:"user",content:"Client: "+m.text});
+    else if(m.from==="ai")out.push({role:"assistant",content:m.text});
+    else if(m.from==="admin")out.push({role:"assistant",content:"[Human administrator wrote]: "+m.text});
+    else if(m.from==="system")out.push({role:"user",content:"[CRM note]: "+m.text});
+    else if(m.from==="pay"){const p=S.payments[m.payment_id];out.push({role:"assistant",content:`[Payment button sent: ${p?money(p.amount_kzt):""}, status ${p?p.status:"?"}]`})}
+  }
+  if(out[out.length-1].role!=="user")out.push({role:"user",content:"[CRM note]: continue the conversation if a reply is needed."});
+  return out;
+}
+let aiCtl={};
+async function aiReply(convId){
+  if(!sample){toast("The AI needs the Claude viewer. Open this page on claude.ai to use it.");return}
+  if(aiBusy[convId]){aiAgain[convId]=true;return}const conv=S.conversations[convId];if(!conv)return;
+  aiBusy[convId]="Thinking…";renderTyping();
+  const ctl=new AbortController();aiCtl[convId]=ctl;
+  try{
+    const tier=biz().ai_tier||"quick";let seen="",cut=0;
+    const progress=t=>{aiBusy[convId]=t;renderTyping()};progress.cut=()=>{cut=seen.length};
+    const res=await sample(turnsFor(conv),{tools:toolsFor(convId,progress),modelTier:tier,signal:ctl.signal,onText:({text})=>{seen=text;aiBusy[convId]="Writing…";renderTyping()}});
+    let text=(res.text||"").slice(cut).trim()||(res.text||"").trim();
+    if(text)await pushMsg(convId,{from:"ai",text});
+    const c=S.conversations[convId];if(c&&c.stage==="New")patch("conversations",convId,{stage:"In dialog"});
+  }catch(e){
+    if(e&&e.code==="cancelled"){delete aiAgain[convId]}
+    else if(e&&(e.code==="not_granted"||e.code==="sampling_disabled")){toast("Claude access was not allowed for this page, so the AI cannot answer.")}
+    else if(e&&e.code==="tools_unavailable"){toast("This viewer cannot run AI actions. Try the Claude web app.")}
+    else if(e&&e.code==="rate_limited"){toast("Too many AI requests right now. Try again in a minute.")}
+    else toast("AI could not answer: "+((e&&e.message)||e));
+  }finally{delete aiBusy[convId];delete aiCtl[convId];renderTyping();scheduleRender();
+    if(aiAgain[convId]){delete aiAgain[convId];const c=S.conversations[convId];if(c&&c.ai_enabled)aiReply(convId)}}
+}
+
+/* ---------- navigation ---------- */
+const ICONS={
+ dashboard:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
+ inbox:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+ pipeline:'<path d="M3 4h18l-7 8v6l-4 2v-8z"/>',
+ calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+ clients:'<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 0 1 0 8M22 21c0-3-2-5-4-5.6"/>',
+ services:'<path d="M6 3l12 18M18 3 6 21"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/>',
+ staff:'<circle cx="12" cy="7" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/>',
+ payments:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
+ knowledge:'<path d="M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h6M8 12h6"/>',
+ files:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+ analytics:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+ database:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+ business:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.5 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.6 14H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+ menu:'<path d="M3 6h18M3 12h18M3 18h18"/>'};
+const icon=n=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
+const NAV=[["dashboard","Dashboard"],["inbox","Chats"],["pipeline","Sales funnel"],["calendar","Calendar"],["clients","Clients"],["sep"],["services","Services"],["staff","Staff"],["payments","Payments"],["sep"],["knowledge","AI knowledge base"],["files","AI files"],["analytics","Analytics"],["database","Database"],["business","Business setup"]];
+let route="dashboard";
+function go(r){if(location.hash!=="#"+r)location.hash=r;else{route=r;render()}}
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(PAGES[h]){route=h;render()}});
+function renderRail(){
+  const needs=vals("conversations").filter(c=>c.needs_human||(c.messages||[]).slice(-1)[0]?.from==="client").length;
+  $("#rail").innerHTML=`<button class="menu" id="railToggle" title="Expand menu">${icon("menu")}<span class="lbl">Menu</span></button>`+NAV.map(([k,l])=>k==="sep"?'<div class="sep"></div>':`<button data-go="${k}" class="${route===k?"on":""}" title="${l}">${icon(k)}<span class="lbl">${l}</span>${k==="inbox"&&needs?`<span class="badge">${needs}</span>`:""}</button>`).join("");
+}
+document.addEventListener("click",e=>{
+  const g=e.target.closest("[data-go]");if(g){go(g.dataset.go);return}
+  if(e.target.closest("#railToggle")){$("#app").classList.toggle("wide");try{localStorage.setItem("crm-wide",$("#app").classList.contains("wide")?"1":"")}catch(_){}}
+});
+try{if(localStorage.getItem("crm-wide"))$("#app").classList.add("wide")}catch(_){}
+
+/* ---------- rendering ---------- */
+let rq=false;function scheduleRender(){if(rq)return;rq=true;requestAnimationFrame(()=>{rq=false;render()})}
+function render(){
+  const b=biz();$("#bizName").textContent=b.name||"CRM for Small Business";
+  renderRail();
+  const view=$("#view");
+  const keep={};view.querySelectorAll("input[id]:not([type=checkbox]):not([type=file]):not([type=date]):not([type=month]),textarea[id]").forEach(el=>{keep[el.id]={v:el.value,f:document.activeElement===el,s:el.selectionStart,e:el.selectionEnd}});
+  const msgsEl=view.querySelector(".msgs");const atBottom=!msgsEl||msgsEl.scrollHeight-msgsEl.scrollTop-msgsEl.clientHeight<40;const prevTop=msgsEl?msgsEl.scrollTop:0;
+  const p=PAGES[route]||PAGES.dashboard;
+  $("#phead").innerHTML=p.head();
+  view.innerHTML=p.body();
+  for(const [id,k] of Object.entries(keep)){const el=document.getElementById(id);if(!el||el.dataset.fresh)continue;if(el.type!=="checkbox")el.value=k.v;if(k.f){el.focus();try{el.setSelectionRange(k.s,k.e)}catch(_){}}}
+  const m2=view.querySelector(".msgs");if(m2)m2.scrollTop=atBottom?m2.scrollHeight:prevTop;
+  p.after&&p.after();
+  renderTyping();
+}
+function head(title,sub,actions=""){return `<h1>${esc(title)}</h1>${actions}${sub?`<span class="sub">${sub}</span>`:""}`}
+
+/* ---------- pages ---------- */
+const PAGES={};
+let gq="";
+$("#gsearch").addEventListener("input",e=>{gq=e.target.value.trim().toLowerCase();if(gq&&route!=="clients")go("clients");else scheduleRender()});
+
+PAGES.dashboard={head:()=>head("Dashboard","",`<button class="btn create" data-act="newAppt">+ New booking</button>`),
+ body(){
+  const now=new Date(),today=ymd(now);const A=vals("appointments");
+  const tod=A.filter(a=>a.start_datetime.startsWith(today)&&active(a)).sort((a,b)=>a.start_datetime<b.start_datetime?-1:1);
+  const month=today.slice(0,7);const monthA=A.filter(a=>a.start_datetime.startsWith(month));
+  const last30=A.filter(a=>{const d=parseDT(a.start_datetime);return d<now&&d>addDays(now,-30)&&(a.status==="Completed"||a.status==="No-show")});
+  const nsr=last30.length?Math.round(100*last30.filter(a=>a.status==="No-show").length/last30.length):0;
+  const C=vals("conversations");const aiOnly=C.filter(c=>!c.needs_human&&(c.messages||[]).some(m=>m.from==="ai")).length;
+  const stale=A.filter(a=>(a.status==="Booked"||a.status==="Confirmed")&&apptEnd(a)<now).sort((a,b)=>a.start_datetime<b.start_datetime?-1:1);
+  const human=C.filter(c=>c.needs_human);const unpaid=vals("payments").filter(p=>p.status==="Pending");
+  const days=[...Array(14)].map((_,i)=>{const d=ymd(addDays(now,i-13));return {d,v:revenueOf(A.filter(a=>a.start_datetime.startsWith(d)))}});const mx=Math.max(1,...days.map(x=>x.v));
+  const next=tod.find(a=>parseDT(a.start_datetime)>now);
+  return `<div class="grid" style="gap:14px">
+  <div class="grid g4">
+    <div class="kpi b"><span class="k">Visits today</span><span class="v">${tod.length}</span><span class="s">${next?"Next at "+next.start_datetime.slice(11)+" · "+esc(cli(next.client_id)?.display_name||""):"No more visits today"}</span></div>
+    <div class="kpi g"><span class="k">Revenue this month</span><span class="v">${money(revenueOf(monthA))}</span><span class="s">${monthA.filter(a=>a.status==="Completed").length} completed visits</span></div>
+    <div class="kpi vi"><span class="k">Chats closed by AI</span><span class="v">${C.length?Math.round(100*aiOnly/C.length):0}%</span><span class="s">${aiOnly} of ${C.length} without a human</span></div>
+    <div class="kpi r"><span class="k">No-show rate, 30 days</span><span class="v">${nsr}%</span><span class="s">${last30.filter(a=>a.status==="No-show").length} missed of ${last30.length} visits</span></div>
+  </div>
+  <div class="grid g2">
+    <section class="panel"><div class="ph"><h3>Today · ${DOW[now.getDay()]} ${today}</h3><span class="grow"></span><button class="btn sm" data-go="calendar">Open calendar</button></div>
+      <div class="list">${tod.length?tod.map(a=>`<div class="li click" data-appt="${a.id}" style="cursor:pointer"><span class="time">${a.start_datetime.slice(11)}</span><div class="grow"><div class="ell"><b>${esc(cli(a.client_id)?.display_name||a.client_id)}</b> · ${esc(svc(a.service_code)?.name||a.service_code)}</div><div class="muted small">${esc(mst(a.master_id)?.full_name||"")} · via ${esc(a.source||"")}</div></div>${pill(a.status)}</div>`).join(""):`<div class="empty"><b>No visits today</b>New bookings from chats appear here.</div>`}</div></section>
+    <section class="panel"><div class="ph"><h3>Needs attention</h3></div><div class="list">
+      ${human.map(c=>`<div class="li"><span class="pill human">Human</span><div class="grow ell">${ms(c.messenger)} ${esc(c.contact)} · ${esc((c.messages||[]).slice(-1)[0]?.text||"")}</div><button class="btn sm" data-openconv="${c.id}">Open</button></div>`).join("")}
+      ${unpaid.map(p=>{const a=S.appointments[p.appointment_id];return `<div class="li"><span class="pill Pending">Unpaid</span><div class="grow ell">${money(p.amount_kzt)} · ${esc(a?cli(a.client_id)?.display_name:"")} · ${esc(a?a.start_datetime:"")}</div></div>`}).join("")}
+      ${stale.slice(0,6).map(a=>`<div class="li"><span class="pill warn">Not closed</span><div class="grow"><div class="ell">${esc(cli(a.client_id)?.display_name||"")} · ${esc(svc(a.service_code)?.name||"")}</div><div class="muted small">${a.start_datetime} · still “${a.status}”</div></div><button class="btn sm" data-setst="${a.id}|Completed">Completed</button><button class="btn sm danger" data-setst="${a.id}|No-show">No-show</button></div>`).join("")}
+      ${!human.length&&!unpaid.length&&!stale.length?`<div class="empty"><b>All clear</b>Chats waiting for a human, unpaid links and visits that were not closed show up here.</div>`:""}
+    </div></section>
+  </div>
+  <section class="panel"><div class="ph"><h3>Revenue, last 14 days</h3><span class="grow"></span><span class="muted small">Completed visits × service price</span></div>
+    <div class="pad"><div class="bars">${days.map(x=>`<div style="height:${Math.round(100*x.v/mx)}%" title="${x.d}: ${money(x.v)}"></div>`).join("")}</div>
+    <div style="display:flex;justify-content:space-between" class="muted small"><span>${days[0].d}</span><span>max ${money(mx)}</span><span>${days[13].d}</span></div></div></section>
+  </div>`}};
+
+/* inbox */
+let curConv=null,composeAs="client";
+PAGES.inbox={head:()=>head("Chats","Telegram, WhatsApp and Instagram in one place. The AI answers from your database.",`<button class="btn create" data-act="newConv">+ New chat</button>`),
+ body(){
+  const C=vals("conversations").sort((a,b)=>(b.updated_at||"").localeCompare(a.updated_at||""));
+  if(!curConv||!S.conversations[curConv])curConv=(innerWidth>760&&C[0])?C[0].id:null;
+  const c=curConv?{id:curConv,...S.conversations[curConv]}:null;
+  const list=C.map(x=>{const last=(x.messages||[]).slice(-1)[0];return `<div class="conv ${x.id===curConv?"on":""}" data-conv="${x.id}">${ms(x.messenger)}<div class="grow"><div class="nm"><span class="ell">${esc(x.contact)}</span>${x.needs_human?'<span class="pill human">Human</span>':""}</div><div class="last ell">${esc(last?(last.from==="pay"?"Payment link":last.text):"")}</div><div style="display:flex;gap:6px;margin-top:4px">${pill(x.stage||"New","ai")}</div></div><span class="muted small">${fmtAt(x.updated_at)}</span></div>`}).join("")||`<div class="empty"><b>No chats yet</b>Press “New chat” to simulate a client writing from a messenger.</div>`;
+  let chat=`<div class="chat"><div class="empty" style="margin:auto"><b>Pick a chat</b>Or start a new one and write as the client to see the AI work.</div></div>`,info="";
+  if(c){
+    const msgs=(c.messages||[]).map(m=>{
+      if(m.from==="pay"){const p=S.payments[m.payment_id]||{};return `<div class="paycard"><div class="muted small">Payment link · ${esc(p.kind||"")}</div><div class="amt">${money(p.amount_kzt)}</div><div class="small">${esc(m.text)}</div><div style="margin-top:8px;display:flex;gap:8px;align-items:center">${p.status==="Paid"?pill("Paid"):`<button class="btn primary sm" data-pay="${m.payment_id}|${c.id}">Pay with Kaspi QR (demo)</button>`}<span class="muted small">client side</span></div></div>`}
+      const who={client:esc(c.contact),ai:"AI administrator",admin:"Administrator"}[m.from]||"";
+      return `<div class="m ${m.from}">${m.from!=="system"&&m.from!=="client"?`<div class="who">${who}</div>`:""}${esc(m.text)}${m.from!=="system"?`<div class="at">${fmtAt(m.at)}</div>`:""}</div>`}).join("");
+    chat=`<div class="chat"><div class="chead"><button class="btn sm" data-backconv style="display:none" id="backBtn">←</button>${ms(c.messenger)}<div class="grow"><b class="ell">${esc(c.contact)}</b><div class="muted small">${esc(c.messenger)} · ${c.client_id?esc(c.client_id):"no client card yet"}</div></div>
+      <label class="switch" title="When on, the AI answers every client message"><input type="checkbox" data-aitoggle="${c.id}" ${c.ai_enabled?"checked":""}> AI autopilot</label>
+      <button class="btn ai sm" data-aireply="${c.id}">Ask AI to reply</button></div>
+      <div class="msgs" id="msgs">${msgs}<div id="typing"></div></div>
+      <div class="composer"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="seg"><button data-as="client" class="${composeAs==="client"?"on":""}">Write as client</button><button data-as="admin" class="${composeAs==="admin"?"on":""}">Write as administrator</button></div><span class="muted small">${composeAs==="client"?"Simulates a message from "+esc(c.messenger):"Your reply goes to the client and pauses nothing"}</span></div>
+      <form class="row" id="sendForm"><textarea id="composeText" rows="1" placeholder="${composeAs==="client"?"e.g. здравствуйте а можно завтра после 6 на маникюр?":"Type a reply"}"></textarea><button class="btn primary" type="submit">Send</button></form></div></div>`;
+    const cc=c.client_id?cli(c.client_id):null;const ap=convClientAppts(c).filter(a=>parseDT(a.start_datetime)>=addDays(new Date(),-1));
+    const pays=vals("payments").filter(p=>ap.some(a=>a.id===p.appointment_id));
+    info=`<aside class="info"><div><h4>Deal stage</h4><select class="inp" id="stageSel" data-stage="${c.id}">${STAGES.map(s=>`<option ${s[0]===c.stage?"selected":""}>${s[0]}</option>`).join("")}</select></div>
+      <div><h4>Client card</h4>${cc?`<div class="kv"><span>ID</span><span class="code">${esc(c.client_id)}</span><span>Name</span><span>${esc(cc.display_name)}</span><span>Phone</span><span>${esc(cc.phone||"—")}</span><span>Notes</span><span>${esc(cc.notes||"—")}</span></div><button class="btn sm" style="margin-top:8px" data-client="${c.client_id}">Open card</button>`:`<div class="muted small">Not linked yet. The AI links or creates the card when the client gives a name.</div>`}</div>
+      <div><h4>Visits</h4>${ap.length?ap.map(a=>`<div style="margin-bottom:6px;cursor:pointer" data-appt="${a.id}"><div>${a.start_datetime} ${pill(a.status)}</div><div class="muted small">${esc(svc(a.service_code)?.name)} · ${esc(mst(a.master_id)?.full_name)}</div></div>`).join(""):'<div class="muted small">None</div>'}</div>
+      <div><h4>Payments</h4>${pays.length?pays.map(p=>`<div class="small">${money(p.amount_kzt)} ${pill(p.status)} <span class="muted">${esc(p.kind)}</span></div>`).join(""):'<div class="muted small">None</div>'}</div>
+      <div><h4>What the AI used</h4><div class="muted small">Services, prices and free slots from the database, plus ${Object.keys(S.knowledge).length} knowledge base entries. <a href="#knowledge">Edit what the AI knows</a>.</div></div>
+      ${c.needs_human?`<button class="btn" data-resolve="${c.id}">Mark as handled, return to AI</button>`:""}
+      <button class="btn danger sm" data-delconv="${c.id}">Delete chat</button></aside>`;
+  }
+  return `<div class="panel inbox ${c?"open":""}"><div class="convs">${list}</div>${chat}${info}</div>`},
+ after(){const b=$("#backBtn");if(b&&innerWidth<=760)b.style.display="";const ta=$("#composeText");if(ta)ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("#sendForm").requestSubmit()}})}};
+function renderTyping(){const el=$("#typing");if(!el)return;const t=curConv&&aiBusy[curConv];el.innerHTML=t?`<div class="typing"><span class="dots"><span></span><span></span><span></span></span>${esc(t)}<button class="btn sm" data-stopai="${curConv}">Stop</button></div>`:"";if(t){const m=$("#msgs");if(m)m.scrollTop=m.scrollHeight}}
+document.addEventListener("submit",async e=>{
+  if(e.target.id==="sendForm"){e.preventDefault();const ta=$("#composeText");const text=ta.value.trim();if(!text||!curConv)return;ta.value="";const id=curConv;
+    if(composeAs==="client"){await pushMsg(id,{from:"client",text});const c=S.conversations[id];if(c.stage==="New")patch("conversations",id,{stage:"In dialog"});if(c.ai_enabled)aiReply(id)}
+    else pushMsg(id,{from:"admin",text});}
+});
+
+/* pipeline */
+const STAGES=[["New","#3fa9f5"],["In dialog","#7b4dff"],["Booked","#f2a516"],["Paid","#4fae33"],["Visited","#2fb8a7"],["Lost","#9aa1b8"]];
+PAGES.pipeline={head:()=>head("Sales funnel","Every chat is a deal. The AI moves cards when it books and when the client pays. Drag to move by hand.",`<button class="btn create" data-act="newConv">+ New chat</button>`),
+ body(){const C=vals("conversations");return `<div class="board">${STAGES.map(([s,col])=>{const items=C.filter(c=>(c.stage||"New")===s);const sum=items.reduce((t,c)=>{const a=S.appointments[c.appointment_id];return t+(a?svc(a.service_code)?.price_kzt||0:0)},0);
+  return `<div class="col" data-drop="${s}" style="--c:${col}"><div class="hd"><span>${s} · ${items.length}</span><span class="muted small">${sum?money(sum):""}</span></div><div class="bd">${items.map(c=>{const a=S.appointments[c.appointment_id];return `<div class="card" draggable="true" data-drag="${c.id}" data-openconv="${c.id}"><div style="display:flex;gap:6px;align-items:center">${ms(c.messenger)}<b class="ell">${esc(c.contact)}</b></div>${a?`<div class="small">${esc(svc(a.service_code)?.name)} · ${a.start_datetime}</div>`:""}<div class="muted small ell">${esc(((c.messages||[]).filter(m=>m.text&&m.from!=="system").slice(-1)[0]||{}).text||"")}</div><div style="display:flex;gap:6px">${c.needs_human?'<span class="pill human">Human</span>':c.ai_enabled?'<span class="pill ai">AI</span>':""}</div></div>`}).join("")||'<div class="muted small" style="padding:8px">Empty</div>'}</div></div>`}).join("")}</div>`}};
+document.addEventListener("dragstart",e=>{const d=e.target.closest("[data-drag]");if(d)e.dataTransfer.setData("text/plain",d.dataset.drag)});
+document.addEventListener("dragover",e=>{const c=e.target.closest("[data-drop]");if(c){e.preventDefault();c.classList.add("over")}});
+document.addEventListener("dragleave",e=>{const c=e.target.closest("[data-drop]");if(c)c.classList.remove("over")});
+document.addEventListener("drop",e=>{const c=e.target.closest("[data-drop]");if(!c)return;e.preventDefault();const id=e.dataTransfer.getData("text/plain");if(S.conversations[id])patch("conversations",id,{stage:c.dataset.drop})});
+
+/* calendar */
+let calDay=ymd(new Date());
+PAGES.calendar={head:()=>head("Calendar","",`<button class="btn create" data-act="newAppt">+ New booking</button><div class="tabs"><button data-cal="-1">←</button><button data-cal="0" class="on">Today</button><button data-cal="1">→</button></div><input type="date" class="inp" id="calPick" data-fresh="1" value="${calDay}" style="width:auto">`),
+ body(){
+  const M=vals("masters").filter(m=>m.is_active!==false);const day=parseDT(calDay+" 00:00");
+  const start=9*60,end=20*60,rows=(end-start)/30,RH=28,HH=48;
+  const A=vals("appointments").filter(a=>a.start_datetime.startsWith(calDay));
+  let html=`<div class="cal" style="grid-template-columns:56px repeat(${M.length},minmax(150px,1fr))"><div class="hh"></div>${M.map(m=>`<div class="hh">${esc(m.full_name)}<div class="muted small">${esc(m.specialization)} · ${(m.days||[]).includes(day.getDay())?m.work_start+"–"+m.work_end:"day off"}</div></div>`).join("")}`;
+  for(let r=0;r<rows;r++){const t=start+r*30;html+=`<div class="tm">${r%2===0?pad(t/60|0)+":00":""}</div>`+M.map(m=>`<div class="cell ${r%2?"half":""}" data-newat="${m.id}|${calDay} ${pad(t/60|0)}:${pad(t%60)}"></div>`).join("")}
+  html+=`</div>`;
+  const evs=A.map(a=>{const ci=M.findIndex(m=>m.id===a.master_id);if(ci<0)return "";const st=toMin(a.start_datetime.slice(11));const dur=svc(a.service_code)?.duration_min||60;const top=HH+(st-start)/30*RH;const h=Math.max(RH-2,dur/30*RH-3);
+    return `<div class="ev ${a.status}" data-appt="${a.id}" style="top:${top}px;height:${h}px;left:calc(56px + (100% - 56px) * ${ci}/${M.length} + 3px);width:calc((100% - 56px)/${M.length} - 6px)"><b>${a.start_datetime.slice(11)}</b> ${esc(cli(a.client_id)?.display_name||a.client_id)}<br><span class="muted">${esc(svc(a.service_code)?.name||"")}</span></div>`}).join("");
+  const now=new Date();let nl="";if(calDay===ymd(now)){const mm=now.getHours()*60+now.getMinutes();if(mm>=start&&mm<=end)nl=`<div class="nowline" style="top:${HH+(mm-start)/30*RH}px"></div>`}
+  return `<div class="panel tw"><div style="position:relative;min-width:${56+M.length*150}px">${html}${evs}${nl}</div></div><p class="muted small" style="color:var(--chrome-dim)">${DOW[day.getDay()]} ${calDay} · ${A.filter(active).length} bookings. Click an empty cell to book, click a booking to change its status.</p>`},
+ after(){const p=$("#calPick");if(p)p.addEventListener("change",()=>{if(p.value){calDay=p.value;render()}})}};
+document.addEventListener("click",e=>{const c=e.target.closest("[data-cal]");if(!c)return;const v=+c.dataset.cal;calDay=v===0?ymd(new Date()):ymd(addDays(parseDT(calDay+" 00:00"),v));render()});
+
+/* clients */
+PAGES.clients={head:()=>head("Clients","",`<button class="btn create" data-act="newClient">+ Add client</button>`),
+ body(){
+  const A=vals("appointments");let L=vals("clients").map(c=>{const ap=A.filter(a=>a.client_id===c.id);const done=ap.filter(a=>a.status==="Completed");return {...c,visits:done.length,ns:ap.filter(a=>a.status==="No-show").length,last:done.map(a=>a.start_datetime).sort().slice(-1)[0]||"",spent:revenueOf(ap),ch:vals("client_channels").filter(x=>x.client_id===c.id)}});
+  if(gq)L=L.filter(c=>(c.display_name+" "+c.phone+" "+c.id).toLowerCase().includes(gq));
+  L.sort((a,b)=>b.spent-a.spent);
+  return `<div class="panel tw">${gq?`<div class="ph"><span>Search: <b>${esc(gq)}</b> · ${L.length} found</span></div>`:""}<table class="t"><thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Messengers</th><th>Visits</th><th>No-shows</th><th>Last visit</th><th style="text-align:right">Spent</th></tr></thead><tbody>
+  ${L.map(c=>`<tr class="click" data-client="${c.id}"><td class="code">${c.id}</td><td><b>${esc(c.display_name)}</b></td><td>${esc(c.phone||"—")}</td><td>${c.ch.map(x=>ms(x.messenger)).join(" ")}</td><td>${c.visits}</td><td>${c.ns?`<span class="pill No-show">${c.ns}</span>`:"0"}</td><td>${esc(c.last.slice(0,10)||"—")}</td><td style="text-align:right">${money(c.spent)}</td></tr>`).join("")||`<tr><td colspan="8"><div class="empty"><b>No clients found</b>Clients are created by the AI from chats, or with “Add client”.</div></td></tr>`}</tbody></table></div>`}};
+
+/* services */
+PAGES.services={head:()=>head(biz().service_label?biz().service_label+"s":"Services","The AI can only offer what is in this list, at these prices.",`<button class="btn create" data-act="newService">+ Add service</button>`),
+ body(){return `<div class="panel tw"><table class="t"><thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Duration</th><th style="text-align:right">Price</th><th>Prepayment</th><th>Who does it</th><th>Status</th></tr></thead><tbody>${vals("services").map(s=>`<tr class="click" data-service="${s.id}"><td class="code">${s.id}</td><td><b>${esc(s.name)}</b></td><td>${esc(s.category||"")}</td><td>${s.duration_min} min</td><td style="text-align:right">${money(s.price_kzt)}</td><td>${prepayFor(s.id)?money(prepayFor(s.id)):"—"}</td><td>${mastersFor(s.id).map(m=>esc(mst(m).full_name)).join(", ")||'<span class="pill warn">nobody</span>'}</td><td>${s.is_active===false?pill("Hidden","Cancelled"):pill("Active","Completed")}</td></tr>`).join("")}</tbody></table></div>`}};
+
+/* staff */
+PAGES.staff={head:()=>head((biz().staff_label||"Master")+"s","",`<button class="btn create" data-act="newMaster">+ Add ${esc((biz().staff_label||"master").toLowerCase())}</button>`),
+ body(){const today=ymd(new Date());return `<div class="panel tw"><table class="t"><thead><tr><th>ID</th><th>Name</th><th>Specialization</th><th>Services (master_services)</th><th>Working days</th><th>Hours</th><th>Today</th><th>Login</th></tr></thead><tbody>${vals("masters").map(m=>{const n=vals("appointments").filter(a=>a.master_id===m.id&&a.start_datetime.startsWith(today)&&active(a)).length;return `<tr class="click" data-master="${m.id}"><td class="code">${m.id}</td><td><b>${esc(m.full_name)}</b>${m.is_active===false?" "+pill("Inactive","Cancelled"):""}</td><td>${esc(m.specialization)}</td><td>${servicesOf(m.id).map(c=>`<span class="pill">${esc(svc(c)?.name||c)}</span>`).join(" ")}</td><td>${(m.days||[]).map(d=>DOW[d]).join(" ")}</td><td>${m.work_start}–${m.work_end}</td><td>${n} visits</td><td class="muted small">master_accounts: 1:1</td></tr>`}).join("")}</tbody></table></div>`}};
+
+/* payments */
+let payFilter="All";
+PAGES.payments={head:()=>head("Payments","",`<div class="tabs">${["All","Pending","Paid","Refunded"].map(f=>`<button data-payf="${f}" class="${payFilter===f?"on":""}">${f}</button>`).join("")}</div>`),
+ body(){let P=vals("payments").sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));if(payFilter!=="All")P=P.filter(p=>p.status===payFilter);
+  const tot=P.filter(p=>p.status==="Paid").reduce((s,p)=>s+p.amount_kzt,0);
+  return `<div class="panel tw"><div class="ph"><h3>${P.length} payments</h3><span class="grow"></span><span>Paid total: <b>${money(tot)}</b></span></div><table class="t"><thead><tr><th>ID</th><th>Created</th><th>Client</th><th>Service</th><th>Type</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th><th></th></tr></thead><tbody>${P.slice(0,300).map(p=>{const a=S.appointments[p.appointment_id]||{};return `<tr><td class="code">${p.id}</td><td>${esc(p.created_at)}</td><td>${esc(cli(a.client_id)?.display_name||"—")}</td><td>${esc(svc(a.service_code)?.name||"—")}</td><td>${esc(p.kind)}</td><td>${esc(p.method)}</td><td style="text-align:right">${money(p.amount_kzt)}</td><td>${pill(p.status)}</td><td>${p.status==="Pending"?`<button class="btn sm" data-markpaid="${p.id}">Mark paid</button>`:p.status==="Paid"?`<button class="btn sm danger" data-refund="${p.id}">Refund</button>`:""}</td></tr>`}).join("")||`<tr><td colspan="9"><div class="empty"><b>No payments here</b>Payment links sent by the AI appear as Pending.</div></td></tr>`}</tbody></table></div>`}};
+document.addEventListener("click",e=>{const f=e.target.closest("[data-payf]");if(f){payFilter=f.dataset.payf;render()}});
+
+/* client memory (prefs on the client card) */
+document.addEventListener("click",e=>{const f=e.target.closest("[data-forget]");if(!f)return;e.stopPropagation();const [id,i]=f.dataset.forget.split("|");const c=S.clients[id];if(!c)return;const prefs=(c.prefs||[]).filter((_,k)=>k!==+i);put("clients",id,{...c,prefs});clientModal(id);toast("Forgotten")},true);
+document.addEventListener("submit",e=>{if(e.target.id!=="memAdd")return;e.preventDefault();const id=e.target.dataset.memfor,t=$("#memT").value.trim();const c=S.clients[id];if(!t||!c)return;put("clients",id,{...c,prefs:[...(c.prefs||[]),{text:t.slice(0,200),at:nowISO(),source:"Admin"}].slice(-30)});clientModal(id);toast("The AI will remember this")});
+
+/* AI files: everything the AI reads, shown as a tree of documents generated live from the database */
+let fileSel="business/profile.md";
+function aiFiles(){
+  const b=biz(),F=[];const add=(path,title,body)=>F.push({path,title,body});
+  add("business/profile.md","Business profile",`# ${b.name}\n\n- Type: ${b.type||"—"}\n- City: ${b.city||"—"}\n- Address: ${b.address||"—"}\n- Hours: ${b.hours||"—"}\n- Phone: ${b.phone||"—"}\n- Languages: ${b.languages||"—"}\n\n## Voice\n${b.tone||"—"}\n\n## Brand phrase\n${b.catchphrase||"— not set —"}\n\n## Prepayment rule\n${b.prepay_percent}% for services from ${money(b.prepay_min_price)}`);
+  add("business/price-list.md","Price list",`# Price list\n\n${vals("services").filter(s=>s.is_active!==false).map(s=>`- **${s.name}** — ${money(s.price_kzt)}, ${s.duration_min} min${prepayFor(s.id)?`, prepayment ${money(prepayFor(s.id))}`:""}\n  Masters: ${mastersFor(s.id).map(m=>mst(m).full_name).join(", ")||"nobody"}`).join("\n")}`);
+  add("business/team.md","Team",`# Team\n\n${vals("masters").filter(m=>m.is_active!==false).map(m=>`## ${m.full_name}\n${m.specialization||""}\n- Works: ${(m.days||[]).map(d=>DOW[d]).join(" ")} ${m.work_start}–${m.work_end}\n- Services: ${servicesOf(m.id).map(c=>svc(c)?.name).filter(Boolean).join(", ")}`).join("\n\n")}`);
+  const K=vals("knowledge");const cats=[...new Set(K.map(k=>k.category||"General"))].sort();
+  for(const c of cats)add(`knowledge/${c.toLowerCase().replace(/[^\p{L}\d]+/gu,"-")}.md`,c,`# ${c}\n\n${K.filter(k=>(k.category||"General")===c).map(k=>`## ${k.title}\n${k.content}`).join("\n\n")}`);
+  for(const c of vals("clients").filter(c=>(c.prefs||[]).length||c.notes).sort((a,b)=>a.display_name.localeCompare(b.display_name))){
+    const A=vals("appointments").filter(a=>a.client_id===c.id&&a.status==="Completed");const fav={};A.forEach(a=>fav[a.master_id]=(fav[a.master_id]||0)+1);const top=Object.entries(fav).sort((x,y)=>y[1]-x[1])[0];
+    add(`clients/${c.display_name.replace(/[^\p{L}\d]+/gu,"-").replace(/^-|-$/g,"").toLowerCase()}.md`,c.display_name,`# ${c.display_name} (${c.id})\n\n- Phone: ${c.phone||"—"}\n- Visits: ${A.length}${top?`, most often with ${mst(top[0])?.full_name}`:""}\n\n## Preferences the AI remembers\n${(c.prefs||[]).map(p=>`- ${p.text} _(${p.source||""}, ${fmtAt(p.at)})_`).join("\n")||"- none yet"}\n\n## Notes\n${c.notes||"—"}`);
+  }
+  return F;
+}
+function mdHtml(md){return esc(md).split("\n").map(l=>l.startsWith("## ")?`<h3>${l.slice(3)}</h3>`:l.startsWith("# ")?`<h2>${l.slice(2)}</h2>`:l.startsWith("  ")?`<div class="muted small" style="padding-left:18px">${l.trim()}</div>`:l.startsWith("- ")?`<div style="padding-left:6px">• ${l.slice(2)}</div>`:l?`<p style="margin:4px 0">${l}</p>`:"").join("").replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/_\((.+?)\)_/g,'<span class="muted small">($1)</span>')}
+let dlx;async function dl(name,text){dlx??=window.claude&&window.claude.use?await window.claude.use("downloads"):null;
+  if(dlx){try{await dlx.save({filename:name,data:text})}catch(e){if(e&&e.code!=="cancelled"&&e.code!=="declined")toast("Download failed: "+(e.message||e.code))}return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/markdown"}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+PAGES.files={head:()=>head("AI files","Everything the AI knows, organised as documents. Generated live from the database, so they are always current.",`<button class="btn ghost" id="fileAll">Download all (.md)</button>`),
+ body(){const F=aiFiles();if(!F.find(f=>f.path===fileSel))fileSel=F[0].path;const cur=F.find(f=>f.path===fileSel);
+  const groups=[["business","Business"],["knowledge","Knowledge base"],["clients","Client memory"]];
+  return `<div class="grid" style="grid-template-columns:minmax(220px,300px) minmax(0,1fr)">
+  <section class="panel"><div class="pad" style="display:flex;flex-direction:column;gap:12px">${groups.map(([g,l])=>{const L=F.filter(f=>f.path.startsWith(g+"/"));return `<div><div class="muted small" style="font-weight:600;text-transform:uppercase;letter-spacing:.06em">📁 ${l} · ${L.length}</div>${L.map(f=>`<button class="filebtn ${f.path===fileSel?"on":""}" data-file="${esc(f.path)}">📄 ${esc(f.path.split("/")[1])}</button>`).join("")||'<div class="muted small" style="padding:4px 8px">empty</div>'}</div>`}).join("")}</div></section>
+  <section class="panel"><div class="ph"><span class="code">${esc(cur.path)}</span><span class="grow"></span><button class="btn sm" data-dlfile="${esc(cur.path)}">Download</button>${cur.path.startsWith("knowledge/")?`<button class="btn sm" data-go="knowledge">Edit entries</button>`:cur.path.startsWith("business/")?`<button class="btn sm" data-go="business">Edit</button>`:""}</div><div class="pad doc">${mdHtml(cur.body)}</div></section></div>`}};
+document.addEventListener("click",e=>{const f=e.target.closest("[data-file]");if(f){fileSel=f.dataset.file;render();return}
+  const d=e.target.closest("[data-dlfile]");if(d){const x=aiFiles().find(f=>f.path===d.dataset.dlfile);if(x)dl(x.path.replace(/\//g,"_"),x.body);return}
+  if(e.target.id==="fileAll")dl("ai-files.md",aiFiles().map(f=>`<!-- ${f.path} -->\n${f.body}`).join("\n\n---\n\n"))});
+
+/* knowledge base */
+let kbCat="All";
+PAGES.knowledge={head:()=>head("AI knowledge base","Everything you add here becomes part of what the AI knows about your business. Update it any time.",`<button class="btn create" data-act="newKb">+ Add entry</button><button class="btn ghost" data-go="files">Open AI files</button><label class="btn ghost" style="cursor:pointer">Upload file<input type="file" id="kbFile" data-fresh="1" accept=".txt,.md,.csv,.json,text/plain" multiple hidden></label>`),
+ body(){
+  const K=vals("knowledge").sort((a,b)=>(b.updated_at||"").localeCompare(a.updated_at||""));const cats=["All",...new Set(K.map(k=>k.category||"General"))];
+  const shown=kbCat==="All"?K:K.filter(k=>(k.category||"General")===kbCat);const size=kbText(1e9).length;
+  return `<div class="grid kbwrap">
+  <section class="panel"><div class="ph"><div class="seg">${cats.map(c=>`<button data-kbcat="${esc(c)}" class="${kbCat===c?"on":""}">${esc(c)}</button>`).join("")}</div><span class="grow"></span><span class="muted small">${K.length} entries · ${size.toLocaleString()} characters${size>14000?' · <span class="pill warn">only the first 14 000 are sent to the AI</span>':""}</span></div>
+   <div class="pad"><div class="kbgrid">${shown.map(k=>`<div class="kbc" data-kb="${k.id}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(k.title)}</b>${pill(k.category||"General","ai")}</div><p>${esc(k.content)}</p><span class="muted small">Updated ${fmtAt(k.updated_at)}</span></div>`).join("")||`<div class="empty"><b>Teach the AI about your business</b>Add prices by hair length, rules, promotions, FAQ, or upload a .txt / .csv file.</div>`}</div></div></section>
+  <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+  <section class="panel"><div class="ph"><h3>Teach the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
+   <p class="muted small" style="margin:0">Paste anything about your business in any form: a promotion, discounts, rules, your slogan, FAQ, a price list. The AI sorts it into entries and settings, you check them, and they are saved to the database.</p>
+   <textarea class="inp" id="teachT" style="min-height:120px" placeholder="Например: до конца ноября скидка 15% на маникюр по будням до 14:00. Опоздание больше 15 минут — запись переносится. Наш слоган: «Красота начинается с заботы»."></textarea>
+   <div style="display:flex;gap:8px"><button class="btn ai" id="teachGo" type="button">Organise with AI</button><span class="grow"></span></div>
+   <div id="teachOut"></div>
+  </div></section>
+  <section class="panel"><div class="ph"><h3>Test the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
+   <p class="muted small" style="margin:0">Ask the way a client would. The AI answers only from the services table and this knowledge base.</p>
+   <form id="kbAsk" style="display:flex;gap:8px"><input class="inp" id="kbQ" placeholder="e.g. у меня волосы до пояса, сколько будет покраска?"><button class="btn ai" type="submit">Ask</button></form>
+   <div class="answer" id="kbA"><span class="muted">The answer appears here.</span></div>
+   <h4 class="muted small" style="margin:6px 0 0">How the AI uses this</h4>
+   <ol class="small muted" style="margin:0;padding-left:18px"><li>The backend reads services, staff, free slots and these entries from the database.</li><li>It sends them to the AI together with the client's message.</li><li>The AI writes the reply and calls CRM actions (book, payment link, hand over to a human). It never touches the database directly.</li></ol>
+  </div></section></div></div>`},
+ after(){teachView();const f=$("#kbFile");if(f)f.addEventListener("change",async()=>{for(const file of f.files){if(file.size>200000){toast(file.name+" is larger than 200 KB. Split it into smaller files.");continue}const text=await file.text();put("knowledge",nextId("knowledge","KB-",1),{title:file.name.replace(/\.[^.]+$/,""),category:"Uploaded",content:text.slice(0,60000),updated_at:nowISO()})}toast("Added to the knowledge base")})}};
+document.addEventListener("click",e=>{const c=e.target.closest("[data-kbcat]");if(c){kbCat=c.dataset.kbcat;render()}});
+let kbCtl=null,teachDraft=null;
+const TEACH_KEYS={name:"Business name",type:"Type of business",address:"Address",hours:"Opening hours",phone:"Phone",tone:"Tone of voice",catchphrase:"Brand phrase",languages:"Client languages"};
+function teachView(){const o=$("#teachOut");if(!o)return;if(!teachDraft){o.innerHTML="";return}
+  const E=teachDraft.entries||[],St=Object.entries(teachDraft.settings||{}).filter(([k,v])=>TEACH_KEYS[k]&&v);
+  o.innerHTML=`<div class="answer" style="display:flex;flex-direction:column;gap:8px">${E.map((e,i)=>`<label class="switch" style="align-items:flex-start"><input type="checkbox" class="teachE" value="${i}" checked><span><b>${esc(e.title)}</b> ${pill(e.category||"General","ai")}<br><span class="small">${esc(e.content)}</span></span></label>`).join("")}${St.map(([k,v])=>`<label class="switch" style="align-items:flex-start"><input type="checkbox" class="teachS" value="${k}" checked><span><b>Business setup · ${esc(TEACH_KEYS[k])}</b><br><span class="small">${esc(v)}</span></span></label>`).join("")}${E.length||St.length?`<div style="display:flex;gap:8px"><button class="btn" id="teachCancel" type="button">Discard</button><span class="grow"></span><button class="btn create" id="teachSave" type="button">Save ${E.length+St.length} to the database</button></div>`:'<span class="muted">Nothing to save was found in this text.</span>'}</div>`}
+document.addEventListener("click",async e=>{
+  if(e.target.id==="teachCancel"){teachDraft=null;teachView();return}
+  if(e.target.id==="teachSave"){if(!teachDraft)return;let n=0;
+    const pickE=[...document.querySelectorAll(".teachE:checked")].map(x=>teachDraft.entries[+x.value]);
+    for(const en of pickE){if(!en||!en.title||!en.content)continue;put("knowledge",nextId("knowledge","KB-",1),{title:String(en.title).slice(0,120),category:String(en.category||"General").slice(0,40),content:String(en.content).slice(0,60000),updated_at:nowISO()});n++}
+    const pickS=[...document.querySelectorAll(".teachS:checked")].map(x=>x.value);
+    if(pickS.length){const upd={};for(const k of pickS)upd[k]=String(teachDraft.settings[k]).slice(0,2000);put("settings","business",{...biz(),...upd});n+=pickS.length}
+    teachDraft=null;const t=$("#teachT");if(t)t.value="";toast(`Saved ${n}. The AI uses it from the next message.`);render();return}
+  if(e.target.id!=="teachGo")return;
+  const txt=($("#teachT")?.value||"").trim();const o=$("#teachOut");if(!txt)return toast("Paste some text about your business first");
+  if(!sample){o.innerHTML='<div class="answer">The AI needs the Claude viewer. Open this page on claude.ai.</div>';return}
+  o.innerHTML='<div class="answer">Organising…</div>';
+  const cats=[...new Set(["Promotions","Rules","Prices","FAQ","Brand","Contacts",...vals("knowledge").map(k=>k.category).filter(Boolean)])];
+  try{const r=await sample(`You turn a business owner's free-form notes into structured CRM data for ${biz().name} (${biz().type||"business"}).
+Return ONLY a JSON object, no markdown fences:
+{"entries":[{"title":"short title","category":"one of: ${cats.join(", ")} (or a new short category)","content":"the fact written clearly for an AI administrator, keep every number, date and condition exactly"}],
+ "settings":{"catchphrase":"","tone":"","hours":"","address":"","phone":"","name":"","languages":""}}
+Rules: one entry per separate fact (a promotion, a rule, a FAQ answer). Keep the owner's language. Put a slogan or catchphrase ONLY in settings.catchphrase; put a change of opening hours, address, phone, name, tone or languages ONLY in settings; leave unused settings as "". Do not invent anything that is not in the notes.
+
+Current settings: ${JSON.stringify({name:biz().name,hours:biz().hours,address:biz().address,phone:biz().phone,tone:biz().tone,catchphrase:biz().catchphrase||""})}
+Existing knowledge titles: ${vals("knowledge").map(k=>k.title).join("; ")||"none"}
+
+NOTES:
+${txt.slice(0,20000)}`,{modelTier:"quick",cache:false});
+    const raw=(r.text||"").replace(/^[^{]*/,"").replace(/[^}]*$/,"");teachDraft=JSON.parse(raw);
+    if(!Array.isArray(teachDraft.entries))teachDraft.entries=[];teachView();
+  }catch(err){o.innerHTML=`<div class="answer">${err.code==="not_granted"?"Claude access was not allowed for this page.":"Could not organise the text: "+esc(err.message||err)}</div>`}
+});
+document.addEventListener("submit",async e=>{if(e.target.id!=="kbAsk")return;e.preventDefault();const q=$("#kbQ").value.trim();const out=$("#kbA");if(!q)return;
+  if(!sample){out.textContent="The AI needs the Claude viewer. Open this page on claude.ai.";return}
+  kbCtl?.abort();kbCtl=new AbortController();out.textContent="Thinking…";
+  try{await sample(`You are the AI administrator of ${biz().name}. Answer this client question using ONLY the data below. If the answer is not in the data, say you would hand it to the administrator. Reply in the client's language, 1-4 sentences, no markdown.\n\nSERVICES:\n${catalogText()}\n\nKNOWLEDGE BASE:\n${kbText()}\n\nClient: ${q}`,{modelTier:"quick",cache:false,signal:kbCtl.signal,onText:({text})=>{out.textContent=text}})}
+  catch(err){if(err.code!=="cancelled")out.textContent=err.code==="not_granted"?"Claude access was not allowed for this page.":"The AI could not answer: "+err.message}});
+
+/* analytics */
+let anMonth=ymd(new Date()).slice(0,7);
+PAGES.analytics={head:()=>head("Analytics","",`<input type="month" class="inp" id="anMonth" data-fresh="1" value="${anMonth}" style="width:auto">`),
+ body(){
+  const A=vals("appointments").filter(a=>a.start_datetime.startsWith(anMonth));const fin=A.filter(a=>a.status==="Completed"||a.status==="No-show");
+  const rows=vals("services").map(s=>{const f=fin.filter(a=>a.service_code===s.id);const n=f.filter(a=>a.status==="No-show").length;return {s,total:f.length,n,pct:f.length?Math.round(1000*n/f.length)/10:0,lost:n*s.price_kzt,rev:revenueOf(f)}}).filter(r=>r.total).sort((a,b)=>b.pct-a.pct);
+  const ch={};A.filter(active).forEach(a=>{ch[a.source||"Admin"]=(ch[a.source||"Admin"]||0)+1});const chMax=Math.max(1,...Object.values(ch));
+  const top=rows[0];
+  return `<div class="grid g2">
+  <section class="panel tw"><div class="ph"><h3>No-shows by service</h3><span class="grow"></span><span class="pill">Task 9 query</span></div>
+   <table class="t"><thead><tr><th>Service</th><th>Finished visits</th><th>No-shows</th><th>No-show %</th><th style="text-align:right">Lost revenue</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.s.name)}</b></td><td>${r.total}</td><td>${r.n}</td><td><div style="display:flex;gap:8px;align-items:center"><span style="width:44px">${r.pct}%</span><div class="hbar" style="flex:1"><i style="width:${Math.min(100,r.pct*3)}%"></i></div></div></td><td style="text-align:right">${money(r.lost)}</td></tr>`).join("")||`<tr><td colspan="5"><div class="empty"><b>No finished visits this month</b></div></td></tr>`}</tbody></table>
+   ${top&&top.pct>=15?`<div class="pad"><div class="banner"><b>Decision:</b> ${esc(top.s.name)} has ${top.pct}% no-shows and lost ${money(top.lost)}. Keep the ${biz().prepay_percent}% prepayment for services from ${money(biz().prepay_min_price)} (Business setup).</div></div>`:""}</section>
+  <section class="panel"><div class="ph"><h3>Bookings by channel</h3></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">${Object.entries(ch).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div><div style="display:flex;justify-content:space-between"><span>${MSG_ICON[k]?ms(k)+" ":""}${esc(k)}</span><b>${v}</b></div><div class="hbar"><i style="width:${100*v/chMax}%;background:var(--accent)"></i></div></div>`).join("")||'<div class="muted">No bookings</div>'}
+   <div class="muted small">Revenue this month: <b>${money(revenueOf(A))}</b> from ${A.filter(a=>a.status==="Completed").length} completed visits.</div></div></section></div>`},
+ after(){const m=$("#anMonth");if(m)m.addEventListener("change",()=>{if(m.value){anMonth=m.value;render()}})}};
+
+/* database */
+const SCHEMA=[
+ ["clients","client_id",[],["display_name","phone","created_at","notes"]],
+ ["client_channels","channel_id",[["client_id","clients"]],["messenger","external_user_id"]],
+ ["services","service_code",[],["name","duration_min","price_kzt","category","is_active"]],
+ ["masters","master_id",[],["full_name","specialization","work_start","work_end","is_active"]],
+ ["master_services","(master_id, service_code)",[["master_id","masters"],["service_code","services"]],["skill_level","since_date"]],
+ ["appointments","appointment_id",[["client_id","clients"],["master_id","masters"],["service_code","services"]],["start_datetime","status","source"]],
+ ["payments","payment_id",[["appointment_id","appointments"]],["amount_kzt","kind","method","status","created_at","paid_at"]],
+ ["conversations","conversation_id",[["client_id","clients"]],["messenger","contact","stage","ai_enabled","needs_human"]],
+ ["knowledge","entry_id",[],["title","category","content","updated_at"]]];
+let dbTable="appointments",sqlText=`SELECT s.name AS service,
+       COUNT(*) AS finished_visits,
+       SUM(CASE WHEN a.status = 'No-show' THEN 1 ELSE 0 END) AS no_shows,
+       ROUND(100.0 * SUM(CASE WHEN a.status = 'No-show' THEN 1 ELSE 0 END) / COUNT(*), 1) AS no_show_pct
+FROM appointments a
+JOIN services s ON s.service_code = a.service_code
+WHERE a.status IN ('Completed', 'No-show')
+GROUP BY s.name
+ORDER BY no_show_pct DESC;`,sqlOut="";
+PAGES.database={head:()=>head("Database","The live CRM tables behind every screen. Same schema as in our Task 9 report.",""),
+ body(){
+  const t=SCHEMA.find(x=>x[0]===dbTable);const pkName=t[1];const rows=vals(t[0]).slice(0,60);const cols=[...t[2].map(f=>f[0]),...t[3]];
+  return `<div class="grid dbwrap">
+  <section class="panel pad"><div class="tbl-list">${SCHEMA.map(([n])=>`<button data-dbt="${n}" class="${n===dbTable?"on":""}"><span class="code">${n}</span><span class="muted small">${Object.keys(S[n]).length}</span></button>`).join("")}</div></section>
+  <div class="grid" style="min-width:0">
+  <section class="panel"><div class="ph"><h3 class="code">${t[0]}</h3><span class="grow"></span><span class="small"><span class="key pk">PK</span>${esc(pkName)} ${t[2].map(f=>`<span class="key fk">FK</span>${f[0]} → ${f[1]}`).join(" ")}</span></div>
+   <div class="tw" style="max-height:340px;overflow:auto"><table class="t"><thead><tr><th><span class="key pk">PK</span>id</th>${cols.map(c=>`<th>${t[2].some(f=>f[0]===c)?'<span class="key fk">FK</span>':""}${c}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr><td class="code">${esc(r.id)}</td>${cols.map(c=>`<td class="ell" style="max-width:220px">${esc(Array.isArray(r[c])?r[c].join(","):r[c])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+   <div class="ph" style="border-top:1px solid var(--line);border-bottom:0"><span class="muted small">Showing ${rows.length} of ${Object.keys(S[t[0]]).length} rows</span></div></section>
+  <section class="panel"><div class="ph"><h3>SQL console</h3><span class="grow"></span><span class="muted small">Runs SQLite on a copy of the live data</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
+   <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-sqlp="0">No-shows by service</button><button class="btn sm" data-sqlp="1">Top clients by spend</button><button class="btn sm" data-sqlp="2">Today's schedule</button><button class="btn sm" data-sqlp="3">Orphan check (FK)</button></div>
+   <textarea class="sql" id="sqlBox" spellcheck="false">${esc(sqlText)}</textarea>
+   <div><button class="btn primary" data-runsql>Run query</button></div><div class="tw" id="sqlOut">${sqlOut}</div></div></section></div></div>`}};
+const PRESETS=[null,`SELECT c.client_id, c.display_name, COUNT(*) AS visits, SUM(s.price_kzt) AS spent_kzt
+FROM appointments a
+JOIN clients c ON c.client_id = a.client_id
+JOIN services s ON s.service_code = a.service_code
+WHERE a.status = 'Completed'
+GROUP BY c.client_id ORDER BY spent_kzt DESC LIMIT 10;`,`SELECT substr(a.start_datetime, 12, 5) AS time, m.full_name AS master, c.display_name AS client, s.name AS service, a.status
+FROM appointments a
+JOIN masters m ON m.master_id = a.master_id
+JOIN clients c ON c.client_id = a.client_id
+JOIN services s ON s.service_code = a.service_code
+WHERE a.start_datetime LIKE date('now','localtime') || '%'
+ORDER BY time;`,`-- appointments whose client_id has no parent row (should be 0)
+SELECT a.appointment_id, a.client_id
+FROM appointments a LEFT JOIN clients c ON c.client_id = a.client_id
+WHERE c.client_id IS NULL;`];
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-dbt]");if(t){dbTable=t.dataset.dbt;render();return}
+  const p=e.target.closest("[data-sqlp]");if(p){const box=$("#sqlBox");sqlText=PRESETS[+p.dataset.sqlp]||PAGES._sql0;box.value=sqlText;return}
+  if(e.target.closest("[data-runsql]"))runSQL();
+});
+PAGES._sql0=sqlText;
+let SQLlib=null;
+function loadSQL(){return SQLlib?Promise.resolve(SQLlib):new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-asm.js";s.onload=()=>window.initSqlJs().then(L=>{SQLlib=L;res(L)},rej);s.onerror=()=>rej(new Error("Could not load the SQL engine"));document.head.appendChild(s)})}
+async function runSQL(){
+  sqlText=$("#sqlBox").value;const out=$("#sqlOut");out.innerHTML='<span class="muted">Loading SQL engine…</span>';
+  try{const L=await loadSQL();const d=new L.Database();
+    for(const [n,pk,fks,fields] of SCHEMA){const pkCol=pk.startsWith("(")?null:pk;const uniq=[...(pkCol?[pkCol]:[]),...fks.map(f=>f[0]),...fields];
+      d.run(`CREATE TABLE ${n} (${uniq.map(c=>c+(c===pkCol?" TEXT PRIMARY KEY":"")).join(", ")})`);
+      const st=d.prepare(`INSERT INTO ${n} VALUES (${uniq.map(()=>"?").join(",")})`);
+      for(const r of vals(n)){st.run(uniq.map(c=>{const v=c===pkCol?r.id:r[c];return v==null?null:(typeof v==="object"?JSON.stringify(v):(typeof v==="boolean"?(v?1:0):v))}))}st.free()}
+    const res=d.exec(sqlText);d.close();
+    if(!res.length){sqlOut='<span class="muted">Query ran. No rows returned.</span>'}
+    else{const r=res[res.length-1];sqlOut=`<table class="t"><thead><tr>${r.columns.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${r.values.slice(0,200).map(v=>`<tr>${v.map(x=>`<td>${esc(x)}</td>`).join("")}</tr>`).join("")}</tbody></table><div class="muted small" style="padding:6px 0">${r.values.length} rows</div>`}
+  }catch(err){sqlOut=`<div class="banner" style="background:var(--red-soft)">${esc(err.message||err)}</div>`}
+  out.innerHTML=sqlOut;
+}
+
+/* business setup */
+PAGES.business={head:()=>head("Business setup","Make the CRM fit your business. The AI reads all of this.",""),
+ body(){const b=biz();return `<form class="panel" id="bizForm"><div class="ph"><h3>Business profile</h3></div><div class="pad" style="display:flex;flex-direction:column;gap:14px">
+  <div class="frow"><div class="f"><label for="b_name">Business name</label><input id="b_name" value="${esc(b.name)}"></div><div class="f"><label for="b_type">Type of business</label><input id="b_type" value="${esc(b.type)}" placeholder="Beauty salon, dental clinic, car service…"></div><div class="f"><label for="b_city">City</label><input id="b_city" value="${esc(b.city)}"></div></div>
+  <div class="frow"><div class="f"><label for="b_address">Address</label><input id="b_address" value="${esc(b.address)}"></div><div class="f"><label for="b_hours">Opening hours</label><input id="b_hours" value="${esc(b.hours)}"></div><div class="f"><label for="b_phone">Phone</label><input id="b_phone" value="${esc(b.phone)}"></div></div>
+  <div class="frow"><div class="f"><label for="b_staff">What you call staff</label><input id="b_staff" value="${esc(b.staff_label)}" placeholder="Master, Doctor, Trainer"></div><div class="f"><label for="b_svc">What you call services</label><input id="b_svc" value="${esc(b.service_label)}" placeholder="Service, Procedure, Class"></div><div class="f"><label for="b_lang">Client languages</label><input id="b_lang" value="${esc(b.languages)}"></div></div>
+ </div><div class="ph" style="border-top:1px solid var(--line)"><h3>AI administrator</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:14px">
+  <div class="f"><label for="b_tone">Tone of voice</label><textarea id="b_tone">${esc(b.tone)}</textarea></div>
+  <div class="f"><label for="b_catch">Brand phrase (the AI uses it in greetings and confirmations)</label><input id="b_catch" value="${esc(b.catchphrase||"")}" placeholder="e.g. Красота начинается с заботы ✨"></div>
+  <div class="frow"><div class="f"><label for="b_pp">Prepayment, % of price</label><input id="b_pp" type="number" min="0" max="100" value="${esc(b.prepay_percent)}"></div><div class="f"><label for="b_ppmin">Prepayment needed from price, ₸</label><input id="b_ppmin" type="number" min="0" value="${esc(b.prepay_min_price)}"></div>
+  <div class="f"><label for="b_tier">AI speed</label><select id="b_tier"><option value="quick" ${b.ai_tier==="quick"?"selected":""}>Fast replies</option><option value="default" ${b.ai_tier==="default"?"selected":""}>Smarter, slower</option></select></div></div>
+  <label class="switch"><input type="checkbox" id="b_auto" ${b.autopilot!==false?"checked":""}> New chats start with AI autopilot on</label>
+ </div><div class="mf" style="border-top:1px solid var(--line)"><button class="btn danger" type="button" data-act="resetDemo">Reset demo data…</button><span style="flex:1"></span><button class="btn create" type="submit">Save</button></div></form>`}};
+document.addEventListener("submit",e=>{if(e.target.id!=="bizForm")return;e.preventDefault();const v=id=>document.getElementById(id).value;
+  put("settings","business",{...biz(),name:v("b_name"),type:v("b_type"),city:v("b_city"),address:v("b_address"),hours:v("b_hours"),phone:v("b_phone"),staff_label:v("b_staff"),service_label:v("b_svc"),languages:v("b_lang"),tone:v("b_tone"),catchphrase:v("b_catch"),prepay_percent:+v("b_pp")||0,prepay_min_price:+v("b_ppmin")||0,ai_tier:v("b_tier"),autopilot:document.getElementById("b_auto").checked});toast("Saved. The AI uses the new settings from the next message.")});
+
+/* ---------- modals ---------- */
+function modal(title,body,foot,wide){$("#modal").innerHTML=`<div class="scrim" data-scrim><div class="modal ${wide?"wide":""}" role="dialog" aria-label="${esc(title)}"><div class="ph"><h3>${esc(title)}</h3><span class="grow"></span><button class="x" data-close aria-label="Close">×</button></div><div class="mb">${body}</div>${foot?`<div class="mf">${foot}</div>`:""}</div></div>`;const f=$("#modal input:not([type=hidden]),#modal select,#modal textarea");f&&f.focus()}
+function closeModal(){$("#modal").innerHTML=""}
+document.addEventListener("click",e=>{if(e.target.matches("[data-scrim]")||e.target.closest("[data-close]"))closeModal()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+const opt=(list,sel)=>list.map(([v,l])=>`<option value="${esc(v)}" ${v===sel?"selected":""}>${esc(l)}</option>`).join("");
+
+function apptModal(id,pre={}){
+  const a=id?S.appointments[id]:{status:"Booked",source:"Admin",...pre};
+  const P=id?vals("payments").filter(p=>p.appointment_id===id):[];
+  modal(id?"Booking "+id:"New booking",`
+   <div class="frow"><div class="f"><label for="ap_c">Client</label><select id="ap_c">${opt(vals("clients").sort((x,y)=>x.display_name.localeCompare(y.display_name)).map(c=>[c.id,c.display_name+" · "+c.id]),a.client_id)}</select></div>
+   <div class="f"><label for="ap_s">Service</label><select id="ap_s">${opt(vals("services").filter(s=>s.is_active!==false).map(s=>[s.id,s.name+" · "+money(s.price_kzt)]),a.service_code)}</select></div></div>
+   <div class="frow"><div class="f"><label for="ap_m">${esc(biz().staff_label||"Master")}</label><select id="ap_m">${opt(vals("masters").map(m=>[m.id,m.full_name]),a.master_id)}</select></div>
+   <div class="f"><label for="ap_d">Start</label><input id="ap_d" type="datetime-local" step="1800" value="${esc((a.start_datetime||dt(new Date())).replace(" ","T"))}"></div>
+   <div class="f"><label for="ap_st">Status</label><select id="ap_st">${opt(["Booked","Confirmed","Completed","Cancelled","No-show"].map(s=>[s,s]),a.status)}</select></div></div>
+   <div id="ap_err"></div>
+   ${id?`<div><b>Payments</b> ${P.length?P.map(p=>`<div class="small">${p.id} · ${money(p.amount_kzt)} · ${esc(p.kind)} ${pill(p.status)}</div>`).join(""):'<span class="muted small">none</span>'}</div><div class="muted small">Source: ${esc(a.source||"")} · created ${esc(a.created_at||"")}</div>`:""}`,
+   `${id?`<button class="btn" data-takepay="${id}">Take full payment</button>`:""}<span style="flex:1"></span><button class="btn" data-close>Close</button><button class="btn create" data-saveappt="${id||""}">${id?"Save":"Book"}</button>`);
+}
+function saveAppt(id){
+  const v=x=>document.getElementById(x).value;const code=v("ap_s"),mid=v("ap_m"),st=v("ap_d").replace("T"," ").slice(0,16),status=v("ap_st"),err=$("#ap_err");
+  if(!v("ap_c")||!code||!mid||!st){err.innerHTML='<div class="banner">Fill in client, service, master and time.</div>';return}
+  if(!mastersFor(code).includes(mid)){err.innerHTML=`<div class="banner">${esc(mst(mid).full_name)} does not do ${esc(svc(code).name)}. Pick: ${mastersFor(code).map(m=>esc(mst(m).full_name)).join(", ")}.</div>`;return}
+  const s=parseDT(st),dur=svc(code).duration_min;const clash=vals("appointments").find(a=>a.id!==id&&a.master_id===mid&&active(a)&&status!=="Cancelled"&&(()=>{const b=parseDT(a.start_datetime);return s<apptEnd(a)&&new Date(s.getTime()+dur*60000)>b})());
+  if(clash){err.innerHTML=`<div class="banner">This time overlaps booking ${clash.id} (${clash.start_datetime}). One master cannot have two visits at once.</div>`;return}
+  const base=id?S.appointments[id]:{source:"Admin",created_at:dt(new Date())};
+  const nid=id||nextId("appointments","AP-",4,1000);put("appointments",nid,{...base,client_id:v("ap_c"),service_code:code,master_id:mid,start_datetime:st,status});
+  if(status==="Completed")vals("conversations").filter(c=>c.client_id===v("ap_c")&&(c.stage==="Paid"||c.stage==="Booked")).forEach(c=>patch("conversations",c.id,{stage:"Visited"}));
+  closeModal();toast(id?"Booking saved":"Booked "+nid);
+}
+function clientModal(id){
+  const c=id?S.clients[id]:{display_name:"",phone:"",notes:""};const A=id?vals("appointments").filter(a=>a.client_id===id).sort((a,b)=>b.start_datetime.localeCompare(a.start_datetime)):[];
+  modal(id?c.display_name:"New client",`<div class="frow"><div class="f"><label for="cl_n">Name</label><input id="cl_n" value="${esc(c.display_name)}"></div><div class="f"><label for="cl_p">Phone</label><input id="cl_p" value="${esc(c.phone)}"></div></div>
+   <div class="f"><label for="cl_no">Notes (the AI sees them)</label><textarea id="cl_no">${esc(c.notes)}</textarea></div>
+   ${id?`<div class="memory"><b>AI memory</b> <span class="muted small">preferences the AI learned in chats</span>${(c.prefs||[]).length?`<ul style="margin:6px 0 0;padding-left:18px">${c.prefs.map((p,i)=>`<li>${esc(p.text)} <span class="muted small">· ${esc(p.source||"")} ${fmtAt(p.at)}</span> <button class="x" title="Forget" aria-label="Forget" data-forget="${id}|${i}">×</button></li>`).join("")}</ul>`:'<div class="muted small">Nothing yet. The AI adds things like a favourite master or an allergy when the client mentions them.</div>'}<form id="memAdd" data-memfor="${id}" style="display:flex;gap:6px;margin-top:6px"><input class="inp" id="memT" placeholder="Add by hand, e.g. Любит приходить по субботам утром"><button class="btn sm" type="submit">Add</button></form></div>
+   <div><b>Messengers</b><div class="small">${vals("client_channels").filter(x=>x.client_id===id).map(x=>`${ms(x.messenger)} <span class="code">${esc(x.external_user_id)}</span>`).join(" &nbsp; ")||"none"}</div></div>
+   <div class="tw"><table class="t"><thead><tr><th>Date</th><th>Service</th><th>Master</th><th>Status</th></tr></thead><tbody>${A.slice(0,20).map(a=>`<tr class="click" data-appt="${a.id}"><td>${a.start_datetime}</td><td>${esc(svc(a.service_code)?.name)}</td><td>${esc(mst(a.master_id)?.full_name)}</td><td>${pill(a.status)}</td></tr>`).join("")||'<tr><td colspan="4" class="muted">No visits yet</td></tr>'}</tbody></table></div><div class="muted small">Spent ${money(revenueOf(A))} · ${A.filter(a=>a.status==="No-show").length} no-shows</div>`:""}`,
+   `${id?`<button class="btn" data-bookfor="${id}">Book a visit</button>`:""}<span style="flex:1"></span><button class="btn" data-close>Close</button><button class="btn create" data-saveclient="${id||""}">Save</button>`,true);
+}
+function serviceModal(id){const s=id?S.services[id]:{name:"",duration_min:60,price_kzt:0,category:"",is_active:true};
+  modal(id?s.name:"New service",`<div class="frow">${id?"":`<div class="f"><label for="sv_id">Code (2 letters-2 digits)</label><input id="sv_id" placeholder="NS-07" maxlength="5"></div>`}<div class="f"><label for="sv_n">Name</label><input id="sv_n" value="${esc(s.name)}"></div><div class="f"><label for="sv_c">Category</label><input id="sv_c" value="${esc(s.category)}"></div></div>
+  <div class="frow"><div class="f"><label for="sv_d">Duration, min (15–240)</label><input id="sv_d" type="number" min="15" max="240" step="15" value="${s.duration_min}"></div><div class="f"><label for="sv_p">Price, ₸ (more than 0)</label><input id="sv_p" type="number" min="1" value="${s.price_kzt}"></div></div>
+  <label class="switch"><input type="checkbox" id="sv_a" ${s.is_active!==false?"checked":""}> Active (the AI can offer it)</label><div id="sv_err"></div>`,`<span style="flex:1"></span><button class="btn" data-close>Close</button><button class="btn create" data-saveservice="${id||""}">Save</button>`)}
+function masterModal(id){const m=id?S.masters[id]:{full_name:"",specialization:"",work_start:"09:00",work_end:"20:00",days:[1,2,3,4,5,6],is_active:true};const mine=id?servicesOf(id):[];
+  modal(id?m.full_name:"New "+(biz().staff_label||"master").toLowerCase(),`<div class="frow"><div class="f"><label for="ms_n">Full name</label><input id="ms_n" value="${esc(m.full_name)}"></div><div class="f"><label for="ms_s">Specialization</label><input id="ms_s" value="${esc(m.specialization)}"></div></div>
+  <div class="frow"><div class="f"><label for="ms_ws">Starts</label><input id="ms_ws" type="time" value="${m.work_start}"></div><div class="f"><label for="ms_we">Ends</label><input id="ms_we" type="time" value="${m.work_end}"></div></div>
+  <div><b class="small">Working days</b><div class="checks">${[1,2,3,4,5,6,0].map(d=>`<label><input type="checkbox" class="ms_day" value="${d}" ${(m.days||[]).includes(d)?"checked":""}>${DOW[d]}</label>`).join("")}</div></div>
+  <div><b class="small">Services this person does (bridge table master_services)</b><div class="checks">${vals("services").map(s=>`<label><input type="checkbox" class="ms_svc" value="${s.id}" ${mine.includes(s.id)?"checked":""}>${esc(s.name)}</label>`).join("")}</div></div>
+  <label class="switch"><input type="checkbox" id="ms_a" ${m.is_active!==false?"checked":""}> Active (deactivate instead of deleting, so old bookings keep their master)</label>`,`<span style="flex:1"></span><button class="btn" data-close>Close</button><button class="btn create" data-savemaster="${id||""}">Save</button>`)}
+function kbModal(id){const k=id?S.knowledge[id]:{title:"",category:"General",content:""};
+  modal(id?k.title:"New knowledge entry",`<div class="frow"><div class="f"><label for="kb_t">Title</label><input id="kb_t" value="${esc(k.title)}"></div><div class="f"><label for="kb_c">Category</label><input id="kb_c" value="${esc(k.category)}" list="kbcats"><datalist id="kbcats">${[...new Set(vals("knowledge").map(x=>x.category))].map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div></div>
+  <div class="f"><label for="kb_x">Content. Write it the way you would explain it to a new administrator.</label><textarea id="kb_x" style="min-height:220px">${esc(k.content)}</textarea></div>`,
+  `${id?`<button class="btn danger" data-delkb="${id}">Delete</button>`:""}<span style="flex:1"></span><button class="btn" data-close>Close</button><button class="btn create" data-savekb="${id||""}">Save</button>`,true)}
+function newConvModal(){modal("New chat",`<p class="muted small" style="margin:0">Simulates a client who writes to the business from a messenger. In the real system this comes from the messenger API (FR-01).</p>
+  <div class="frow"><div class="f"><label for="nc_m">Messenger</label><select id="nc_m"><option>Telegram</option><option>WhatsApp</option><option>Instagram</option></select></div><div class="f"><label for="nc_n">Contact name in the messenger</label><input id="nc_n" placeholder="e.g. tetya_gulya"></div></div>
+  <div class="f"><label for="nc_t">First message from the client</label><textarea id="nc_t" placeholder="добрый вечер подскажите пожалуйста у вас окрашивание сколько стоит и когда можно прийти">добрый вечер подскажите пожалуйста у вас окрашивание сколько стоит и когда можно прийти</textarea></div>`,
+  `<span style="flex:1"></span><button class="btn" data-close>Cancel</button><button class="btn create" data-createconv>Start chat</button>`)}
+
+document.addEventListener("click",async e=>{
+  const T=e.target.closest("[data-act],[data-appt],[data-client],[data-service],[data-master],[data-kb],[data-saveappt],[data-saveclient],[data-saveservice],[data-savemaster],[data-savekb],[data-delkb],[data-newat],[data-setst],[data-conv],[data-openconv],[data-as],[data-aireply],[data-stopai],[data-pay],[data-resolve],[data-delconv],[data-createconv],[data-markpaid],[data-refund],[data-takepay],[data-bookfor],[data-backconv],[data-confirmreset]");
+  if(!T)return;const d=T.dataset;
+  if(d.act==="newAppt")return apptModal(null,{start_datetime:dt(new Date(Math.ceil(Date.now()/1800000)*1800000))});
+  if(d.act==="newClient")return clientModal(null);
+  if(d.act==="newService")return serviceModal(null);
+  if(d.act==="newMaster")return masterModal(null);
+  if(d.act==="newKb")return kbModal(null);
+  if(d.act==="newConv")return newConvModal();
+  if(d.act==="resetDemo")return modal("Reset demo data?",`<p style="margin:0">This replaces every table with the demo salon data. Chats, clients and bookings you added will be lost.</p>`,`<span style="flex:1"></span><button class="btn" data-close>Cancel</button><button class="btn danger" data-confirmreset>Reset</button>`);
+  if("confirmreset" in d){closeModal();await seedAll(true);return}
+  if("saveappt" in d)return saveAppt(d.saveappt||null);
+  if("appt" in d)return apptModal(d.appt);
+  if("bookfor" in d)return apptModal(null,{client_id:d.bookfor,start_datetime:dt(new Date(Math.ceil(Date.now()/1800000)*1800000))});
+  if("newat" in d){const [m,t]=d.newat.split("|");const code=servicesOf(m)[0];return apptModal(null,{master_id:m,start_datetime:t,service_code:code})}
+  if("client" in d)return clientModal(d.client);
+  if("service" in d)return serviceModal(d.service);
+  if("master" in d)return masterModal(d.master);
+  if("kb" in d)return kbModal(d.kb);
+  if("saveclient" in d){const v=x=>document.getElementById(x).value.trim();if(!v("cl_n"))return toast("Name is required");const id=d.saveclient||nextId("clients","CL-",4);put("clients",id,{...(S.clients[id]||{created_at:dt(new Date())}),display_name:v("cl_n"),phone:v("cl_p"),notes:v("cl_no")});closeModal();return toast("Client saved")}
+  if("saveservice" in d){const v=x=>document.getElementById(x)?.value.trim();let id=d.saveservice;const err=$("#sv_err");
+    if(!id){id=(v("sv_id")||"").toUpperCase();if(!/^[A-Z]{2}-\d{2}$/.test(id))return err.innerHTML='<div class="banner">Code must look like NS-07.</div>';if(S.services[id])return err.innerHTML='<div class="banner">This code is already used. Primary keys must be unique.</div>'}
+    const dur=+v("sv_d"),pr=+v("sv_p");if(!v("sv_n"))return err.innerHTML='<div class="banner">Name is required.</div>';if(!(dur>=15&&dur<=240))return err.innerHTML='<div class="banner">Duration must be 15–240 minutes.</div>';if(!(pr>0))return err.innerHTML='<div class="banner">Price must be more than 0.</div>';
+    put("services",id,{name:v("sv_n"),category:v("sv_c"),duration_min:dur,price_kzt:pr,is_active:document.getElementById("sv_a").checked});closeModal();return toast("Service saved")}
+  if("savemaster" in d){const v=x=>document.getElementById(x).value.trim();if(!v("ms_n"))return toast("Name is required");const id=d.savemaster||nextId("masters","MS-",2);
+    put("masters",id,{full_name:v("ms_n"),specialization:v("ms_s"),work_start:v("ms_ws"),work_end:v("ms_we"),days:[...document.querySelectorAll(".ms_day:checked")].map(x=>+x.value),is_active:document.getElementById("ms_a").checked});
+    const want=new Set([...document.querySelectorAll(".ms_svc:checked")].map(x=>x.value));for(const code of servicesOf(id))if(!want.has(code))del("master_services",id+"__"+code);
+    for(const code of want)if(!S.master_services[id+"__"+code])put("master_services",id+"__"+code,{master_id:id,service_code:code,skill_level:"Senior",since_date:ymd(new Date())});closeModal();return toast("Saved")}
+  if("savekb" in d){const v=x=>document.getElementById(x).value.trim();if(!v("kb_t")||!v("kb_x"))return toast("Title and content are required");put("knowledge",d.savekb||nextId("knowledge","KB-",1),{title:v("kb_t"),category:v("kb_c")||"General",content:v("kb_x"),updated_at:nowISO()});closeModal();return toast("The AI now knows this")}
+  if("delkb" in d){del("knowledge",d.delkb);closeModal();return toast("Entry deleted")}
+  if("setst" in d){const [id,st]=d.setst.split("|");patch("appointments",id,{status:st});return toast(id+" marked "+st)}
+  if("conv" in d||"openconv" in d){curConv=d.conv||d.openconv;if(route!=="inbox")go("inbox");else render();return}
+  if("backconv" in d){curConv=null;return render()}
+  if("as" in d){composeAs=d.as;return render()}
+  if("aireply" in d)return aiReply(d.aireply);
+  if("stopai" in d){aiCtl[d.stopai]?.abort();return}
+  if("pay" in d){const [pid,cid]=d.pay.split("|");const p=S.payments[pid];if(!p||p.status==="Paid")return;
+    await patch("payments",pid,{status:"Paid",paid_at:dt(new Date()),method:"Kaspi QR"});const a=S.appointments[p.appointment_id];if(a&&a.status==="Booked")patch("appointments",p.appointment_id,{status:"Confirmed"});
+    patch("conversations",cid,{stage:"Paid"});await pushMsg(cid,{from:"system",text:`Payment received: ${money(p.amount_kzt)} (Kaspi QR). Booking confirmed.`});if(S.conversations[cid]?.ai_enabled)aiReply(cid);return}
+  if("resolve" in d){patch("conversations",d.resolve,{needs_human:false,ai_enabled:true});return pushMsg(d.resolve,{from:"system",text:"Administrator handled the issue. AI autopilot is back on."})}
+  if("delconv" in d){del("conversations",d.delconv);curConv=null;return}
+  if("createconv" in d){const v=x=>document.getElementById(x).value.trim();const m=v("nc_m"),n=v("nc_n")||"guest_"+Math.floor(Math.random()*9000+1000),t=v("nc_t");
+    const id=nextId("conversations","CV-",4);await put("conversations",id,{messenger:m,contact:n,external_user_id:m.slice(0,2).toLowerCase()+"_"+Math.floor(Math.random()*90000+10000),client_id:null,stage:"New",ai_enabled:biz().autopilot!==false,needs_human:false,updated_at:nowISO(),messages:[]});
+    closeModal();curConv=id;composeAs="client";go("inbox");if(t){await pushMsg(id,{from:"client",text:t});if(S.conversations[id].ai_enabled)aiReply(id)}return}
+  if("markpaid" in d){patch("payments",d.markpaid,{status:"Paid",paid_at:dt(new Date())});return toast("Marked as paid")}
+  if("refund" in d){patch("payments",d.refund,{status:"Refunded"});return toast("Refund recorded")}
+  if("takepay" in d){const a=S.appointments[d.takepay];put("payments",nextId("payments","PM-",5),{appointment_id:d.takepay,amount_kzt:svc(a.service_code).price_kzt,kind:"full",method:"Card",status:"Paid",created_at:dt(new Date()),paid_at:dt(new Date())});closeModal();return toast("Payment recorded")}
+});
+document.addEventListener("change",e=>{
+  const t=e.target.closest("[data-aitoggle]");if(t){patch("conversations",t.dataset.aitoggle,{ai_enabled:t.checked,needs_human:t.checked?false:S.conversations[t.dataset.aitoggle].needs_human});return}
+  const s=e.target.closest("[data-stage]");if(s)patch("conversations",s.dataset.stage,{stage:s.value});
+});
+
+/* ---------- boot ---------- */
+let seeding=false;
+async function seedAll(replace){
+  const D=demoData();
+  if(!live){COLS.forEach(c=>S[c]=D[c]);render();toast("Demo data loaded");return}
+  if(seeding)return;seeding=true;
+  const jobs=[];if(replace)for(const c of COLS)for(const id of Object.keys(S[c]))if(!D[c][id])jobs.push(()=>db.collection(c).doc(id).delete());
+  for(const c of COLS)for(const id of Object.keys(D[c]))jobs.push(()=>db.collection(c).doc(id).set(D[c][id]));
+  let done=0;const show=()=>{$("#banner").innerHTML=`<div class="banner"><b>Loading demo data…</b> ${done} of ${jobs.length} records. Keep this tab open.</div>`};show();
+  const run=async job=>{for(let k=0;k<5;k++){try{await job();return}catch(e){if(e&&(e.code==="resource_exhausted"||e.code==="unavailable")){await new Promise(r=>setTimeout(r,1500*2**k));continue}throw e}}throw new Error("The database is busy. Press Load demo data again in a minute.")};
+  try{let i=0;await Promise.all([...Array(6)].map(async()=>{while(i<jobs.length){const j=jobs[i++];await run(j);done++;if(done%10===0)show()}}));toast("Demo data loaded")}
+  catch(e){toast(e.code==="invalid_argument"?"You have view-only access, so demo data cannot be loaded.":(e.message||String(e)))}
+  finally{seeding=false;setBanner()}
+}
+function setBanner(){
+  const b=$("#banner");
+  if(!live){b.innerHTML=`<div class="banner"><span>Demo on GitHub Pages: changes stay in this browser tab and the AI is off. <a href="https://claude.ai/artifact/ADSNg68LNiherEJNbSeMdR" target="_blank" rel="noopener">Open the live version with the AI</a> or run the full system from the repository.</span></div>`;return}
+  if(seeding)return;
+  if(loaded.size===COLS.length&&!Object.keys(S.services).length){b.innerHTML=`<div class="banner"><b>The database is empty.</b> Load the demo salon (services, staff, 30 clients, 6 weeks of bookings, sample chats) to try the CRM.${canWrite?' <button class="btn create sm" data-loaddemo>Load demo data</button>':""}</div>`;return}
+  b.innerHTML="";
+}
+document.addEventListener("click",e=>{if(e.target.closest("[data-loaddemo]"))seedAll(false)});
+function tick(){const n=new Date();$("#clock").textContent=DOW[n.getDay()]+" "+hm(n)}
+setInterval(tick,30000);tick();
+(async function boot(){
+  const h=location.hash.slice(1);if(PAGES[h])route=h;
+  const C=window.claude;
+  if(!(C&&C.use)){const D=demoData();COLS.forEach(c=>S[c]=D[c]);$("#modeChip").textContent="Offline demo";$("#aiChip").innerHTML='<span class="led off"></span>AI off (open on claude.ai)';setBanner();render();return}
+  render();
+  const [dbx,sx,ux]=C&&C.use?await Promise.all([C.use("db"),C.use("sample"),C.use("user")]):[null,null,null];
+  sample=sx||null;
+  $("#aiChip").innerHTML=`<span class="led ${sample?"":"off"}"></span>${sample?"AI administrator online":"AI off (open on claude.ai)"}`;
+  if(ux){try{const w=await ux.can("data.write");if(w===false)canWrite=false}catch(_){}}
+  if(dbx){db=dbx;live=true;$("#modeChip").textContent="Live database";
+    for(const c of COLS){db.collection(c).onSnapshot(snap=>{const o={};snap.docs.forEach(d=>{if(!deleting[c+"/"+d.id])o[d.id]=d.data()});for(const id in S[c])if(inflight[c+"/"+id]>0)o[id]=S[c][id];S[c]=o;loaded.add(c);setBanner();scheduleRender()},err=>toast("Database error: "+err.message))}
+  }else{$("#modeChip").textContent="Offline demo";const D=demoData();COLS.forEach(c=>S[c]=D[c]);setBanner();render()}
+})();
+</script>
+
+</body>
+</html>

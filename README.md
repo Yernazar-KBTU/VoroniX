@@ -14,6 +14,16 @@ Clients write in **Telegram, WhatsApp or Instagram**. The AI answers **only from
 | Business-specific AI | “Teach the AI”: paste promotions, rules, a slogan; the AI sorts them into knowledge entries and settings in the database and uses them in replies | `teach.test.ts`, `ai-flow.test.ts` |
 | BR-01 no invented prices | prices come from `services`, unknown services are refused | `ai-flow.test.ts` |
 
+## Try it
+
+| | Link | What works |
+|---|---|---|
+| Demo in the browser | [GitHub Pages](https://GITHUB_USER.github.io/crm-small-business/) | The whole CRM with a demo salon; changes stay in your tab, the AI is off |
+| Demo with the AI | [claude.ai](https://claude.ai/artifact/ADSNg68LNiherEJNbSeMdR) | Same CRM with a live AI administrator and a shared database |
+| Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/GITHUB_USER/crm-small-business) | API, web CRM and PostgreSQL from `render.yaml`, free plan |
+
+On the first open of a deployed copy, press **Load demo data** in the banner.
+
 ## Quick start
 
 ```bash
@@ -57,7 +67,9 @@ apps/
     test/unit          45 tests, no database
     test/integration   54 tests on a real PostgreSQL
   web/                 single-page CRM (12 pages), live updates over SSE
-db/migrations/         001_init.sql (13 tables), 002_reporting.sql (views, read-only role)
+db/migrations/         001_init.sql (13 tables), 002_reporting.sql (views, read-only role), 003_brand.sql
+site/                  browser-only demo published to GitHub Pages
+render.yaml            one-click deploy of the full system to Render
 tests/load/            autocannon load test
 docs/                  architecture, database, test report, screenshots
 ```
