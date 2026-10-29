@@ -18,9 +18,9 @@ Clients write in **Telegram, WhatsApp or Instagram**. The AI answers **only from
 
 | | Link | What works |
 |---|---|---|
-| Demo in the browser | [GitHub Pages](https://GITHUB_USER.github.io/voronix/) | The whole CRM with the demo barbershop Barberista; changes stay in your tab, the AI is off |
+| Demo in the browser | [GitHub Pages](https://Yernazar-KBTU.github.io/VoroniX/) | The whole CRM with the demo barbershop Barberista; changes stay in your tab, the AI is off |
 | Demo with the AI | [claude.ai](https://claude.ai/artifact/ADSNg68LNiherEJNbSeMdR) | Same CRM with a live AI administrator and a shared database |
-| Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/GITHUB_USER/voronix) | API, web CRM and PostgreSQL from `render.yaml`, free plan |
+| Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/Yernazar-KBTU/VoroniX) | API, web CRM and PostgreSQL from `render.yaml`, free plan |
 
 On the first open of a deployed copy, press **Load demo data** in the banner to fill it with Barberista: 8 services, 4 barbers, 30 clients, 8 weeks of visits and 4 chats.
 
