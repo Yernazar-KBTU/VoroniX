@@ -20,9 +20,12 @@ const Env = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   CHANNEL_WEBHOOK_SECRET: z.string().optional(),
 
-  // Optional HTTP basic auth for the admin UI and API
-  BASIC_AUTH_USER: z.string().optional(),
-  BASIC_AUTH_PASSWORD: z.string().optional(),
+  // Sign-in is required for the API. Only the test setup turns it off, so the
+  // older API tests can call routes directly; test/integration/auth.test.ts turns it back on.
+  AUTH_REQUIRED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
 
   // Allows POST /api/admin/reset-demo. Off in production by default.
   ALLOW_DEMO_RESET: z

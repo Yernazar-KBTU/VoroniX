@@ -18,11 +18,6 @@ services:
         sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false
-      # Optional login for the CRM pages (leave empty for an open demo).
-      - key: BASIC_AUTH_USER
-        sync: false
-      - key: BASIC_AUTH_PASSWORD
-        sync: false
 
 databases:
   - name: voronix-db

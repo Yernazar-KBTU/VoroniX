@@ -2,7 +2,9 @@
 
 import "./styles.css";
 import "./modals.js";
-import { subscribe } from "./api.js";
+import { api, subscribe } from "./api.js";
+import { showAuth } from "./auth.js";
+import { logoMark } from "./logo.js";
 import { PAGES } from "./pages/index.js";
 import { aiBusy, loadAll, meta, reload, vals } from "./store.js";
 import { initChrome, render, renderTyping, scheduleRender, ui } from "./ui.js";
@@ -25,7 +27,40 @@ function showEmptyBanner() {
 
 let dropped = false;
 
+/** The signed-in person in the header, with sign out. */
+function setAccount(me) {
+  meta.user = me.user;
+  meta.business = me.business;
+  $(".brand .dot")?.replaceWith(Object.assign(document.createElement("span"), { innerHTML: logoMark(26) }).firstElementChild);
+  const chip = document.createElement("button");
+  chip.className = "chip account";
+  chip.title = `${me.user.email} · ${me.business?.name ?? ""}`;
+  chip.innerHTML = `<span class="avatar">${esc((me.user.full_name || me.user.email).trim().charAt(0).toUpperCase())}</span><span>${esc(me.user.full_name)}</span><span class="out">Sign out</span>`;
+  chip.addEventListener("click", async () => {
+    await api.post("/auth/logout").catch(() => {});
+    location.reload();
+  });
+  $("#clock").after(chip);
+}
+
+async function signedIn() {
+  try {
+    return await api.get("/auth/me");
+  } catch (e) {
+    if (e.status === 401) return showAuth();
+    throw e;
+  }
+}
+
 async function boot() {
+  let me;
+  try {
+    me = await signedIn();
+  } catch (e) {
+    document.body.innerHTML = `<div class="empty"><b>Cannot reach the server</b>${esc(e.message)}</div>`;
+    return;
+  }
+  setAccount(me);
   initChrome();
   const h = location.hash.slice(1);
   if (PAGES[h]) ui.route = h;

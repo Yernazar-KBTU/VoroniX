@@ -244,3 +244,9 @@ table.t tr.click:hover td{background:var(--panel2)}
 .answer.bad{background:var(--red-soft);color:var(--red)}
 .mono{font-family:var(--mono);font-size:12px}
 @media (max-width:900px){.intwrap{grid-template-columns:1fr}.ipanel{position:static}}
+/* account chip in the header */
+.chip.account{cursor:pointer;gap:8px;padding:3px 12px 3px 3px}
+.chip.account .avatar{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#6d5dfc,#22c3e6);color:#fff;font-weight:700;font-size:12px}
+.chip.account .out{display:none;color:var(--chrome-dim)}
+.chip.account:hover .out{display:inline}
+.brand .vx-mark{flex:none}
