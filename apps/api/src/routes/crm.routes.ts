@@ -57,7 +57,7 @@ crmRouter.get("/payments", async (_req, res) => {
 });
 /** Client paid (demo payment button, or a payment provider webhook). */
 crmRouter.post("/payments/:id/pay", async (req, res) => {
-  const { payment, conversations } = await booking.markPaid(req.params.id, req.body?.method ?? "Kaspi QR");
+  const { payment, conversations } = await booking.markPaid(req.params.id, req.body?.method ?? booking.defaultPayMethod());
   res.json(payment);
   for (const id of conversations) {
     const { rows } = await pool.query<{ ai_enabled: boolean }>(`SELECT ai_enabled FROM conversations WHERE conversation_id = $1`, [id]);

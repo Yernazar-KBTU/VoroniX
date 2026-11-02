@@ -37,6 +37,15 @@
 .auth-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 20px;font-size:13px;color:#3a4060}
 .auth-row label{display:flex;gap:8px;align-items:center;cursor:pointer}
 .auth-row input{width:16px;height:16px;accent-color:var(--vx-a)}
+.auth-row a{color:#5b4cf0;font-weight:600;text-decoration:none}
+.auth-row a:hover{text-decoration:underline}
+.auth-home{display:inline-flex;text-decoration:none}
+.auth-google{width:100%;height:46px;display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px solid var(--vx-line);border-radius:12px;background:#fff;color:#1f1f1f;font-weight:600;font-size:15px;cursor:pointer;transition:background .15s,border-color .15s}
+.auth-google:hover{background:#f7f8fc;border-color:#cfd3e3}
+.auth-or{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--vx-mute);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--vx-line)}
+.auth-badge{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:26px;background:linear-gradient(135deg,#6d5dfc1f,#22c3e61f);margin-bottom:14px}
+.auth-card .sub b{color:var(--vx-ink)}
 .auth-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .auth-go{width:100%;height:48px;border:0;border-radius:12px;cursor:pointer;color:#fff;font-weight:700;font-size:15px;letter-spacing:.01em;background:linear-gradient(90deg,var(--vx-a),#4f7cff 55%,var(--vx-b));box-shadow:0 10px 24px #6d5dfc4d;transition:transform .12s,box-shadow .12s,filter .12s}
 .auth-go:hover{filter:brightness(1.06);box-shadow:0 12px 28px #6d5dfc66}

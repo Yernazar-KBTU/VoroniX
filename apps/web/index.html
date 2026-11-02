@@ -3,31 +3,271 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>VoroniX · AI CRM</title>
-  <meta name="description" content="AI CRM for appointment-based small businesses">
+  <title>VoroniX · AI front desk for appointment businesses</title>
+  <meta name="description" content="VoroniX answers your clients in Telegram, books visits into your calendar and keeps every client in one CRM. Made for salons, barbershops, clinics and studios.">
+  <meta name="theme-color" content="#0b0e2a">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="VoroniX">
+  <meta property="og:title" content="VoroniX · AI front desk for appointment businesses">
+  <meta property="og:description" content="Answers clients, books visits, sends reminders. Chats, calendar and clients in one CRM.">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <script type="module" src="/src/site/site.js"></script>
 </head>
-<body>
-  <div class="app" id="app">
-    <nav class="rail" id="rail" aria-label="Sections"></nav>
-    <div class="main">
-      <header class="top">
-        <div class="brand"><span class="dot"></span><span id="bizName">VoroniX</span> <small>VoroniX</small></div>
-        <label class="tsearch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="gsearch" placeholder="Search clients, phones, services"></label>
-        <span class="grow"></span>
-        <span class="chip ai" id="aiChip"><span class="led"></span>AI administrator</span>
-        <span class="chip" id="modeChip">Connecting…</span>
-        <span class="chip" id="clock"></span>
-      </header>
-      <div class="phead" id="phead"></div>
-      <div id="banner"></div>
-      <main id="view"></main>
+<body class="landing">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="brand" href="/" aria-label="VoroniX home">
+        <svg class="mark" width="34" height="34" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="vxl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d5dfc"/><stop offset="1" stop-color="#22c3e6"/></linearGradient></defs><rect width="48" height="48" rx="13" fill="url(#vxl)"/><path d="M13 15 L24 35 L35 15" fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M35 6.5 l1.4 3.1 3.1 1.4 -3.1 1.4 -1.4 3.1 -1.4 -3.1 -3.1 -1.4 3.1 -1.4z" fill="#fff"/></svg>
+        <span class="word">Voroni<b>X</b></span>
+      </a>
+      <nav class="nav-links" id="navLinks" aria-label="Page sections">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#industries">Who it is for</a>
+        <a href="#faq">FAQ</a>
+        <a class="only-sm" href="/app#signin" data-signin>Sign in</a>
+      </nav>
+      <div class="nav-cta">
+        <a class="link hide-sm" href="/app#signin" data-signin>Sign in</a>
+        <a class="btn btn-primary" href="/app#signup" data-start>Start free</a>
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><span></span></button>
+      </div>
     </div>
-  </div>
-  <div id="modal"></div>
-  <div id="toast" class="toast" hidden></div>
-  <script type="module" src="/src/main.js"></script>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="wrap hero-in">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="pulse"></span>AI front desk for appointment businesses</p>
+          <h1>Your clients write.<br><span class="grad">VoroniX answers and books.</span></h1>
+          <p class="lead">An AI administrator for salons, barbershops, clinics and studios. It replies with your real prices and free times, books the visit into your calendar and reminds the client before it comes.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary btn-lg" href="/app#signup" data-start>Start free</a>
+            <a class="btn btn-glass btn-lg" href="#how">See how it works</a>
+          </div>
+          <ul class="fine">
+            <li>No credit card needed</li>
+            <li>Any currency and time zone</li>
+            <li>You can take over any chat</li>
+          </ul>
+        </div>
+
+        <div class="hero-art" aria-hidden="true">
+          <div class="phone">
+            <div class="ph-top">
+              <span class="ph-av">G</span>
+              <span class="ph-who"><b>Glow Nails</b><small>bot · online</small></span>
+            </div>
+            <div class="ph-chat">
+              <div class="b in">Hi! Any time for a gel manicure on Friday?</div>
+              <div class="b out"><i>AI</i>Hi Lia! On Friday Maya is free at 11:00, 14:30 and 17:00. Which one suits you?</div>
+              <div class="b in">14:30 please</div>
+              <div class="b out"><i>AI</i>Booked: gel manicure, Friday 14:30 with Maya, $45. I will remind you the day before.</div>
+            </div>
+            <div class="ph-input"><span>Message</span><span class="send"></span></div>
+          </div>
+          <div class="float f1">
+            <span class="fi ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+            <span><b>New booking</b><small>Fri 14:30 · Gel manicure · Maya</small></span>
+          </div>
+          <div class="float f2">
+            <span class="fi bell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg></span>
+            <span><b>Reminder planned</b><small>Thursday 14:30, a day before</small></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="strip" aria-label="Works with">
+      <div class="wrap strip-in">
+        <span class="strip-k">Works with</span>
+        <span class="tag"><i style="background:#2aa3e0"></i>Telegram</span>
+        <span class="tag"><i style="background:#25b860"></i>WhatsApp<small>through a bridge</small></span>
+        <span class="tag"><i style="background:#d6338a"></i>Instagram<small>through a bridge</small></span>
+        <span class="tag"><i style="background:#d97757"></i>Claude by Anthropic</span>
+        <span class="tag"><i style="background:#4285f4"></i>Google Calendar<small>feed</small></span>
+      </div>
+    </section>
+
+    <section class="sec" id="features">
+      <div class="wrap">
+        <div class="sec-head">
+          <p class="kicker">What it does</p>
+          <h2>Everything your front desk does in chats</h2>
+          <p>On top of a CRM your whole team can use: clients, calendar, payments and numbers.</p>
+        </div>
+        <div class="feat-grid">
+          <article class="feat">
+            <span class="fic" style="--c:#5b4cf0"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></span>
+            <h3>Answers at any hour</h3>
+            <p>Clients write to your Telegram bot and get a reply without waiting for you. WhatsApp and Instagram connect through a bridge such as Make or n8n.</p>
+          </article>
+          <article class="feat">
+            <span class="fic" style="--c:#2f7cf6"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2.5 2.5L16 13"/></svg></span>
+            <h3>Books only real free times</h3>
+            <p>The AI checks each team member's hours and existing visits. The database itself refuses two visits at the same time for one person.</p>
+          </article>
+          <article class="feat">
+            <span class="fic" style="--c:#0fa3b1"><svg viewBox="0 0 24 24"><path d="M4 4h10a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h6M8 12h6"/></svg></span>
+            <h3>Knows your business</h3>
+            <p>Teach it prices, rules and promotions in plain words. It answers only from what you added and hands the chat to you when it is not sure.</p>
+          </article>
+          <article class="feat">
+            <span class="fic" style="--c:#e5484d"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg></span>
+            <h3>Fewer no-shows</h3>
+            <p>Clients who booked in a chat get a reminder there 24 hours and 2 hours before the visit. Set a deposit rule for pricier services and see who has paid.</p>
+          </article>
+          <article class="feat">
+            <span class="fic" style="--c:#14975a"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 0 1 0 8M22 21c0-3-2-5-4-5.6"/></svg></span>
+            <h3>One CRM for the team</h3>
+            <p>Client cards with full history, a calendar for every team member, a sales funnel of all chats, and payments in one place.</p>
+          </article>
+          <article class="feat">
+            <span class="fic" style="--c:#b87307"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+            <h3>Numbers that matter</h3>
+            <p>Revenue, no-shows by service, and how many chats the AI closed on its own. Add your bookings to Google Calendar with a private feed.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec sec-tint" id="how">
+      <div class="wrap">
+        <div class="sec-head">
+          <p class="kicker">How it works</p>
+          <h2>Three steps from <span class="nw">sign-up</span> to the first booking</h2>
+        </div>
+        <ol class="steps">
+          <li>
+            <span class="num">1</span>
+            <h3>Create your workspace</h3>
+            <p>Sign up with your email. Pick your type of business, currency and time zone, and VoroniX sets itself up around them.</p>
+          </li>
+          <li>
+            <span class="num">2</span>
+            <h3>Add services, team and rules</h3>
+            <p>Prices and durations, who works when, and anything the AI should know. A short checklist guides you through it.</p>
+          </li>
+          <li>
+            <span class="num">3</span>
+            <h3>Connect Telegram</h3>
+            <p>Create a bot with @BotFather, paste its token on the Integrations page, and the AI starts answering your clients.</p>
+          </li>
+        </ol>
+        <div class="center"><a class="btn btn-primary btn-lg" href="/app#signup" data-start>Create your workspace</a></div>
+      </div>
+    </section>
+
+    <section class="sec" id="industries">
+      <div class="wrap">
+        <div class="sec-head">
+          <p class="kicker">Who it is for</p>
+          <h2>Any business that works by appointment</h2>
+          <p>VoroniX adapts its words to yours: masters or doctors, services or classes.</p>
+        </div>
+        <ul class="inds">
+          <li><span>💈</span>Barbershops</li>
+          <li><span>💇</span>Beauty salons</li>
+          <li><span>💅</span>Nail studios</li>
+          <li><span>💆</span>Spa and massage</li>
+          <li><span>🦷</span>Dental and medical clinics</li>
+          <li><span>🧘</span>Fitness and yoga studios</li>
+          <li><span>📚</span>Tutors and classes</li>
+          <li><span>📅</span>Any other appointment business</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="sec sec-dark" id="trust">
+      <div class="wrap">
+        <div class="sec-head">
+          <p class="kicker">Built to be trusted</p>
+          <h2>Your clients' data stays under your control</h2>
+        </div>
+        <div class="trust-grid">
+          <article>
+            <h3>Separate by design</h3>
+            <p>Every business gets its own space in the database. One account cannot see another account's clients, chats or bookings.</p>
+          </article>
+          <article>
+            <h3>The AI works through fixed actions</h3>
+            <p>It can find free times, link a client card, book, move or cancel a visit, create a payment link and hand the chat to a person. Nothing else.</p>
+          </article>
+          <article>
+            <h3>You stay in charge</h3>
+            <p>Switch the AI off for any chat with one click and reply yourself. Chats that need a person wait for you on the dashboard.</p>
+          </article>
+          <article>
+            <h3>Careful with sign-in</h3>
+            <p>Passwords are stored only as scrypt hashes. Password reset links work once and expire after one hour.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="faq">
+      <div class="wrap narrow">
+        <div class="sec-head">
+          <p class="kicker">FAQ</p>
+          <h2>Questions owners ask first</h2>
+        </div>
+        <div class="faq">
+          <details>
+            <summary>Which messengers work today?</summary>
+            <p>Telegram works directly: you connect your own bot with a token from @BotFather. WhatsApp and Instagram messages come in through a secure webhook, so you connect them with a bridge such as Make or n8n, or through a WhatsApp Business API provider. Replies go back through an outgoing webhook.</p>
+          </details>
+          <details>
+            <summary>Which AI writes the replies?</summary>
+            <p>Claude by Anthropic. It is included, and you can connect your own Anthropic API key instead. If Claude is not available, simple built-in rules answer, and you can always take over the chat.</p>
+          </details>
+          <details>
+            <summary>What happens when the AI does not know the answer?</summary>
+            <p>It is told to answer only from your services, schedule and knowledge base. When it is not sure, it hands the chat to a person, and the chat appears under "Needs attention" on your dashboard.</p>
+          </details>
+          <details>
+            <summary>Does it work in my country and currency?</summary>
+            <p>Each workspace has its own currency and time zone, and bookings and reminders follow your local clock. The AI answers in the languages you list in your business settings.</p>
+          </details>
+          <details>
+            <summary>How much does it cost?</summary>
+            <p>Creating an account is free and needs no credit card.</p>
+          </details>
+          <details>
+            <summary>Where is my data stored and who sees it?</summary>
+            <p>Your data is kept in the VoroniX database and is used only to run the service for you. The <a href="/privacy">Privacy Policy</a> lists every service that receives data and why.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap final-in">
+        <h2>Give your front desk a helper that never sleeps</h2>
+        <p>Set up your workspace today and let the AI take the next message.</p>
+        <a class="btn btn-primary btn-lg" href="/app#signup" data-start>Start free</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-in">
+      <a class="brand" href="/" aria-label="VoroniX home">
+        <svg class="mark" width="28" height="28" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="13" fill="url(#vxl)"/><path d="M13 15 L24 35 L35 15" fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M35 6.5 l1.4 3.1 3.1 1.4 -3.1 1.4 -1.4 3.1 -1.4 -3.1 -3.1 -1.4 3.1 -1.4z" fill="#fff"/></svg>
+        <span class="word">Voroni<b>X</b></span>
+      </a>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="/terms">Terms of Service</a>
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/app#signin" data-signin>Sign in</a>
+        <a data-contact hidden>Contact</a>
+      </nav>
+      <p class="copy">© <span data-year>2026</span> VoroniX</p>
+    </div>
+  </footer>
 </body>
 </html>

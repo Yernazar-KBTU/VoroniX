@@ -4,6 +4,7 @@ import { freeSlots, isSlotFree, nextDates, type FreeSlotsResult } from "../domai
 import type { Appointment, ApptStatus, Payment } from "../domain/types.js";
 import { badRequest, conflict, notFound } from "../lib/errors.js";
 import { normDT, wallClock } from "../lib/time.js";
+import { currentTenant } from "../tenancy/context.js";
 import { bus } from "../realtime/bus.js";
 import * as appts from "../repositories/appointments.repo.js";
 import * as catalog from "../repositories/catalog.repo.js";
@@ -132,6 +133,9 @@ export async function moveBooking(id: string, newStart: string, db = pool): Prom
   return moved;
 }
 
+/** Kaspi QR for tenge businesses, card everywhere else. */
+export const defaultPayMethod = (): Payment["method"] => (currentTenant()?.currency === "KZT" ? "Kaspi QR" : "Card");
+
 /** Payment link for a visit: the prepayment share, or the full price. */
 export async function createPaymentLink(appointmentId: string, kind: Payment["kind"], db = pool): Promise<Payment> {
   const p = await tx(async (c) => {
@@ -140,7 +144,7 @@ export async function createPaymentLink(appointmentId: string, kind: Payment["ki
     const service = (await catalog.getService(c, a.service_code))!;
     const biz = await getSettings(c);
     const amount = kind === "full" ? service.price_kzt : prepaymentFor(service, biz) || Math.round(service.price_kzt * 0.3);
-    return pays.insertPayment(c, { appointment_id: a.id, amount_kzt: amount, kind, method: "Kaspi QR", status: "Pending" });
+    return pays.insertPayment(c, { appointment_id: a.id, amount_kzt: amount, kind, method: defaultPayMethod(), status: "Pending" });
   }, db);
   bus.changed("payments");
   return p;
@@ -150,7 +154,7 @@ export async function createPaymentLink(appointmentId: string, kind: Payment["ki
  * The client paid. One transaction: payment -> Paid, visit -> Confirmed,
  * the chat's deal -> Paid, and a note in the chat. Returns the chats to notify.
  */
-export async function markPaid(paymentId: string, method = "Kaspi QR", db = pool): Promise<{ payment: Payment; conversations: string[] }> {
+export async function markPaid(paymentId: string, method = defaultPayMethod(), db = pool): Promise<{ payment: Payment; conversations: string[] }> {
   let fresh = false;
   const result = await tx(async (c) => {
     const p = await pays.getPayment(c, paymentId, true);

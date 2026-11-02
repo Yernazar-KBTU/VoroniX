@@ -45,7 +45,8 @@ const Env = z.object({
   ALLOW_DEMO_RESET: z.enum(["true", "false"]).optional(),
 });
 
-const parsed = Env.safeParse(process.env);
+// An empty line such as "SUPPORT_EMAIL=" in .env means "not set", not an empty value.
+const parsed = Env.safeParse(Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== "")));
 if (!parsed.success) {
   console.error("Invalid environment:", parsed.error.flatten().fieldErrors);
   process.exit(1);

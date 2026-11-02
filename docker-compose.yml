@@ -16,9 +16,13 @@ services:
       db: { condition: service_healthy }
     environment:
       DATABASE_URL: postgresql://crm:crm@db:5432/crm
+      APP_URL: http://localhost:3000
       ALLOW_DEMO_RESET: "true"
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     ports: ["3000:3000"]
 volumes:
   pgdata:

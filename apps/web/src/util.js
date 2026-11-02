@@ -15,16 +15,48 @@ export const addDays = (d, n) => {
   x.setDate(x.getDate() + n);
   return x;
 };
-export const money = (n) => Math.round(+n || 0).toLocaleString("ru-RU").replace(/\s/g, " ") + " ₸";
+/** Time zone and currency of the signed-in business; set once after sign-in. */
+const place = { tz: "UTC", currency: "USD" };
+let moneyFmt = null;
+export function setBusinessPlace(tz, currency) {
+  place.tz = tz || "UTC";
+  place.currency = currency || "USD";
+  moneyFmt = null;
+  clockFmt = null;
+}
+export const businessCurrency = () => place.currency;
+export const businessZone = () => place.tz;
+
+/** "25 000 ₸", "$45", "€30": whole units of the business currency. */
+export function money(n) {
+  const v = Math.round(+n || 0);
+  if (place.currency === "KZT") return v.toLocaleString("ru-RU").replace(/\s/g, " ") + " ₸";
+  moneyFmt ??= new Intl.NumberFormat("en-US", { style: "currency", currency: place.currency, currencyDisplay: "narrowSymbol", minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return moneyFmt.format(v);
+}
+
+let clockFmt = null;
+/**
+ * Now on the business's clock, as a Date whose local getters read that wall
+ * time. Visit times are wall-clock strings in the business time zone, so
+ * "today" and the red now-line follow the business, not the browser.
+ */
+export function nowLocal() {
+  clockFmt ??= new Intl.DateTimeFormat("en-US", { timeZone: place.tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const p = Object.fromEntries(clockFmt.formatToParts(new Date()).map((x) => [x.type, x.value]));
+  return new Date(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+}
 export const toMin = (t) => {
   const [h, m] = String(t).split(":").map(Number);
   return h * 60 + (m || 0);
 };
 export const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** "1 visit", "3 visits" */
+export const count = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 export const fmtAt = (iso) => {
   const d = new Date(iso);
   if (isNaN(d)) return "";
-  return ymd(d) === ymd(new Date()) ? hm(d) : `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${hm(d)}`;
+  return ymd(d) === ymd(new Date()) ? hm(d) : `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${hm(d)}`; // message times: the reader's own clock
 };
 
 let toastTimer;

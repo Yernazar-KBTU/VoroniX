@@ -140,3 +140,12 @@ describe("live events", () => {
     closers.forEach((f) => f());
   });
 });
+
+describe("demo data", () => {
+  it("renames the business after the demo it loads, and leaves other businesses alone", async () => {
+    await request(app).post("/api/admin/reset-demo").set("Cookie", cookie).expect(200);
+    expect((await request(app).get("/api/auth/me").set("Cookie", cookie).expect(200)).body.business.name).toBe("Barberista");
+    expect(await count(other, "clients")).toBe(30);
+    expect(await count(demo, "conversations")).toBe(4);
+  });
+});

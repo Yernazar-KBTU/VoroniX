@@ -1,8 +1,8 @@
-// Rendering loop, navigation rail, modal and the shared UI state.
+// Rendering loop, sidebar, modal and the shared UI state.
 
 import { PAGES } from "./pages/index.js";
-import { S, aiBusy, biz, vals } from "./store.js";
-import { $, esc } from "./util.js";
+import { S, aiBusy, biz, meta, vals } from "./store.js";
+import { $, DOW, businessZone, esc, hm, nowLocal } from "./util.js";
 
 /** UI state that survives re-renders. */
 export const ui = {
@@ -27,14 +27,19 @@ const ICONS = {
   business:
     '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.5 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.6 14H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7.5l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
   integrations: '<path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/>',
-  menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
 };
-const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
+export const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+
+/** The sidebar: three groups, in the order an owner uses them during a day. */
 const NAV = [
-  ["dashboard", "Dashboard"], ["inbox", "Chats"], ["pipeline", "Sales funnel"], ["calendar", "Calendar"], ["clients", "Clients"], ["sep"],
-  ["services", "Services"], ["staff", "Staff"], ["payments", "Payments"], ["sep"],
-  ["knowledge", "AI knowledge base"], ["analytics", "Analytics"], ["database", "Database"], ["integrations", "Integrations"], ["business", "Business setup"],
+  ["Work", [["dashboard", "Dashboard"], ["inbox", "Chats"], ["pipeline", "Sales funnel"], ["calendar", "Calendar"], ["clients", "Clients"]]],
+  ["Business", [["services", "Services"], ["staff", "Staff"], ["payments", "Payments"]]],
+  ["AI and tools", [["knowledge", "AI knowledge base"], ["analytics", "Analytics"], ["database", "Database"], ["integrations", "Integrations"], ["business", "Business setup"]]],
 ];
+const LABEL = Object.fromEntries(NAV.flatMap(([, items]) => items));
+
+/** The database page exists only where the server allows the SQL console (teaching setups). */
+export const canSee = (route) => Boolean(PAGES[route]) && (route !== "database" || Boolean(meta.features?.sql_console));
 
 export function go(r) {
   if (location.hash !== "#" + r) location.hash = r;
@@ -46,13 +51,17 @@ export function go(r) {
 
 function renderRail() {
   const needs = vals("conversations").filter((c) => c.needs_human || (c.messages || []).slice(-1)[0]?.from === "client").length;
-  $("#rail").innerHTML =
-    `<button class="menu" id="railToggle" title="Expand menu">${icon("menu")}<span class="lbl">Menu</span></button>` +
-    NAV.map(([k, l]) =>
-      k === "sep"
-        ? '<div class="sep"></div>'
-        : `<button data-go="${k}" class="${ui.route === k ? "on" : ""}" title="${l}" aria-label="${l}">${icon(k)}<span class="lbl">${l}</span>${k === "inbox" && needs ? `<span class="badge">${needs}</span>` : ""}</button>`,
-    ).join("");
+  $("#rail").innerHTML = NAV.map(
+    ([group, items]) =>
+      `<div class="grp">${group}</div>` +
+      items
+        .filter(([k]) => canSee(k))
+        .map(([k, l]) => {
+          const on = ui.route === k;
+          return `<button type="button" data-go="${k}" class="${on ? "on" : ""}" title="${l}" aria-label="${l}"${on ? ' aria-current="page"' : ""}>${icon(k)}<span class="lbl">${l}</span>${k === "inbox" && needs ? `<span class="badge" aria-label="${needs} waiting">${needs}</span>` : ""}</button>`;
+        })
+        .join(""),
+  ).join("");
 }
 
 let queued = false;
@@ -66,7 +75,11 @@ export function scheduleRender() {
 }
 
 export function render() {
-  $("#bizName").textContent = biz().name || "VoroniX";
+  if (!canSee(ui.route)) ui.route = "dashboard";
+  const b = biz();
+  $("#bizName").textContent = b.name || meta.business?.name || "VoroniX";
+  $("#bizMeta").textContent = [b.type, b.city].filter(Boolean).join(" · ") || "Workspace";
+  document.title = `${LABEL[ui.route] || "VoroniX"} · ${b.name || "VoroniX"}`;
   renderRail();
   const view = $("#view");
   // Keep typed text, focus and chat scroll position across re-renders.
@@ -117,31 +130,31 @@ export function modal(title, body, foot, wide) {
 }
 export const closeModal = () => ($("#modal").innerHTML = "");
 
+/** Phone layout: the sidebar slides in over the page. */
+function setMenu(open) {
+  $("#app").classList.toggle("menu-open", open);
+  $("#menuBtn").setAttribute("aria-expanded", String(open));
+}
+
 export function initChrome() {
   document.addEventListener("click", (e) => {
     const g = e.target.closest("[data-go]");
-    if (g) return go(g.dataset.go);
-    if (e.target.closest("#railToggle")) {
-      $("#app").classList.toggle("wide");
-      try {
-        localStorage.setItem("crm-wide", $("#app").classList.contains("wide") ? "1" : "");
-      } catch {
-        /* storage blocked */
-      }
+    if (g) {
+      setMenu(false);
+      return go(g.dataset.go);
     }
+    if (e.target.closest("#menuBtn")) return setMenu(!$("#app").classList.contains("menu-open"));
+    if (e.target.closest("[data-closemenu]")) return setMenu(false);
     if (e.target.matches("[data-scrim]") || e.target.closest("[data-close]")) closeModal();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeModal();
+    if (e.key !== "Escape") return;
+    closeModal();
+    setMenu(false);
   });
-  try {
-    if (localStorage.getItem("crm-wide")) $("#app").classList.add("wide");
-  } catch {
-    /* storage blocked */
-  }
   window.addEventListener("hashchange", () => {
     const h = location.hash.slice(1);
-    if (PAGES[h]) {
+    if (canSee(h)) {
       ui.route = h;
       render();
     }
@@ -151,11 +164,13 @@ export function initChrome() {
     if (ui.gq && ui.route !== "clients") go("clients");
     else scheduleRender();
   });
+  // The business's own clock, not the browser's: visits are booked in its time zone.
   const tick = () => {
-    const n = new Date();
-    $("#clock").textContent = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][n.getDay()] + " " + n.toTimeString().slice(0, 5);
+    const n = nowLocal();
+    $("#clock").textContent = `${DOW[n.getDay()]} ${hm(n)}`;
+    $("#clock").title = `Time at the business (${businessZone()})`;
   };
-  setInterval(tick, 30000);
+  setInterval(tick, 20000);
   tick();
 }
 

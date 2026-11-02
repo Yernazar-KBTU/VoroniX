@@ -13,6 +13,7 @@ import { listConversations } from "../repositories/conversations.repo.js";
 import { listKnowledge } from "../repositories/knowledge.repo.js";
 import { listPayments } from "../repositories/payments.repo.js";
 import { getSettings } from "../repositories/settings.repo.js";
+import { renameBusiness } from "../tenancy/tenants.js";
 import { getEngine, idle } from "../ai/runner.js";
 import { SqlBody } from "./schemas.js";
 import { askKnowledge } from "../ai/ask.js";
@@ -122,6 +123,7 @@ insightsRouter.post("/admin/reset-demo", async (_req, res) => {
   if (!config.ALLOW_DEMO_RESET) throw new HttpError(403, "Demo reset is disabled", "forbidden");
   await idle();
   const counts = await seedDemo(pool);
+  await renameBusiness(requireTenant(), (await getSettings(pool)).name); // the demo brings its own name
   bus.changed("settings", "services", "masters", "master_services", "clients", "client_channels", "appointments", "payments", "conversations", "knowledge");
   res.json(counts);
 });

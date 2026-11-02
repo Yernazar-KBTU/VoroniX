@@ -154,7 +154,7 @@ export async function seedDemo(db: pg.Pool = pool, today = wallClock()): Promise
         ["ai", "Записали вас на пятницу в 18:00 к Тимуру Б. Для VIP-ритуала нужна предоплата 30%: 6 600 ₸, кнопка оплаты ниже.", 189],
         ["pay", "Payment for VIP-ритуал", 189, "PM-00001"],
         ["system", "Payment received: 6 600 ₸ (Kaspi QR). Booking confirmed.", 182],
-        ["ai", "Оплата получена, спасибо! Ждём вас в пятницу в 18:00. Напомним за день до визита. Barberista — стиль без компромиссов 💈", 181],
+        ["ai", "Оплата получена, спасибо! Ждём вас в пятницу в 18:00. Напомним за день до визита. Barberista: стиль без компромиссов 💈", 181],
       ],
     },
     {
@@ -193,7 +193,7 @@ export async function seedDemo(db: pg.Pool = pool, today = wallClock()): Promise
     await c.query(
       `INSERT INTO business_settings (id, name, business_type, city, address, hours, phone, tone, languages, prepay_percent, prepay_min_price_kzt, autopilot, catchphrase)
        VALUES (1, 'Barberista', 'Barbershop', 'Almaty', 'ул. Панфилова 98 (демо-адрес)', 'ежедневно 10:00–21:00',
-               '+7 700 000 0000 (demo)', 'Дружелюбно и по делу, как хороший барбер. Обращаться на «вы». Не больше одного эмодзи.', 'Russian, Kazakh, English', 30, 20000, TRUE, 'Barberista — стиль без компромиссов 💈')`,
+               '+7 700 000 0000 (demo)', 'Дружелюбно и по делу, как хороший барбер. Обращаться на «вы». Не больше одного эмодзи.', 'Russian, Kazakh, English', 30, 20000, TRUE, 'Barberista: стиль без компромиссов 💈')`,
     );
     await insertMany(c, "services (service_code, name, duration_min, price_kzt, category)", services);
     await insertMany(c, "masters (master_id, full_name, specialization, work_start, work_end, work_days)", masters);

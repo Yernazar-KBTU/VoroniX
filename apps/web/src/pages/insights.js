@@ -1,20 +1,21 @@
 // Analytics, database explorer with the SQL console, and business setup.
 
 import { api } from "../api.js";
-import { S, act, active, biz, revenueOf, vals } from "../store.js";
+import { S, act, active, biz, meta, revenueOf, vals } from "../store.js";
 import { render } from "../ui.js";
-import { $, esc, head, money, msIcon, isMessenger, ymd } from "../util.js";
+import { $, businessCurrency, count, esc, head, money, msIcon, isMessenger, nowLocal, ymd } from "../util.js";
 
-let anMonth = ymd(new Date()).slice(0, 7);
+let anMonth = null; // the business's current month, set on first use
 let noShows = null;
 let aiStats = null;
 async function loadAnalytics() {
+  anMonth ??= ymd(nowLocal()).slice(0, 7);
   [noShows, aiStats] = await Promise.all([api.get(`/analytics/no-shows?month=${anMonth}`), api.get("/analytics/ai")]);
   render();
 }
 
 export const analytics = {
-  head: () => head("Analytics", "", `<input type="month" class="inp" id="anMonth" data-fresh="1" value="${anMonth}" style="width:auto" aria-label="Month">`),
+  head: () => (anMonth ??= ymd(nowLocal()).slice(0, 7)) && head("Analytics", "", `<input type="month" class="inp" id="anMonth" data-fresh="1" value="${anMonth}" style="width:auto" aria-label="Month">`),
   body() {
     if (!noShows) {
       loadAnalytics().catch(() => {});
@@ -26,7 +27,7 @@ export const analytics = {
     const chMax = Math.max(1, ...Object.values(ch));
     const top = noShows[0];
     return `<div class="grid g2">
-  <section class="panel tw"><div class="ph"><h3>No-shows by service</h3><span class="grow"></span><span class="pill">Task 9 query · view v_no_show_by_service</span></div>
+  <section class="panel tw"><div class="ph"><h3>No-shows by service</h3><span class="grow"></span><span class="muted small">Finished visits in the month</span></div>
    <table class="t" data-testid="noshow-table"><thead><tr><th>Service</th><th>Finished visits</th><th>No-shows</th><th>No-show %</th><th style="text-align:right">Lost revenue</th></tr></thead><tbody>${
      noShows.map((r) => `<tr><td><b>${esc(r.service)}</b></td><td>${r.finished_visits}</td><td>${r.no_shows}</td><td><div style="display:flex;gap:8px;align-items:center"><span style="width:44px">${r.no_show_pct}%</span><div class="hbar" style="flex:1"><i style="width:${Math.min(100, r.no_show_pct * 2)}%"></i></div></div></td><td style="text-align:right">${money(r.lost_revenue_kzt)}</td></tr>`).join("") ||
      `<tr><td colspan="5"><div class="empty"><b>No finished visits this month</b></div></td></tr>`
@@ -35,8 +36,8 @@ export const analytics = {
   <section class="panel"><div class="ph"><h3>Bookings by channel</h3></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">${
     Object.entries(ch).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div><div style="display:flex;justify-content:space-between"><span>${isMessenger(k) ? msIcon(k) + " " : ""}${esc(k)}</span><b>${v}</b></div><div class="hbar"><i style="width:${(100 * v) / chMax}%;background:var(--accent)"></i></div></div>`).join("") || '<div class="muted">No bookings</div>'
   }
-   <div class="muted small">Revenue this month: <b>${money(revenueOf(A))}</b> from ${A.filter((a) => a.status === "Completed").length} completed visits.</div></div></section>
-  <section class="panel tw" style="grid-column:1/-1"><div class="ph"><h3>AI response time (NFR-01: reply within 5 s)</h3><span class="grow"></span><span class="muted small">from the ai_runs log</span></div>
+   <div class="muted small">Revenue this month: <b>${money(revenueOf(A))}</b> from ${count(A.filter((a) => a.status === "Completed").length, "completed visit")}.</div></div></section>
+  <section class="panel tw" style="grid-column:1/-1"><div class="ph"><h3>AI reply time</h3><span class="grow"></span><span class="muted small">Goal: a reply within 5 seconds</span></div>
    <table class="t"><thead><tr><th>Engine</th><th>Replies</th><th>Average</th><th>p50</th><th>p95</th><th>Max</th><th>Within 5 s</th><th>Handed to human</th><th>Errors</th></tr></thead><tbody>${
      (aiStats || []).map((r) => `<tr><td class="code">${esc(r.engine)}</td><td>${r.runs}</td><td>${r.avg_ms} ms</td><td>${r.p50_ms} ms</td><td>${r.p95_ms} ms</td><td>${r.max_ms} ms</td><td>${r.within_5s_pct}%</td><td>${r.handoffs}</td><td>${r.errors}</td></tr>`).join("") || `<tr><td colspan="9" class="muted">No AI replies yet</td></tr>`
    }</tbody></table></section></div>`;
@@ -97,7 +98,7 @@ let sqlText = PRESETS[0];
 let sqlOut = "";
 
 export const database = {
-  head: () => head("Database", "PostgreSQL tables behind every screen. Same schema as in our Task 9 report.", ""),
+  head: () => head("Database", "The PostgreSQL tables behind every screen, with a read-only SQL console.", ""),
   body() {
     const t = SCHEMA.find((x) => x[0] === dbTable);
     const rows = vals(t[0]).slice(0, 60);
@@ -157,9 +158,9 @@ export const business = {
  </div><div class="ph" style="border-top:1px solid var(--line)"><h3>AI administrator</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:14px">
   <div class="f"><label for="b_tone">Tone of voice</label><textarea id="b_tone">${esc(b.tone)}</textarea></div>
   <div class="f"><label for="b_catch">Brand phrase (the AI uses it in greetings and confirmations)</label><input id="b_catch" value="${esc(b.catchphrase || "")}" placeholder="e.g. Красота начинается с заботы ✨"></div>
-  <div class="frow"><div class="f"><label for="b_pp">Prepayment, % of price</label><input id="b_pp" type="number" min="0" max="100" value="${esc(b.prepay_percent)}"></div><div class="f"><label for="b_ppmin">Prepayment needed from price, ₸</label><input id="b_ppmin" type="number" min="0" value="${esc(b.prepay_min_price)}"></div></div>
+  <div class="frow"><div class="f"><label for="b_pp">Prepayment, % of price</label><input id="b_pp" type="number" min="0" max="100" value="${esc(b.prepay_percent)}"></div><div class="f"><label for="b_ppmin">Prepayment needed from price, ${esc(businessCurrency())}</label><input id="b_ppmin" type="number" min="0" value="${esc(b.prepay_min_price)}"></div></div>
   <label class="switch"><input type="checkbox" id="b_auto" ${b.autopilot !== false ? "checked" : ""}> New chats start with AI autopilot on</label>
- </div><div class="mf" style="border-top:1px solid var(--line)"><button class="btn danger" type="button" data-act="resetDemo">Reset demo data…</button><span style="flex:1"></span><button class="btn create" type="submit">Save</button></div></form>`;
+ </div><div class="mf" style="border-top:1px solid var(--line)">${meta.features?.demo_reset ? `<button class="btn danger" type="button" data-act="resetDemo">Reset demo data…</button>` : ""}<span style="flex:1"></span><button class="btn create" type="submit">Save</button></div></form>`;
   },
 };
 

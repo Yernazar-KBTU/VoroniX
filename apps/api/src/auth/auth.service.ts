@@ -195,7 +195,8 @@ interface GoogleClaims {
   exp: number;
   nonce?: string;
   email?: string;
-  email_verified?: boolean;
+  /** Google's own example shows it as the string "true", so both forms are accepted. */
+  email_verified?: boolean | string;
   name?: string;
   given_name?: string;
 }
@@ -283,7 +284,7 @@ export async function googleCallback(res: Response, q: { code?: string; state?: 
     logger.warn({ err }, "Google sign-in failed");
     return fail("google_failed");
   }
-  if (!claims.email || claims.email_verified !== true) return fail("google_unverified");
+  if (!claims.email || (claims.email_verified !== true && claims.email_verified !== "true")) return fail("google_unverified");
 
   const email = normEmail(claims.email);
   let user = await repo.findUserByGoogle(pool, claims.sub);

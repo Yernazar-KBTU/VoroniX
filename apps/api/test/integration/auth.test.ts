@@ -188,8 +188,8 @@ describe("Continue with Google", () => {
     expect(me.body.business).toMatchObject({ name: "Mei's business", timezone: "Asia/Singapore", currency: "SGD" });
   });
 
-  it("signs the same person in again without a second business", async () => {
-    const r = await signInWithGoogle({ sub: "g-100", email: "mei@example.com", name: "Mei Tan" });
+  it("signs the same person in again without a second business, also when Google sends email_verified as a string", async () => {
+    const r = await signInWithGoogle({ sub: "g-100", email: "mei@example.com", name: "Mei Tan", email_verified: "true" });
     expect(r.headers.location).toBe("/app");
     const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM users WHERE email = 'mei@example.com'`);
     expect(rows[0].n).toBe(1);

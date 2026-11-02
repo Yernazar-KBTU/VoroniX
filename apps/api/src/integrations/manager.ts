@@ -85,7 +85,9 @@ export interface IntegrationView extends Provider {
 /** Every provider with its state. Secrets are never returned in full. */
 export async function listView(): Promise<IntegrationView[]> {
   const rows = new Map((await listIntegrations(pool)).map((r) => [r.provider, r]));
-  return PROVIDERS.map((p) => {
+  // Kaspi Pay only works in Kazakhstan: offered to tenge businesses, or to one that already connected it.
+  const offered = PROVIDERS.filter((p) => p.id !== "kaspi" || requireTenant().currency === "KZT" || rows.has("kaspi"));
+  return offered.map((p) => {
     const r = rows.get(p.id);
     // AI replies are included with the platform key; a business may still connect its own.
     const env = !r && p.id === "claude" && !!config.ANTHROPIC_API_KEY;

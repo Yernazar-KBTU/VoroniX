@@ -3,7 +3,7 @@
 import { api } from "../api.js";
 import { S, act, active, cli, svc, vals } from "../store.js";
 import { render } from "../ui.js";
-import { $, DOW, addDays, esc, head, money, msIcon, pad, parseDT, toMin, ymd } from "../util.js";
+import { $, DOW, addDays, esc, head, money, msIcon, nowLocal, pad, parseDT, toMin, ymd } from "../util.js";
 import { STAGES } from "./inbox.js";
 
 export const pipeline = {
@@ -49,13 +49,14 @@ document.addEventListener("drop", (e) => {
   if (S.conversations[id]) act(api.patch(`/conversations/${id}`, { stage: c.dataset.drop })).catch(() => {});
 });
 
-let calDay = ymd(new Date());
+let calDay = null; // the business's today, set on first render
 export const calendar = {
   head: () =>
+    (calDay ??= ymd(nowLocal())) &&
     head(
       "Calendar",
       "",
-      `<button class="btn create" data-act="newAppt">+ New booking</button><div class="tabs"><button data-cal="-1" aria-label="Previous day">←</button><button data-cal="0" class="${calDay === ymd(new Date()) ? "on" : ""}">Today</button><button data-cal="1" aria-label="Next day">→</button></div><input type="date" class="inp" id="calPick" data-fresh="1" value="${calDay}" style="width:auto" aria-label="Day">`,
+      `<button class="btn create" data-act="newAppt">+ New booking</button><div class="tabs"><button data-cal="-1" aria-label="Previous day">←</button><button data-cal="0" class="${calDay === ymd(nowLocal()) ? "on" : ""}">Today</button><button data-cal="1" aria-label="Next day">→</button></div><input type="date" class="inp" id="calPick" data-fresh="1" value="${calDay}" style="width:auto" aria-label="Day">`,
     ),
   body() {
     const M = vals("masters").filter((m) => m.is_active !== false);
@@ -77,7 +78,7 @@ export const calendar = {
       const h = Math.max(RH - 2, (dur / 30) * RH - 3);
       return `<div class="ev ${a.status}" data-appt="${a.id}" style="top:${top}px;height:${h}px;left:calc(56px + (100% - 56px) * ${ci}/${M.length} + 3px);width:calc((100% - 56px)/${M.length} - 6px)"><b>${a.start_datetime.slice(11)}</b> ${esc(cli(a.client_id)?.display_name || a.client_id)}<br><span class="muted">${esc(svc(a.service_code)?.name || "")}</span></div>`;
     }).join("");
-    const now = new Date();
+    const now = nowLocal();
     let nl = "";
     if (calDay === ymd(now)) {
       const mm = now.getHours() * 60 + now.getMinutes();
@@ -100,6 +101,6 @@ document.addEventListener("click", (e) => {
   const c = e.target.closest("[data-cal]");
   if (!c) return;
   const v = +c.dataset.cal;
-  calDay = v === 0 ? ymd(new Date()) : ymd(addDays(parseDT(calDay + " 00:00"), v));
+  calDay = v === 0 ? ymd(nowLocal()) : ymd(addDays(parseDT(calDay + " 00:00"), v));
   render();
 });
