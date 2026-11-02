@@ -128,11 +128,11 @@ describe("data quality problems from Task 7", () => {
 describe("Task 9 query", () => {
   it("v_no_show_by_service matches a direct count", async () => {
     const view = await pool.query(
-      `SELECT service_code, finished_visits::int, no_shows::int FROM v_no_show_by_service WHERE month = date_trunc('month', now())::date ORDER BY service_code`,
+      `SELECT service_code, finished_visits::int, no_shows::int FROM v_no_show_by_service WHERE month = (SELECT date_trunc('month', max(start_at))::date FROM appointments WHERE status IN ('Completed','No-show') AND start_at < date_trunc('month', now())) ORDER BY service_code`,
     );
     const direct = await pool.query(
       `SELECT service_code, COUNT(*)::int AS finished_visits, COUNT(*) FILTER (WHERE status = 'No-show')::int AS no_shows
-       FROM appointments WHERE status IN ('Completed','No-show') AND date_trunc('month', start_at) = date_trunc('month', now())
+       FROM appointments WHERE status IN ('Completed','No-show') AND date_trunc('month', start_at) = (SELECT date_trunc('month', max(start_at)) FROM appointments WHERE status IN ('Completed','No-show') AND start_at < date_trunc('month', now()))
        GROUP BY service_code ORDER BY service_code`,
     );
     expect(view.rows).toEqual(direct.rows);
