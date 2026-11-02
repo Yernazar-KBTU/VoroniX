@@ -5,12 +5,14 @@ import { migrate } from "./db/migrate.js";
 import { logger } from "./lib/logger.js";
 import { bootIntegrations, stopIntegrations } from "./integrations/manager.js";
 import { getEngine, idle } from "./ai/runner.js";
+import { startReminders } from "./services/reminder.service.js";
 
 async function main() {
   const applied = await migrate(pool);
   if (applied.length) logger.info({ applied }, "database migrated");
 
   await bootIntegrations();
+  const reminders = startReminders();
   const app = createApp();
   const server = app.listen(config.PORT, () => {
     logger.info(`CRM API on http://localhost:${config.PORT} (AI engine: ${getEngine().name})`);
@@ -19,6 +21,7 @@ async function main() {
   const shutdown = async (signal: string) => {
     logger.info(`${signal}: shutting down`);
     server.close();
+    reminders.stop();
     await stopIntegrations();
     await idle(10_000);
     await pool.end();

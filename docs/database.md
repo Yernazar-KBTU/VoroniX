@@ -34,3 +34,7 @@ Barberista demo data, October 2026 (generated relative to today, so the numbers 
 ## Payment transaction
 
 `booking.service.markPaid` locks the payment, sets it `Paid`, confirms the visit, moves the chat to `Paid` and writes a chat note in one transaction. A repeated webhook changes nothing.
+
+## Visit reminders
+
+Migration `006_reminders.sql` adds `appointment_reminders`, one row per appointment and reminder kind (`24h`, `2h`). The server checks every minute (`services/reminder.service.ts`) and writes the reminder into the client's latest chat, in the language the client writes in, so it goes out through the same messenger. A visit booked after its reminder window opened, or a client without a chat, is recorded as `skipped`, so nothing is sent twice or retried.
