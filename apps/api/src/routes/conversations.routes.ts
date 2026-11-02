@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { channelSecret } from "../integrations/manager.js";
 import { config } from "../config.js";
 import { pool } from "../db/pool.js";
@@ -11,6 +11,8 @@ import { getSettings } from "../repositories/settings.repo.js";
 import { aiStatus, replyTo, stop } from "../ai/runner.js";
 import { getOrThrow, pushMessage, receiveInbound } from "../services/conversation.service.js";
 import { ConversationCreate, ConversationPatchBody, InboundBody, MessageBody } from "./schemas.js";
+import { currentTenant, withTenant } from "../tenancy/context.js";
+import { findTenant } from "../tenancy/tenants.js";
 
 export const conversationsRouter = Router();
 
@@ -81,17 +83,32 @@ conversationsRouter.post("/conversations/:id/resolve", async (req, res) => {
   res.json(await getOrThrow(req.params.id));
 });
 
-/**
- * Webhook for messenger providers (WhatsApp Business API, Instagram, or a
- * test client). Telegram uses the bot adapter but lands in the same place.
- */
-conversationsRouter.post("/channels/:messenger/inbound", async (req, res) => {
-  const messenger = MESSENGERS.find((m) => m.toLowerCase() === req.params.messenger.toLowerCase()) as Messenger | undefined;
+async function inbound(req: Request, res: Response, requireSecret: boolean) {
+  const messenger = MESSENGERS.find((m) => m.toLowerCase() === String(req.params.messenger).toLowerCase()) as Messenger | undefined;
   if (!messenger) throw notFound("Messenger");
   const secrets = [config.CHANNEL_WEBHOOK_SECRET, await channelSecret(messenger)].filter(Boolean);
+  if (requireSecret && !secrets.length) throw new HttpError(404, `${messenger} is not connected for this business`, "not_found");
   if (secrets.length && !secrets.includes(req.get("x-channel-secret"))) throw new HttpError(401, "Bad channel secret", "unauthorized");
   const body = InboundBody.parse(req.body);
   const { conversation, created } = await receiveInbound({ messenger, ...body });
   res.status(created ? 201 : 200).json({ conversation_id: conversation.id, client_id: conversation.client_id, ai_enabled: conversation.ai_enabled });
   if (conversation.ai_enabled) void replyTo(conversation.id);
+}
+
+/**
+ * Webhook for messenger providers (WhatsApp Business API, Instagram, or a
+ * test client) of one business. The business id is in the address, the
+ * x-channel-secret header proves the sender. Telegram uses the bot adapter
+ * but lands in the same place.
+ */
+conversationsRouter.post("/channels/:business/:messenger/inbound", async (req, res) => {
+  const tenant = await findTenant(String(req.params.business));
+  if (!tenant) throw notFound("Business");
+  await withTenant(tenant, () => inbound(req, res, true));
+});
+
+/** Address without a business id, from before accounts. Only answers where a default business is set (the test setup). */
+conversationsRouter.post("/channels/:messenger/inbound", async (req, res) => {
+  if (!currentTenant()) throw notFound("Business");
+  await inbound(req, res, false);
 });

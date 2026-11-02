@@ -46,8 +46,8 @@ export class ClaudeAgent implements AgentEngine {
   readonly name: string;
   private client: Pick<Anthropic, "beta">;
 
-  constructor(opts: { client?: Pick<Anthropic, "beta">; model?: string } = {}) {
-    this.client = opts.client ?? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY, maxRetries: 2, timeout: 60_000 });
+  constructor(opts: { client?: Pick<Anthropic, "beta">; model?: string; apiKey?: string } = {}) {
+    this.client = opts.client ?? new Anthropic({ apiKey: opts.apiKey ?? config.ANTHROPIC_API_KEY, maxRetries: 2, timeout: 60_000 });
     this.name = `claude:${opts.model ?? config.AI_MODEL}`;
   }
 

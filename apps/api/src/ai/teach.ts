@@ -4,7 +4,7 @@ import { config } from "../config.js";
 import { pool } from "../db/pool.js";
 import { loadSnapshot, type CrmSnapshot } from "./context.js";
 import { parsePhone } from "./offline-nlu.js";
-import { getEngine } from "./runner.js";
+import { claudeKey, getEngine } from "./runner.js";
 
 /**
  * "Teach the AI": the owner pastes free-form notes (a promotion, rules, a
@@ -36,7 +36,7 @@ export async function organiseNotes(text: string): Promise<TeachDraft> {
 }
 
 async function withClaude(text: string, snap: CrmSnapshot): Promise<z.infer<typeof Draft>> {
-  const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
+  const client = new Anthropic({ apiKey: claudeKey() });
   const cats = [...new Set(["Promotions", "Rules", "Prices", "FAQ", "Brand", "Contacts", ...snap.knowledge.map((k) => k.category)])];
   const res = await client.beta.messages.create({
     model: config.AI_MODEL,

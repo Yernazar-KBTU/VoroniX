@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../config.js";
 import { pool } from "../db/pool.js";
 import { catalogText, knowledgeText, loadSnapshot, type CrmSnapshot } from "./context.js";
-import { getEngine } from "./runner.js";
+import { claudeKey, getEngine } from "./runner.js";
 
 /**
  * "Test the AI" on the knowledge base page: one question, answered only from
@@ -11,7 +11,7 @@ import { getEngine } from "./runner.js";
 export async function askKnowledge(question: string): Promise<{ answer: string; engine: string; source?: string }> {
   const snap = await loadSnapshot(pool);
   if (getEngine().name.startsWith("claude")) {
-    const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
+    const client = new Anthropic({ apiKey: claudeKey() });
     const res = await client.beta.messages.create({
       model: config.AI_MODEL,
       max_tokens: 2000,

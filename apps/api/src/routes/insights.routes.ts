@@ -1,4 +1,6 @@
 import { Router } from "express";
+import type pg from "pg";
+import { requireTenant } from "../tenancy/context.js";
 import { config } from "../config.js";
 import { pool } from "../db/pool.js";
 import { seedDemo } from "../db/seed.js";
@@ -32,7 +34,13 @@ insightsRouter.get("/bootstrap", async (_req, res) => {
     listConversations(pool),
     listKnowledge(pool),
   ]);
-  res.json({ settings, services, masters, master_services, clients, client_channels, appointments, payments, conversations, knowledge, ai_engine: getEngine().name });
+  const t = requireTenant();
+  res.json({
+    settings, services, masters, master_services, clients, client_channels, appointments, payments, conversations, knowledge,
+    ai_engine: getEngine().name,
+    business: { id: t.id, name: t.name, timezone: t.timezone, currency: t.currency },
+    features: { sql_console: config.SQL_CONSOLE, demo_reset: config.ALLOW_DEMO_RESET },
+  });
 });
 
 /** Task 9 query: no-show rate by service for a month. */
@@ -65,10 +73,13 @@ insightsRouter.get("/analytics/ai", async (_req, res) => {
 });
 
 /**
- * SQL console. The query runs in a READ ONLY transaction under the
- * crm_readonly role with a 3 s timeout, so it can read but never change data.
+ * SQL console. One statement (the extended protocol refuses more), in a READ
+ * ONLY transaction under the crm_readonly role with a 3 s timeout, so it can
+ * read but never change data. It is a teaching tool for a server with one
+ * business: SQL_CONSOLE=off (the production default) turns it off.
  */
 insightsRouter.post("/sql", async (req, res) => {
+  if (!config.SQL_CONSOLE) throw new HttpError(404, "The SQL console is turned off on this server", "not_found");
   const { query } = SqlBody.parse(req.body);
   const client = await pool.connect();
   const started = performance.now();
@@ -76,7 +87,7 @@ insightsRouter.post("/sql", async (req, res) => {
     await client.query("BEGIN READ ONLY");
     await client.query("SET LOCAL ROLE crm_readonly");
     await client.query("SET LOCAL statement_timeout = 3000");
-    const result = await client.query({ text: query, rowMode: "array" });
+    const result = await client.query({ text: query, rowMode: "array", queryMode: "extended" } as unknown as pg.QueryArrayConfig);
     const last = Array.isArray(result) ? result[result.length - 1] : result;
     res.json({
       columns: (last.fields ?? []).map((f: { name: string }) => f.name),
@@ -106,7 +117,7 @@ insightsRouter.post("/ai/ask", async (req, res) => {
   res.json(await askKnowledge(question));
 });
 
-/** Replaces all data with the demo salon. Disabled in production. */
+/** Replaces all data of the signed-in business with the demo barbershop. Disabled in production. */
 insightsRouter.post("/admin/reset-demo", async (_req, res) => {
   if (!config.ALLOW_DEMO_RESET) throw new HttpError(403, "Demo reset is disabled", "forbidden");
   await idle();

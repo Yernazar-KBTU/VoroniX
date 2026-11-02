@@ -1,7 +1,7 @@
 // Rules the database itself enforces, whatever client writes to it.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pool } from "../../src/db/pool.js";
-import { freshDb, quietWednesday } from "./helpers.js";
+import { demo, freshDb, quietWednesday } from "./helpers.js";
 
 const code = async (sql: string, params: unknown[] = []) => {
   try {
@@ -25,20 +25,27 @@ beforeAll(freshDb);
 afterAll(() => pool.end());
 
 describe("schema", () => {
-  it("applies every migration once, in order", async () => {
-    const { rows } = await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-    expect(rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql", "004_integrations.sql", "005_data_quality.sql", "006_reminders.sql", "007_accounts.sql"]);
+  it("applies every migration once, in order: shared ones in public, CRM ones in the business schema", async () => {
+    const core = await pool.query("SELECT version FROM public.schema_migrations ORDER BY version");
+    expect(core.rows.map((r) => r.version)).toEqual(["001_accounts.sql"]);
+    const own = await pool.query("SELECT version FROM tenant_migrations ORDER BY version");
+    expect(own.rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql", "004_integrations.sql", "005_data_quality.sql", "006_reminders.sql"]);
   });
 
-  it("has the 18 tables and 3 reporting views of the design", async () => {
-    const { rows } = await pool.query(
-      `SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> 'schema_migrations' ORDER BY 1`,
-    );
-    expect(rows.filter((r) => r.table_type === "BASE TABLE").map((r) => r.table_name)).toEqual([
-      "ai_runs", "appointment_reminders", "appointments", "business_settings", "businesses", "client_channels", "clients", "conversations", "integrations", "knowledge_entries",
-      "master_accounts", "master_services", "masters", "messages", "payments", "services", "sessions", "users",
+  it("has the 15 CRM tables and 3 reporting views in the business schema, and 4 shared tables in public", async () => {
+    const tables = (schema: string) =>
+      pool.query(
+        `SELECT table_name, table_type FROM information_schema.tables
+          WHERE table_schema = $1 AND table_name NOT IN ('schema_migrations', 'tenant_migrations') ORDER BY 1`,
+        [schema],
+      );
+    const own = (await tables(demo.schema)).rows;
+    expect(own.filter((r) => r.table_type === "BASE TABLE").map((r) => r.table_name)).toEqual([
+      "ai_runs", "appointment_reminders", "appointments", "business_settings", "client_channels", "clients", "conversations", "integrations", "knowledge_entries",
+      "master_accounts", "master_services", "masters", "messages", "payments", "services",
     ]);
-    expect(rows.filter((r) => r.table_type === "VIEW").map((r) => r.table_name)).toEqual(["v_daily_revenue", "v_no_show_by_service", "v_visits_to_close"]);
+    expect(own.filter((r) => r.table_type === "VIEW").map((r) => r.table_name)).toEqual(["v_daily_revenue", "v_no_show_by_service", "v_visits_to_close"]);
+    expect((await tables("public")).rows.map((r) => r.table_name)).toEqual(["businesses", "password_resets", "sessions", "users"]);
   });
 
   it("generates readable ids from sequences", async () => {
@@ -116,8 +123,8 @@ describe("data quality problems from Task 7", () => {
   it("P5: lists past visits that are still Booked or Confirmed", async () => {
     await pool.query(
       `INSERT INTO appointments (client_id, master_id, service_code, start_at, end_at, status, source)
-       VALUES ('CL-0001', 'MS-02', 'HC-02', date_trunc('hour', now() AT TIME ZONE 'Asia/Almaty') - interval '30 days',
-               date_trunc('hour', now() AT TIME ZONE 'Asia/Almaty') - interval '30 days' + interval '30 minutes', 'Booked', 'Admin')`,
+       VALUES ('CL-0001', 'MS-02', 'HC-02', date_trunc('hour', LOCALTIMESTAMP) - interval '30 days',
+               date_trunc('hour', LOCALTIMESTAMP) - interval '30 days' + interval '30 minutes', 'Booked', 'Admin')`,
     );
     const { rows } = await pool.query(`SELECT status, hours_overdue FROM v_visits_to_close ORDER BY start_at LIMIT 1`);
     expect(rows[0].status).toBe("Booked");

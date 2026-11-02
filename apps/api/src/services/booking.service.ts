@@ -3,7 +3,7 @@ import { prepaymentFor, money } from "../domain/pricing.js";
 import { freeSlots, isSlotFree, nextDates, type FreeSlotsResult } from "../domain/scheduling.js";
 import type { Appointment, ApptStatus, Payment } from "../domain/types.js";
 import { badRequest, conflict, notFound } from "../lib/errors.js";
-import { normDT } from "../lib/time.js";
+import { normDT, wallClock } from "../lib/time.js";
 import { bus } from "../realtime/bus.js";
 import * as appts from "../repositories/appointments.repo.js";
 import * as catalog from "../repositories/catalog.repo.js";
@@ -16,7 +16,7 @@ export interface SlotSearch extends FreeSlotsResult {
 }
 
 /** Free times for a service on a date. When the day is full, also returns the nearest day with free times. */
-export async function findFreeSlots(db: Db, code: string, date: string, masterId?: string, now = new Date()): Promise<SlotSearch> {
+export async function findFreeSlots(db: Db, code: string, date: string, masterId?: string, now = wallClock()): Promise<SlotSearch> {
   const service = await catalog.getService(db, code);
   if (!service || !service.is_active) throw badRequest(`Unknown service_code ${code}`);
   let masters = await catalog.mastersForService(db, code);

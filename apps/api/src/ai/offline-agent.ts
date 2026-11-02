@@ -1,7 +1,7 @@
 import { pool } from "../db/pool.js";
 import { money, prepaymentFor } from "../domain/pricing.js";
 import type { Conversation, Service } from "../domain/types.js";
-import { DOW, parseDate, toMin } from "../lib/time.js";
+import { DOW, parseDate, toMin, wallClock } from "../lib/time.js";
 import { nextDates } from "../domain/scheduling.js";
 import { loadSnapshot, type CrmSnapshot } from "./context.js";
 import type { AgentContext, AgentEngine, AgentReply } from "./engine.js";
@@ -87,7 +87,7 @@ export class OfflineAgent implements AgentEngine {
     const all = conv.messages.filter((m) => m.from === "client").map((m) => m.text).join(" ");
     const lang = nlu.detectLang(all || "привет");
     const R = (ru: string, en: string) => (lang === "ru" ? ru : en);
-    const now = new Date();
+    const now = wallClock();
 
     if (!text) {
       const paid = since.some((m) => m.from === "system" && /Payment received/.test(m.text));
@@ -206,7 +206,7 @@ export class OfflineAgent implements AgentEngine {
     const n = nlu.ordinal(text);
     if (n !== null && st.offered[n]) return st.offered[n];
     if (nlu.saysYes(text) && st.offered.length === 1) return st.offered[0];
-    if (nlu.saysYes(text) && !nlu.parseDay(text, new Date())) return st.offered[0];
+    if (nlu.saysYes(text) && !nlu.parseDay(text, wallClock())) return st.offered[0];
     return undefined;
   }
 

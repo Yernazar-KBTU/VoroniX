@@ -1,6 +1,6 @@
 # Render Blueprint: the full system (API + web CRM + PostgreSQL) on Render's free plan.
-# New → Blueprint → pick this repository. Migrations run on start; load the demo salon
-# from the banner on the first page.
+# New → Blueprint → pick this repository. Migrations run on start. Open the site,
+# press "Start free" and create the first business.
 services:
   - type: web
     name: voronix
@@ -12,11 +12,19 @@ services:
         fromDatabase:
           name: voronix-db
           property: connectionString
-      - key: ALLOW_DEMO_RESET
-        value: "true"
+      - key: APP_URL
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: TELEGRAM_BOT_TOKEN
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: SUPPORT_EMAIL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
         sync: false
 
 databases:

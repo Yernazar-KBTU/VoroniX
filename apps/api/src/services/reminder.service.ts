@@ -1,7 +1,8 @@
 import { pool, type Db } from "../db/pool.js";
-import { config } from "../config.js";
 import { logger } from "../lib/logger.js";
-import { dt, parseDT, pad } from "../lib/time.js";
+import { dt, parseDT, pad, wallClock } from "../lib/time.js";
+import { requireTenant } from "../tenancy/context.js";
+import { forEachTenant } from "../tenancy/tenants.js";
 import { detectLang } from "../ai/offline-nlu.js";
 import { pushMessage } from "./conversation.service.js";
 
@@ -53,7 +54,7 @@ async function due(db: Db, kind: ReminderKind, now: Date): Promise<DueRow[]> {
         AND a.start_at <= $1::timestamp + make_interval(mins => $3)
         AND NOT EXISTS (SELECT 1 FROM appointment_reminders r WHERE r.appointment_id = a.appointment_id AND r.kind = $5)
       ORDER BY a.start_at`,
-    [dt(now), after, ahead, config.TZ, kind],
+    [dt(now), after, ahead, requireTenant().timezone, kind],
   );
   return rows;
 }
@@ -82,11 +83,12 @@ async function record(db: Db, id: string, kind: ReminderKind, conversationId: st
 }
 
 /**
- * Sends every reminder that is due now. A visit booked after its reminder
- * window opened, or a client with no chat, is recorded as skipped so it is
- * not retried. Returns what was done, for logs and tests.
+ * Sends every reminder of the current business that is due now. `now` is a
+ * wall-clock reading of the business's clock (lib/time.ts). A visit booked
+ * after its reminder window opened, or a client with no chat, is recorded as
+ * skipped so it is not retried. Returns what was done, for logs and tests.
  */
-export async function sendDueReminders(now = new Date(), db: Db = pool): Promise<{ sent: string[]; skipped: string[] }> {
+export async function sendDueReminders(now = wallClock(), db: Db = pool): Promise<{ sent: string[]; skipped: string[] }> {
   const out = { sent: [] as string[], skipped: [] as string[] };
   for (const { kind, minutes } of REMINDERS) {
     for (const r of await due(db, kind, now)) {
@@ -108,15 +110,20 @@ export async function sendDueReminders(now = new Date(), db: Db = pool): Promise
   return out;
 }
 
-/** Checks for due reminders every minute until stopped. */
+/** Checks every business for due reminders every minute until stopped. */
 export function startReminders(everyMs = 60_000): { stop: () => void } {
   let running = false;
   const tick = async () => {
     if (running) return;
     running = true;
     try {
-      const r = await sendDueReminders();
-      if (r.sent.length || r.skipped.length) logger.info(r, "visit reminders");
+      await forEachTenant(
+        async (t) => {
+          const r = await sendDueReminders();
+          if (r.sent.length || r.skipped.length) logger.info({ ...r, business: t.id }, "visit reminders");
+        },
+        (t, err) => logger.error({ err, business: t.id }, "visit reminders failed"),
+      );
     } catch (err) {
       logger.error({ err }, "visit reminders failed");
     } finally {

@@ -1,7 +1,7 @@
 import type { Db } from "../db/pool.js";
 import { prepaymentFor } from "../domain/pricing.js";
 import type { BusinessSettings, Conversation, KnowledgeEntry, Master, MasterService, Service } from "../domain/types.js";
-import { DOW, addDays, dt, parseDT } from "../lib/time.js";
+import { DOW, addDays, dt, parseDT, wallClock } from "../lib/time.js";
 import { listAppointments } from "../repositories/appointments.repo.js";
 import { listMasterServices, listMasters, listServices } from "../repositories/catalog.repo.js";
 import { getClient } from "../repositories/clients.repo.js";
@@ -63,7 +63,7 @@ export function knowledgeText(s: CrmSnapshot, limit = KB_CHAR_LIMIT): string {
 }
 
 /** System prompt for the AI administrator. Data comes only from the CRM. */
-export async function systemPrompt(db: Db, s: CrmSnapshot, conv: Conversation, now = new Date()): Promise<string> {
+export async function systemPrompt(db: Db, s: CrmSnapshot, conv: Conversation, now = wallClock()): Promise<string> {
   const { biz } = s;
   let clientBlock = `not linked to a client card yet (contact name in ${conv.messenger}: ${conv.contact}).`;
   if (conv.client_id) {

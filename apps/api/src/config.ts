@@ -5,8 +5,6 @@ const Env = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().default("postgresql://crm:crm@localhost:5432/crm"),
-  // Salon local time. Visit times in the database are stored in this zone.
-  TZ: z.string().default("Asia/Almaty"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 
   // AI. Without a key the deterministic offline agent answers instead of Claude.
@@ -16,8 +14,9 @@ const Env = z.object({
   AI_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("low"),
   AI_MAX_TOOL_ROUNDS: z.coerce.number().int().min(1).max(20).default(8),
 
-  // Channels
-  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  // Channels. Each business connects its own Telegram bot on the Integrations
+  // page. This optional secret is accepted by every business's inbound
+  // webhook, for a gateway the platform runs itself.
   CHANNEL_WEBHOOK_SECRET: z.string().optional(),
 
   // Sign-in is required for the API. Only the test setup turns it off, so the
@@ -27,11 +26,23 @@ const Env = z.object({
     .default("true")
     .transform((v) => v === "true"),
 
+  // Public address of the app, used in links inside emails and for the Google sign-in redirect.
+  APP_URL: z.string().url().default("http://localhost:3000"),
+  // Email (password reset links). Without a key, mails are only logged.
+  RESEND_API_KEY: z.string().optional(),
+  MAIL_FROM: z.string().default("VoroniX <no-reply@example.com>"),
+  // Shown as "Help" on the sign-in page and in the app. Hidden when empty.
+  SUPPORT_EMAIL: z.string().email().optional(),
+  // "Continue with Google". The button appears only when both are set.
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+
+  // Read-only SQL console on the Insights page. It is a teaching tool: keep it
+  // off on a server that hosts more than one business.
+  SQL_CONSOLE: z.enum(["on", "off"]).optional(),
+
   // Allows POST /api/admin/reset-demo. Off in production by default.
-  ALLOW_DEMO_RESET: z
-    .enum(["true", "false"])
-    .optional()
-    .transform((v) => v === "true"),
+  ALLOW_DEMO_RESET: z.enum(["true", "false"]).optional(),
 });
 
 const parsed = Env.safeParse(process.env);
@@ -42,8 +53,12 @@ if (!parsed.success) {
 
 export const config = {
   ...parsed.data,
-  ALLOW_DEMO_RESET: parsed.data.ALLOW_DEMO_RESET ?? parsed.data.NODE_ENV !== "production",
+  ALLOW_DEMO_RESET: parsed.data.ALLOW_DEMO_RESET ? parsed.data.ALLOW_DEMO_RESET === "true" : parsed.data.NODE_ENV !== "production",
+  SQL_CONSOLE: (parsed.data.SQL_CONSOLE ?? (parsed.data.NODE_ENV === "production" ? "off" : "on")) === "on",
+  APP_URL: parsed.data.APP_URL.replace(/\/+$/, ""),
 };
-process.env.TZ = config.TZ;
+// Every business has its own time zone (see lib/time.ts wallClock), so the
+// process clock is neutral UTC.
+process.env.TZ = "UTC";
 
 export type Config = typeof config;
