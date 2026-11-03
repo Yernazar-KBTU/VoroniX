@@ -5,7 +5,7 @@ import { render, ui } from "../ui.js";
 import { DOW, esc, head, money, msIcon, nowLocal, pill, ymd } from "../util.js";
 
 export const clients = {
-  head: () => head("Clients", "", `<button class="btn create" data-act="newClient">+ Add client</button>`),
+  head: () => head("Clients", "", `<button class="btn ghost" data-act="import">Import</button><button class="btn create" data-act="newClient">+ Add client</button>`),
   body() {
     const A = vals("appointments");
     let L = vals("clients").map((c) => {
@@ -28,7 +28,7 @@ export const clients = {
 };
 
 export const services = {
-  head: () => head(biz().service_label ? biz().service_label + "s" : "Services", "The AI can only offer what is in this list, at these prices.", `<button class="btn create" data-act="newService">+ Add service</button>`),
+  head: () => head(biz().service_label ? biz().service_label + "s" : "Services", "The AI can only offer what is in this list, at these prices.", `<button class="btn ghost" data-act="import">Import</button><button class="btn create" data-act="newService">+ Add service</button>`),
   body: () =>
     `<div class="panel tw"><table class="t"><thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Duration</th><th style="text-align:right">Price</th><th>Prepayment</th><th>Who does it</th><th>Status</th></tr></thead><tbody>${vals("services")
       .map((s) => `<tr class="click" data-service="${s.id}"><td class="code">${s.id}</td><td><b>${esc(s.name)}</b></td><td>${esc(s.category || "")}</td><td>${s.duration_min} min</td><td style="text-align:right">${money(s.price_kzt)}</td><td>${prepayFor(s.id) ? money(prepayFor(s.id)) : "None"}</td><td>${mastersFor(s.id).map((m) => esc(mst(m).full_name)).join(", ") || '<span class="pill warn">nobody</span>'}</td><td>${s.is_active === false ? pill("Hidden", "Cancelled") : pill("Active", "Completed")}</td></tr>`)
@@ -36,7 +36,7 @@ export const services = {
 };
 
 export const staff = {
-  head: () => head((biz().staff_label || "Master") + "s", "", `<button class="btn create" data-act="newMaster">+ Add ${esc((biz().staff_label || "master").toLowerCase())}</button>`),
+  head: () => head((biz().staff_label || "Master") + "s", "", `<button class="btn ghost" data-act="import">Import</button><button class="btn create" data-act="newMaster">+ Add ${esc((biz().staff_label || "master").toLowerCase())}</button>`),
   body() {
     const today = ymd(nowLocal());
     return `<div class="panel tw"><table class="t"><thead><tr><th>ID</th><th>Name</th><th>Specialization</th><th>Services (master_services)</th><th>Working days</th><th>Hours</th><th>Today</th></tr></thead><tbody>${vals("masters")

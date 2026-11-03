@@ -73,17 +73,17 @@ export function offlineOrganise(text: string): z.infer<typeof Draft> {
     .map((s) => s.trim())
     .filter(Boolean);
   for (const s of sentences) {
-    const slogan = /(?:слоган|девиз|кэтч[- ]?фраз\w*|фраз\w* бренда|наша фраза|slogan|catchphrase|tagline)\s*(?:[:—–-]|это|is)?\s*[«"“]?([^»"”\n]+?)[»"”]?\s*\.?$/iu.exec(s);
+    const slogan = /(?:слоган|девиз|кэтч[- ]?фраз\w*|фраз\w* бренда|наша фраза|slogan|catchphrase|tagline)\s*(?:[:\u2014–-]|это|is)?\s*[«"“]?([^»"”\n]+?)[»"”]?\s*\.?$/iu.exec(s);
     if (slogan) {
       settings.catchphrase = slogan[1].trim();
       continue;
     }
-    const hours = /(?:часы работы|график работы|режим работы|работаем|opening hours|we are open)\s*[:—–-]?\s*(.+)/iu.exec(s);
+    const hours = /(?:часы работы|график работы|режим работы|работаем|opening hours|we are open)\s*[:\u2014–-]?\s*(.+)/iu.exec(s);
     if (hours && /\d/.test(hours[1])) {
       settings.hours = hours[1].replace(/\.$/, "").trim();
       continue;
     }
-    const address = /(?:новый адрес|наш адрес|адрес|мы переехали на|address)\s*[:—–-]?\s*(.+)/iu.exec(s);
+    const address = /(?:новый адрес|наш адрес|адрес|мы переехали на|address)\s*[:\u2014–-]?\s*(.+)/iu.exec(s);
     if (address) {
       settings.address = address[1].replace(/\.$/, "").trim();
       continue;

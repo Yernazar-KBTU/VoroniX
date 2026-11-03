@@ -75,7 +75,7 @@ function gettingStarted() {
   <div class="onb-steps">${list
     .map((s, i) => `<button type="button" class="onb-step ${s.done ? "done" : ""}" ${s.go ? `data-go="${s.go}"` : `data-act="${s.act}"`}><span class="n">${s.done ? "✓" : i + 1}</span><span><b>${s.t}</b><span>${s.d}</span></span></button>`)
     .join("")}</div>
-  ${demo ? `<div class="onb-foot">Want to look around first? <button class="btn sm" type="button" data-act="resetDemo">Load the demo barbershop</button></div>` : ""}
+  <div class="onb-foot">Have a price list, a staff schedule or a client list in Excel, Word or PDF? <button class="btn sm" type="button" data-act="import">Import it</button>${demo ? ` Want to look around first? <button class="btn sm" type="button" data-act="resetDemo">Load the demo barbershop</button>` : ""}</div>
 </section>`;
 }
 
