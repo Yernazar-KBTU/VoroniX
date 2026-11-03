@@ -266,6 +266,20 @@ table.t tr.click:hover td{background:var(--panel2)}
 .f textarea{min-height:90px;resize:vertical}
 .frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
 .checks{display:flex;flex-wrap:wrap;gap:8px}
+/* Import window */
+.imp-drop{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 16px;border:2px dashed var(--accent-line);border-radius:14px;background:var(--panel2);text-align:center}
+.imp-drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.imp-files{display:flex;flex-wrap:wrap;gap:6px}
+.imp-files:empty{display:none}
+.imp-file{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:4px 4px 4px 10px;font-size:13px;background:var(--panel)}
+.imp-file button{border:0;background:none;color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:6px}
+.imp-file button:hover{background:var(--red-soft);color:var(--red)}
+.modal,.modal .mb>*{min-width:0}
+.imp-sec{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.imp-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.imp-h label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.imp-sec td{vertical-align:top}
+.imp-sec td.wrap{white-space:normal;min-width:200px}
 .checks label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:5px 10px;font-size:13px;cursor:pointer;background:var(--panel)}
 
 /* ---------- modal, toast, banner ---------- */

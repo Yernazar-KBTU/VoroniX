@@ -3,6 +3,7 @@
 // "changed" event, so the store refreshes itself and the page re-renders.
 
 import { api } from "./api.js";
+import { openImport } from "./import/dialog.js";
 import { S, act, active, apptEnd, biz, mastersFor, mst, reload, revenueOf, servicesOf, svc, vals } from "./store.js";
 import { closeModal, go, modal, render, ui } from "./ui.js";
 import { $, DOW, businessCurrency, dt, esc, money, msIcon, nowLocal, opt, parseDT, pill, toast } from "./util.js";
@@ -207,7 +208,7 @@ async function resetDemo() {
 
 const ACTIONS = {
   act(v) {
-    const open = { newAppt: () => apptModal(null, { start_datetime: nextHalfHour() }), newClient: () => clientModal(null), newService: () => serviceModal(null), newMaster: () => masterModal(null), newKb: () => kbModal(null), newConv: newConvModal, resetDemo: resetModal };
+    const open = { newAppt: () => apptModal(null, { start_datetime: nextHalfHour() }), newClient: () => clientModal(null), newService: () => serviceModal(null), newMaster: () => masterModal(null), newKb: () => kbModal(null), newConv: newConvModal, resetDemo: resetModal, import: openImport };
     open[v]?.();
   },
   appt: (id) => apptModal(id),

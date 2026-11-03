@@ -1,6 +1,6 @@
 # Testing
 
-`npm test` runs 171 tests with vitest. Each integration test file drops every business schema and the `public` schema of `crm_test`, runs the migrations, creates the demo business Barberista and loads its data, so every run starts from the same state.
+`npm test` runs 202 tests with vitest: 181 for the API and 21 for the import code of the web app (`apps/web/test`). Each integration test file drops every business schema and the `public` schema of `crm_test`, runs the migrations, creates the demo business Barberista and loads its data, so every run starts from the same state.
 
 | File | Tests | What it proves |
 |---|---|---|
@@ -18,6 +18,8 @@
 | integration/integrations.test.ts | 11 | Telegram and Claude tokens checked and never returned; secrets hidden from the SQL console; WhatsApp webhook secret; iCal feed; outgoing webhook on a new booking |
 | integration/reminders.test.ts | 5 | reminders 24 h and 2 h before a visit, once, in the client's chat and language; none for cancelled visits or visits booked inside the window |
 | integration/web.test.ts | 6 | landing page on `/`, the CRM on `/app`, Terms and Privacy, 404 for unknown pages, long cache for built files |
+| integration/import.test.ts | 10 | services, staff with their services, clients, knowledge and settings saved at once; a second import updates instead of duplicating; hours are kept when a file has none; one bad row saves nothing; bodies over 1 MB; PDF and photos need Claude |
+| web: import.test.js | 21 | prices, durations, hours and days in English, Russian and Kazakh; phones; services matched by meaning; CSV, TSV, Markdown, Excel, Word and JSON readers; UTF-16 and Windows-1251; a whole business pasted at once; schedules with a column per weekday; rows that cannot be saved are left out |
 
 A bug found by the tests: inserting a payment failed with `inconsistent types deduced for parameter $5`, because the same parameter was used as a column value and in a `CASE`. Fixed with an explicit `::text` cast.
 

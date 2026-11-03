@@ -13,6 +13,7 @@ import { catalogRouter } from "./routes/catalog.routes.js";
 import { conversationsRouter } from "./routes/conversations.routes.js";
 import { crmRouter } from "./routes/crm.routes.js";
 import { insightsRouter } from "./routes/insights.routes.js";
+import { importRouter } from "./routes/import.routes.js";
 import { integrationsRouter } from "./routes/integrations.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { requireAuth } from "./auth/auth.service.js";
@@ -68,7 +69,9 @@ export function createApp() {
   );
   if (config.NODE_ENV !== "test")
     app.use(pinoHttp({ logger, serializers: httpLogSerializers, autoLogging: { ignore: (req) => req.url === "/api/events" || req.url === "/api/health" } }));
-  app.use(express.json({ limit: "1mb" }));
+  // Imports carry whole files, so their routes read their own, bigger bodies once sign-in is checked.
+  const json = express.json({ limit: "1mb" });
+  app.use((req, res, next) => (req.path.startsWith("/api/import") ? next() : json(req, res, next)));
   app.set("trust proxy", 1);
   app.use(requireAuth);
 
@@ -78,7 +81,7 @@ export function createApp() {
     res.json({ status: "ok", db_ms: Math.round(performance.now() - started), ai_engine: getEngine().name, time: new Date().toISOString() });
   });
   app.get("/api/events", sseHandler);
-  app.use("/api", authRouter, catalogRouter, crmRouter, conversationsRouter, insightsRouter, integrationsRouter);
+  app.use("/api", authRouter, catalogRouter, crmRouter, conversationsRouter, insightsRouter, integrationsRouter, importRouter);
   app.use("/api", (_req, res) => {
     res.status(404).json({ error: "not_found", message: "No such API route" });
   });

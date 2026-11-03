@@ -13,6 +13,7 @@ Many businesses share one server, and each one has its own separate data, time z
 | FR-03 booking and payment | EXCLUDE constraint, payment transaction | `database.test.ts`, `api.test.ts` |
 | NFR-01 reply within 5 s | every AI run logged in `ai_runs` with latency | p95 188 ms under load (rule engine) |
 | Business-specific AI | “Teach the AI”: paste promotions, rules, a slogan; the AI sorts them into knowledge entries and settings in the database and uses them in replies | `teach.test.ts`, `ai-flow.test.ts` |
+| Import any data | Excel, CSV, Word, JSON, text and tables pasted from Excel or Google Sheets are read in the browser into services, staff with working days and hours, clients, business settings and knowledge for the AI; PDF files and photos are read by Claude. The owner checks a preview, and everything is saved in one transaction | `import.test.js`, `import.test.ts` |
 | BR-01 no invented prices | prices come from `services`, unknown services are refused | `ai-flow.test.ts` |
 | Separate data per business | one PostgreSQL schema per business, queries without a business fail | `tenancy.test.ts` |
 
@@ -25,6 +26,19 @@ Many businesses share one server, and each one has its own separate data, time z
 | Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/Yernazar-KBTU/VoroniX) | Landing page, sign-up, the CRM and PostgreSQL from `render.yaml`, free plan. Keys are added later on the service's Environment page |
 
 Render's free plan is for trying the system: the site sleeps after 15 minutes without visitors and takes about a minute to wake up, and the free database expires 30 days after it is created ([render.com/docs/free](https://render.com/docs/free)). Real clients need paid plans ([render.com/pricing](https://render.com/pricing)).
+
+## Import
+
+The Import button on the Services, Staff, Clients and AI knowledge pages (and on the getting-started card) takes files or pasted text:
+
+| Format | Read by |
+|---|---|
+| Excel `.xlsx` (every visible sheet), CSV and TSV in any delimiter and encoding (UTF-8, UTF-16, Windows-1251), tables copied from Excel, Google Sheets or Word, Markdown tables | the browser |
+| Word `.docx` (paragraphs and tables), text, Markdown, JSON, HTML | the browser |
+| PDF and photos (JPEG, PNG, WebP, HEIC from an iPhone) | Claude, when the business has it on |
+| `.xls`, `.doc`, `.odt`, `.ods`, Numbers, Pages | not read: the window asks to save the file as `.xlsx`, `.docx` or PDF |
+
+Columns are found by their headers in English, Russian or Kazakh (Name, Price, Duration, Days, Hours, Phone; Услуга, Цена, Длительность, Дни, Часы, Телефон), or by what the cells hold when there is no header. A schedule may have one column per weekday. Free text gives business settings (name, address, hours, phone, slogan, prepayment), price-list lines such as `Haircut, 45 min, $40` or `Стрижка ........ 5 000 ₸`, staff lines and knowledge entries. Staff services are matched by meaning, so `мужская стрижка` finds `Men's haircut`. Importing the same file again updates services and staff by name and skips clients whose phone is already known.
 
 ## Pages
 
@@ -78,6 +92,8 @@ npm run dev                      # API :3000, web :5173 (open http://localhost:5
 ```
 
 Sign in as `demo@voronix.dev` / `demo-password`, or press **Create an account** to start your own business.
+
+A copy of the site that runs without a server (for static hosting or a quick look): `npm run build:demo -w apps/web` writes it to `apps/web/dist-demo`. It answers the CRM's requests from `apps/web/src/demo/demo-data.json`; refresh that file from a running server with `node apps/web/scripts/capture-demo-data.mjs`. In this copy any email and password sign in, changes stay in the browser tab, and Claude is off.
 
 A database from before accounts (tables directly in `public`) is not migrated in place: `npm run db:migrate` stops and asks for `npm run db:reset`, which deletes all data and builds the new layout. `db:reset` refuses to run with `NODE_ENV=production`.
 
@@ -154,7 +170,7 @@ Rules the database enforces itself, so neither the AI nor a person can break the
 ## Tests
 
 ```bash
-npm test                 # 171 tests: unit + integration (needs PostgreSQL, uses crm_test)
+npm test                 # 202 tests: 181 for the API (unit + integration, needs PostgreSQL, uses crm_test), 21 for the web import
 npm run db:seed && npm start & npm run test:load
 ```
 
@@ -169,6 +185,8 @@ npm run db:seed && npm start & npm run test:load
 | Integration: Integrations page, webhooks, calendar feed | 11 | passed |
 | Integration: visit reminders | 5 | passed |
 | Integration: web pages | 6 | passed |
+| Integration: data import | 10 | passed |
+| Web: import readers and parsers | 21 | passed |
 
 Load test (single Node process, laptop-class container, 50 connections, 0 errors; it signs in as the demo owner first):
 

@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { act, biz, vals } from "../store.js";
+import { biz, vals } from "../store.js";
 import { render } from "../ui.js";
 import { $, esc, fmtAt, head, pill, toast } from "../util.js";
 
@@ -11,7 +11,7 @@ export const knowledge = {
     head(
       "AI knowledge base",
       "Everything you add here becomes part of what the AI knows about your business. Update it any time.",
-      `<button class="btn create" data-act="newKb">+ Add entry</button><label class="btn ghost" style="cursor:pointer">Upload file<input type="file" id="kbFile" data-fresh="1" accept=".txt,.md,.csv,.json,text/plain" multiple hidden></label>`,
+      `<button class="btn ghost" data-act="import">Import files</button><button class="btn create" data-act="newKb">+ Add entry</button>`,
     ),
   body() {
     const K = vals("knowledge").sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
@@ -20,7 +20,7 @@ export const knowledge = {
     const size = K.reduce((s, k) => s + k.title.length + k.content.length + 20, 0);
     return `<div class="grid kbwrap">
   <section class="panel"><div class="ph"><div class="seg">${cats.map((c) => `<button data-kbcat="${esc(c)}" class="${kbCat === c ? "on" : ""}">${esc(c)}</button>`).join("")}</div><span class="grow"></span><span class="muted small">${K.length} entries · ${size.toLocaleString()} characters${size > KB_LIMIT ? ' · <span class="pill warn">only the first 14 000 are sent to the AI</span>' : ""}</span></div>
-   <div class="pad"><div class="kbgrid">${shown.map((k) => `<div class="kbc" data-kb="${k.id}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(k.title)}</b>${pill(k.category || "General", "ai")}</div><p>${esc(k.content)}</p><span class="muted small">Updated ${fmtAt(k.updated_at)}</span></div>`).join("") || `<div class="empty"><b>Teach the AI about your business</b>Add prices, rules, promotions and answers to common questions, or upload a .txt or .csv file.</div>`}</div></div></section>
+   <div class="pad"><div class="kbgrid">${shown.map((k) => `<div class="kbc" data-kb="${k.id}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(k.title)}</b>${pill(k.category || "General", "ai")}</div><p>${esc(k.content)}</p><span class="muted small">Updated ${fmtAt(k.updated_at)}</span></div>`).join("") || `<div class="empty"><b>Teach the AI about your business</b>Add prices, rules, promotions and answers to common questions, or import a Word, Excel, PDF or text file.</div>`}</div></div></section>
   <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
   <section class="panel"><div class="ph"><h3>Teach the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
    <p class="muted small" style="margin:0">Paste anything about your business: a promotion, discounts, rules, your slogan, FAQ. The AI sorts it into entries and settings, you check them, and they are saved to the database.</p>
@@ -36,21 +36,7 @@ export const knowledge = {
    <ol class="small muted" style="margin:0;padding-left:18px"><li>The backend reads services, staff, free slots and these entries from the database.</li><li>It sends them to the AI together with the client's message.</li><li>The AI writes the reply and calls CRM actions (book, payment link, hand over to a human). It never touches the database directly.</li></ol>
   </div></section></div></div>`;
   },
-  after() {
-    teachView();
-    const f = $("#kbFile");
-    f?.addEventListener("change", async () => {
-      for (const file of f.files) {
-        if (file.size > 200000) {
-          toast(`${file.name} is larger than 200 KB. Split it into smaller files.`);
-          continue;
-        }
-        const text = await file.text();
-        await act(api.post("/knowledge", { title: file.name.replace(/\.[^.]+$/, ""), category: "Uploaded", content: text.slice(0, 60000) })).catch(() => {});
-      }
-      toast("Added to the knowledge base");
-    });
-  },
+  after: () => teachView(),
 };
 
 document.addEventListener("click", (e) => {
