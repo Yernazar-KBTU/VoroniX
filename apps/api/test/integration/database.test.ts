@@ -85,9 +85,11 @@ describe("referential integrity and checks", () => {
   });
 
   it("refuses a visit for an unknown client", async () => {
+    // A day with no visits: at "now" the master may be busy, and the overlap
+    // check (23P01) would fire before the foreign key check.
     expect(
       await code(`INSERT INTO appointments (client_id, master_id, service_code, start_at, end_at, status, source)
-                  VALUES ('CL-9999', 'MS-01', 'HC-01', now(), now() + interval '1 hour', 'Booked', 'Admin')`),
+                  VALUES ('CL-9999', 'MS-01', 'HC-01', '2099-01-05 10:00', '2099-01-05 11:00', 'Booked', 'Admin')`),
     ).toMatch(/^23503/);
   });
 

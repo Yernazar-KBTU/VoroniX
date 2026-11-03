@@ -1,6 +1,6 @@
 # Testing
 
-`npm test` runs 168 tests with vitest. Each integration test file drops every business schema and the `public` schema of `crm_test`, runs the migrations, creates the demo business Barberista and loads its data, so every run starts from the same state.
+`npm test` runs 171 tests with vitest. Each integration test file drops every business schema and the `public` schema of `crm_test`, runs the migrations, creates the demo business Barberista and loads its data, so every run starts from the same state.
 
 | File | Tests | What it proves |
 |---|---|---|
@@ -9,6 +9,7 @@
 | unit/offline-nlu.test.ts | 35 | salon and barbershop services, days, times, phones and names in Russian and English; complaints |
 | unit/teach.test.ts | 5 | free notes → promotion, rule, FAQ entries; slogan and hours go to settings; promotion found for a service |
 | unit/http-log.test.ts | 3 | request log lines carry no cookies and no secret query values |
+| unit/config.test.ts | 3 | empty settings count as not set; on Render the public address comes from `RENDER_EXTERNAL_URL` |
 | integration/database.test.ts | 20 | every constraint refuses bad data; 8 concurrent bookings → 1 saved; Task 7 problems P5 and P6; core and business migrations |
 | integration/api.test.ts | 25 | booking, 409/400 errors, payment transaction, idempotent payment, read-only SQL |
 | integration/auth.test.ts | 19 | sign up, sign in, sessions, guessing limit; a reset link works once and not after it expires; Google sign-in refuses a forged state and an unverified email, and a Google sign-in takes over an address registered without proof |

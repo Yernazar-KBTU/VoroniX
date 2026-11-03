@@ -22,7 +22,9 @@ Many businesses share one server, and each one has its own separate data, time z
 |---|---|---|
 | Demo in the browser | [GitHub Pages](https://Yernazar-KBTU.github.io/VoroniX/) | The whole CRM with the demo barbershop Barberista; changes stay in your tab, the AI is off |
 | Demo with the AI | [claude.ai](https://claude.ai/artifact/ADSNg68LNiherEJNbSeMdR) | Same CRM with a live AI administrator and a shared database |
-| Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/Yernazar-KBTU/VoroniX) | Landing page, sign-up, the CRM and PostgreSQL from `render.yaml`, free plan |
+| Full system | [Deploy to Render](https://render.com/deploy?repo=https://github.com/Yernazar-KBTU/VoroniX) | Landing page, sign-up, the CRM and PostgreSQL from `render.yaml`, free plan. Keys are added later on the service's Environment page |
+
+Render's free plan is for trying the system: the site sleeps after 15 minutes without visitors and takes about a minute to wake up, and the free database expires 30 days after it is created ([render.com/docs/free](https://render.com/docs/free)). Real clients need paid plans ([render.com/pricing](https://render.com/pricing)).
 
 ## Pages
 
@@ -84,7 +86,7 @@ A database from before accounts (tables directly in `public`) is not migrated in
 | Variable | What it is for |
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection (the only required one) |
-| `APP_URL` | Public address of the app, used in email links and the Google redirect |
+| `APP_URL` | Public address of the app, used in email links and the Google redirect. On Render it defaults to the service's onrender.com address (`RENDER_EXTERNAL_URL`) |
 | `ANTHROPIC_API_KEY` | Claude writes the replies for every business that has not connected its own key. Without it the built-in rule engine answers, with the same tools and data |
 | `RESEND_API_KEY`, `MAIL_FROM` | Password reset emails. `MAIL_FROM` must use a domain verified in Resend |
 | `SUPPORT_EMAIL` | “Help” on the sign-in page and “Contact” on the public pages; hidden when empty |
@@ -121,7 +123,7 @@ apps/
       routes/          HTTP + zod validation
       services/        booking, conversation and reminder workflows (transactions)
       tenancy/         which business a request belongs to
-    test/unit          57 tests, no database
+    test/unit          60 tests, no database
     test/integration   111 tests on a real PostgreSQL
   web/
     index.html         landing page
@@ -152,13 +154,13 @@ Rules the database enforces itself, so neither the AI nor a person can break the
 ## Tests
 
 ```bash
-npm test                 # 168 tests: unit + integration (needs PostgreSQL, uses crm_test)
+npm test                 # 171 tests: unit + integration (needs PostgreSQL, uses crm_test)
 npm run db:seed && npm start & npm run test:load
 ```
 
 | Suite | Tests | Result |
 |---|---|---|
-| Unit: scheduling, pricing, message understanding, Teach the AI, log redaction | 57 | passed |
+| Unit: scheduling, pricing, message understanding, Teach the AI, log redaction, settings | 60 | passed |
 | Integration: database rules | 20 | passed |
 | Integration: REST API | 25 | passed |
 | Integration: accounts, password reset, Google sign-in | 19 | passed |

@@ -46,7 +46,10 @@ const Env = z.object({
 });
 
 // An empty line such as "SUPPORT_EMAIL=" in .env means "not set", not an empty value.
-const parsed = Env.safeParse(Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== "")));
+const env: Record<string, string | undefined> = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== ""));
+// Render gives every web service its public onrender.com address, so APP_URL can stay unset there.
+env.APP_URL ??= env.RENDER_EXTERNAL_URL;
+const parsed = Env.safeParse(env);
 if (!parsed.success) {
   console.error("Invalid environment:", parsed.error.flatten().fieldErrors);
   process.exit(1);
