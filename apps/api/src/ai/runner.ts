@@ -104,7 +104,6 @@ export async function replyTo(convId: string): Promise<void> {
     }
   } finally {
     const latency = Math.round(performance.now() - started);
-    running.delete(key);
     setStatus(convId, null);
     await pool
       .query(
@@ -113,9 +112,11 @@ export async function replyTo(convId: string): Promise<void> {
         [convId, engine.name, latency, JSON.stringify(toolCalls), usage?.input_tokens ?? null, usage?.output_tokens ?? null, outcome, error],
       )
       .catch((e) => logger.warn({ err: e }, "could not log ai run"));
+    // The run ends once it is logged, so idle() (tests, graceful shutdown) waits for the log row too.
+    running.delete(key);
     if (again.has(key)) {
-      again.delete(key);
       const c = await getOrThrow(convId).catch(() => null);
+      again.delete(key); // only now, so idle() keeps waiting until the queued run has started
       if (c?.ai_enabled) void replyTo(convId);
     }
   }
