@@ -1,6 +1,6 @@
 # Testing
 
-`npm test` runs 202 tests with vitest: 181 for the API and 21 for the import code of the web app (`apps/web/test`). Each integration test file drops every business schema and the `public` schema of `crm_test`, runs the migrations, creates the demo business Barberista and loads its data, so every run starts from the same state.
+`npm test` runs 203 tests with vitest: 181 for the API and 22 for the import code of the web app (`apps/web/test`). Each integration test file drops every business schema and the `public` schema of `crm_test`, runs the migrations, creates the demo business Barberista and loads its data, so every run starts from the same state.
 
 | File | Tests | What it proves |
 |---|---|---|

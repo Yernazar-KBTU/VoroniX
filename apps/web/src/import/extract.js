@@ -139,7 +139,13 @@ function paragraphText(p) {
     .map((m) => (m[1] !== undefined ? unxml(m[1]) : m[0].startsWith("<w:tab") ? "\t" : "\n"))
     .join("");
 }
-const paragraphs = (xml) => [...xml.matchAll(/<w:p\b[^>]*?(?:\/>|>([\s\S]*?)<\/w:p>)/g)].map((m) => paragraphText(m[1] || ""));
+/** Word keeps list bullets in its numbering, not in the text, so list paragraphs get a "- " here. */
+const isListItem = (p) => /<w:numPr\b|<w:pStyle w:val="[^"]*List/i.test(p) && !/<w:pStyle w:val="(?:heading|title)/i.test(p);
+const paragraphs = (xml, lists = false) =>
+  [...xml.matchAll(/<w:p\b[^>]*?(?:\/>|>([\s\S]*?)<\/w:p>)/g)].map((m) => {
+    const t = paragraphText(m[1] || "");
+    return lists && t.trim() && isListItem(m[1] || "") ? `- ${t.trim()}` : t;
+  });
 
 /** Top-level tables and the paragraphs between them, in document order. */
 function docxParts(body) {
@@ -166,7 +172,7 @@ export async function readDocx(buf, name) {
   const out = empty();
   const text = [];
   for (const part of docxParts(/<w:body>([\s\S]*)<\/w:body>/.exec(xml)?.[1] || xml)) {
-    if (part.text !== undefined) text.push(...paragraphs(part.text));
+    if (part.text !== undefined) text.push(...paragraphs(part.text, true));
     else {
       const rows = [...part.table.matchAll(/<w:tr\b[^>]*>([\s\S]*?)<\/w:tr>/g)]
         .map((r) => [...r[1].matchAll(/<w:tc\b[^>]*>([\s\S]*?)<\/w:tc>/g)].map((c) => paragraphs(c[1]).map((x) => x.trim()).filter(Boolean).join(", ")))

@@ -170,7 +170,7 @@ Rules the database enforces itself, so neither the AI nor a person can break the
 ## Tests
 
 ```bash
-npm test                 # 202 tests: 181 for the API (unit + integration, needs PostgreSQL, uses crm_test), 21 for the web import
+npm test                 # 203 tests: 181 for the API (unit + integration, needs PostgreSQL, uses crm_test), 22 for the web import
 npm run db:seed && npm start & npm run test:load
 ```
 
@@ -186,7 +186,7 @@ npm run db:seed && npm start & npm run test:load
 | Integration: visit reminders | 5 | passed |
 | Integration: web pages | 6 | passed |
 | Integration: data import | 10 | passed |
-| Web: import readers and parsers | 21 | passed |
+| Web: import readers and parsers | 22 | passed |
 
 Load test (single Node process, laptop-class container, 50 connections, 0 errors; it signs in as the demo owner first):
 

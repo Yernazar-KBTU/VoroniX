@@ -11,7 +11,7 @@ const clean = (s) => String(s ?? "").replace(/[    ​]/g, " ").replace(/
 const low = (s) => clean(s).toLowerCase().replace(/ё/g, "е");
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const cut = (s, n) => clean(s).slice(0, n).trim();
-const strip = (s) => clean(s).replace(/^[\s\-*•·–—>]+|^\d{1,2}[.)]\s+/, "").replace(/[\s,;:.|–—-]+$/, "").trim();
+const strip = (s) => clean(s).replace(/^[\s\-*•·–\u2014>]+|^\d{1,2}[.)]\s+/, "").replace(/[\s,;:.|–\u2014-]+$/, "").trim();
 /** Matches the words in `x` only as whole words, also in Cyrillic. */
 const word = (x) => `(?<![\\p{L}\\p{N}])(?:${x})(?![\\p{L}])`;
 /** A unit right after a number: "60min", "1 ч". */
@@ -44,11 +44,11 @@ export function parsePrice(text, strict = false) {
     const after = s.slice(m.index + m[0].length, m.index + m[0].length + 10);
     if (/^\s*(%|:\d|[.,]\d)/.test(after) || new RegExp(`^\\s*${unit("h|hr|hrs|hours?|ч|час\\p{L}*|m|min|mins|minutes?|м|мин\\p{L}*")}`, "iu").test(after)) continue;
     const near = CUR.test(before.slice(-3)) || new RegExp(`^\\s*(?:${CUR_SYM}|${unit(CUR_WORDS)})`, "iu").test(after);
-    const leader = strict && /(?:\.{2,}|…|[-–—:=|])\s*(?:от|from)?\s*$/iu.test(s.slice(0, m.index)) && !s.slice(m.index + m[0].length).trim();
+    const leader = strict && /(?:\.{2,}|…|[-–\u2014:=|])\s*(?:от|from)?\s*$/iu.test(s.slice(0, m.index)) && !s.slice(m.index + m[0].length).trim();
     if (strict && !near && !leader) continue;
     const value = toNumber(m[0]);
     if (!(value > 0)) continue;
-    const range = new RegExp(`^\\s*(?:${CUR_SYM}|${unit(CUR_WORDS)})?\\s*[-–—]\\s*(?:${CUR_SYM})?\\s*\\d`, "iu").test(after);
+    const range = new RegExp(`^\\s*(?:${CUR_SYM}|${unit(CUR_WORDS)})?\\s*[-–\u2014]\\s*(?:${CUR_SYM})?\\s*\\d`, "iu").test(after);
     return { value, text: m[0], note: range ? "price is a range, the lowest is used" : "" };
   }
   return null;
@@ -81,7 +81,7 @@ export function parseDuration(text, loose = false, inHours = false) {
 const pad = (n) => String(n).padStart(2, "0");
 const fmt = (mins) => `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
 const TIME = String.raw`(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?`;
-const TO = String.raw`\s*(?:-|–|—|to|till|until|до|по)\s*`;
+const TO = String.raw`\s*(?:-|–|\u2014|to|till|until|до|по)\s*`;
 const RANGE = new RegExp(`(?:^|[^\\d:.,])${TIME}${TO}${TIME}(?![\\d:])`, "i");
 const FROM_TO = new RegExp(`(?:^|[^\\p{L}])(?:с|from)\\s+${TIME}\\s+(?:до|to|till|until)\\s+${TIME}`, "iu");
 
@@ -150,7 +150,7 @@ export function parseDays(text, strict = false) {
   else if (/(будн|weekdays|5\/2|рабочие дни)/u.test(s)) base = [1, 2, 3, 4, 5];
   else if (/(^|\D)2\/2(\D|$)/.test(s)) (base = ALL), (note = "2/2 shifts: set to every day, adjust on the Staff page");
   else if (/(weekends?|по выходным)/u.test(s)) base = [0, 6];
-  const tokens = s.match(/[\p{L}]+|[-–—/,;]|\d+/gu) || [];
+  const tokens = s.match(/[\p{L}]+|[-–\u2014/,;]|\d+/gu) || [];
   const short = !strict && tokens.length <= 7;
   const pos = new Set(), neg = new Set();
   let negating = false;
@@ -162,11 +162,11 @@ export function parseDays(text, strict = false) {
     }
     const d = dayOf(t, short);
     if (d === null) {
-      if (!/^[-–—/,;]$|^(и|and|по|to|till|until|до|с|from|&)$/u.test(t)) negating = false;
+      if (!/^[-–\u2014/,;]$|^(и|and|по|to|till|until|до|с|from|&)$/u.test(t)) negating = false;
       continue;
     }
     let group = [d];
-    if (/^([-–—]|to|по|till|until|до)$/u.test(tokens[i + 1] ?? "") && dayOf(tokens[i + 2] ?? "", short) !== null) {
+    if (/^([-–\u2014]|to|по|till|until|до)$/u.test(tokens[i + 1] ?? "") && dayOf(tokens[i + 2] ?? "", short) !== null) {
       const end = dayOf(tokens[i + 2], short);
       group = [];
       for (let x = d; ; x = (x + 1) % 7) {
@@ -337,7 +337,7 @@ const share = (cells, fn) => {
   const filled = cells.filter(Boolean);
   return filled.length ? filled.filter(fn).length / filled.length : 0;
 };
-const OFF_CELL = /^(|-|–|—|x|х|off|выходной|вых|нет|no|0|closed|day off|демалыс)$/iu;
+const OFF_CELL = /^(|-|–|\u2014|x|х|off|выходной|вых|нет|no|0|closed|day off|демалыс)$/iu;
 
 function classify(rows) {
   let hi = -1;
@@ -468,7 +468,7 @@ const SETTING_RULES = [
   ["catchphrase", "slogan|tagline|catchphrase|motto|our slogan|слоган|девиз|наш слоган|наш девиз|ұран"],
   ["languages", "languages?|we speak|языки(?: общения)?|язык общения|тілдер"],
   ["tone", "tone(?: of voice)?|тон(?: общения)?|стиль общения"],
-].map(([k, keys]) => [k, new RegExp(`^(?:${keys})(?![\\p{L}])\\.?\\s*${k === "address" || k === "hours" || k === "catchphrase" ? "[:：—–-]?" : "[:：—–-]"}\\s*(.+)$`, "iu")]);
+].map(([k, keys]) => [k, new RegExp(`^(?:${keys})(?![\\p{L}])\\.?\\s*${k === "address" || k === "hours" || k === "catchphrase" ? "[:：\u2014–-]?" : "[:：\u2014–-]"}\\s*(.+)$`, "iu")]);
 const MAX = { name: 80, type: 60, city: 60, address: 160, hours: 120, phone: 40, catchphrase: 200, languages: 120, tone: 2000 };
 
 function settingLine(line, d) {
@@ -536,14 +536,14 @@ function serviceLine(line, category, d, source) {
     .replace(new RegExp(word("от|from|starting at|starts at|цена|price|стоимость|cost"), "giu"), " ");
   const durText = new RegExp(`(\\d+(?:[.,]\\d+)?\\s*${unit(HOUR_UNIT)}\\.?(?:\\s*\\d+\\s*${unit(MIN_UNIT)}\\.?)?|\\d+\\s*${unit(MIN_UNIT)}\\.?|полтора часа|полчаса|half an hour)`, "iu").exec(rest);
   if (durText) rest = rest.replace(durText[0], " ");
-  const name = strip(rest.replace(/\.{2,}|…/g, " ").replace(/\s[-–—|:=]\s|,\s|\s\/\s/g, " , ").split(" , ").map(strip).filter(Boolean).join(", "));
+  const name = strip(rest.replace(/\.{2,}|…/g, " ").replace(/\s[-–\u2014|:=]\s|,\s|\s\/\s/g, " , ").split(" , ").map(strip).filter(Boolean).join(", "));
   if (!/\p{L}{2}/u.test(name) || name.length > 50 || name.split(" ").length > 8) return false;
   pushService(d, { name, category, price: price.value, duration: durText ? parseDuration(durText[0]) : null, source });
   if (price.note) d.services.at(-1).notes.push(price.note);
   return true;
 }
 
-const NAME = /^([\p{Lu}][\p{L}'’.-]*(?:\s+[\p{Lu}][\p{L}'’.-]*){0,3})(?=\s*(?:[,;:|(—–-]|$))/u;
+const NAME = /^([\p{Lu}][\p{L}'’.-]*(?:\s+[\p{Lu}][\p{L}'’.-]*){0,3})(?=\s*(?:[,;:|(\u2014–-]|$))/u;
 
 function staffLine(line, inSection, d, source) {
   const hours = parseHours(line, true);
@@ -553,7 +553,7 @@ function staffLine(line, inSection, d, source) {
   const rest = line.slice(m[0].length);
   const days = parseDays(rest, true);
   if (!inSection && !days) return false;
-  const svc = /(?:services?|услуги|делает|does)\s*[:—–-]\s*(.+)$/iu.exec(rest);
+  const svc = /(?:services?|услуги|делает|does)\s*[:\u2014–-]\s*(.+)$/iu.exec(rest);
   const role = (svc ? rest.slice(0, svc.index) : rest)
     .split(/[,;|()]/)
     .map(strip)
@@ -565,7 +565,7 @@ function staffLine(line, inSection, d, source) {
 function clientLine(line, inSection, d, source) {
   const p = findPhone(line);
   if (!p || /(phone|tel|телефон|тел\.|звоните|whatsapp|call|номер)/iu.test(line)) return false;
-  const parts = (line.slice(0, p.index) + " | " + line.slice(p.index + p.text.length)).split(/\s*[|,;—–]\s*|\s-\s/).map(strip).filter(Boolean);
+  const parts = (line.slice(0, p.index) + " | " + line.slice(p.index + p.text.length)).split(/\s*[|,;\u2014–]\s*|\s-\s/).map(strip).filter(Boolean);
   const [name, ...notes] = parts;
   if (!name || /\d/.test(name) || name.split(" ").length > 4 || (!inSection && notes.length)) return false;
   pushClient(d, { display_name: name, phone: p.text, notes: notes.join("; "), source });
@@ -607,13 +607,13 @@ export function analyzeText(text, source, d) {
       if (!section || section.kind !== null) flush();
       continue;
     }
-    const bullet = /^([-*•·–—>]|\d{1,2}[.)])\s+/.test(line);
+    const bullet = /^([-*•·–\u2014>]|\d{1,2}[.)])\s+/.test(line);
     const body = strip(line);
     const heading = (title ? line : null) || /^#{1,6}\s+(.+)$/.exec(line)?.[1] || (/^([^:：]{2,40})[:：]\s*$/.exec(line) || [])[1] || (line.length <= 40 && !/\d/.test(line) && line === line.toUpperCase() && /\p{Lu}{3}/u.test(line) ? line : null);
     if (heading && !bullet) {
       flush();
       const title = strip(heading.replace(/[*_]/g, ""));
-      section = { title: cap(title.toLowerCase() === title || title === title.toUpperCase() ? title.toLowerCase() : title), kind: SECTION.find(([, re]) => re.test(low(title)))?.[0] ?? null };
+      section = { title: /^\p{Lu}{2,4}$/u.test(title) ? title : cap(title.toLowerCase() === title || title === title.toUpperCase() ? title.toLowerCase() : title), kind: SECTION.find(([, re]) => re.test(low(title)))?.[0] ?? null };
       continue;
     }
     if (settingLine(body, d)) continue;
@@ -631,7 +631,7 @@ export function analyzeText(text, source, d) {
       continue;
     }
     if (section && bullet) section.bullets = true;
-    add(bullet ? line.replace(/^([-*•·–—>]|\d{1,2}[.)])\s+/, "") : line, (bullet && !section) || (section && section.kind !== null));
+    add(bullet ? line.replace(/^([-*•·–\u2014>]|\d{1,2}[.)])\s+/, "") : line, (bullet && !section) || (section && section.kind !== null));
   }
   flush();
 }

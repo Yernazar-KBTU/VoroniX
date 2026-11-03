@@ -178,6 +178,20 @@ describe("reading files", () => {
     expect(ex.tables[0].rows).toEqual([["Мастер", "График"], ["Ербол", "Пн-Пт 10:00-19:00"]]);
   });
 
+  it("keeps Word bullet lists apart from the line after them", async () => {
+    const p = (t, pPr = "") => `<w:p>${pPr}<w:r><w:t>${t}</w:t></w:r></w:p>`;
+    const bullet = '<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr>';
+    const styled = '<w:pPr><w:pStyle w:val="ListBullet"/></w:pPr>';
+    const docx = zip({
+      "word/document.xml": `<w:document><w:body>${p("Rules:")}${p("Cancel 24 hours before the visit.", bullet)}${p("No pets inside.", styled)}${p("Promotion: 15% off manicure on weekdays.")}${p("FAQ")}${p("Is there parking? Yes, next door.", bullet)}</w:body></w:document>`,
+    });
+    const ex = await extractFile(file("rules.docx", docx));
+    expect(ex.texts[0].text.split("\n")).toEqual(["Rules:", "- Cancel 24 hours before the visit.", "- No pets inside.", "Promotion: 15% off manicure on weekdays.", "FAQ", "- Is there parking? Yes, next door."]);
+    const d = analyze(ex);
+    expect(d.knowledge.map((k) => k.title)).toEqual(["Rules", "Promotion", "FAQ"]);
+    expect(d.knowledge[0].content).not.toContain("Promotion");
+  });
+
   it("turns JSON lists into tables", async () => {
     const json = new TextEncoder().encode(JSON.stringify({ city: "Bangkok", services: [{ name: "Thai massage", minutes: 60, price: 900 }] }));
     const ex = await extractFile(file("data.json", json));
