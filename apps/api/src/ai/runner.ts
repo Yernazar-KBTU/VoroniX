@@ -3,36 +3,58 @@ import { pool } from "../db/pool.js";
 import { logger } from "../lib/logger.js";
 import { bus } from "../realtime/bus.js";
 import { patchConversation } from "../repositories/conversations.repo.js";
+import { currentTenant } from "../tenancy/context.js";
 import { getOrThrow, pushMessage } from "../services/conversation.service.js";
 import { ClaudeAgent } from "./claude-agent.js";
 import type { AgentEngine } from "./engine.js";
 import { OfflineAgent } from "./offline-agent.js";
 
-export function createEngine(): AgentEngine {
-  const useClaude = config.AI_ENGINE === "claude" || (config.AI_ENGINE === "auto" && !!config.ANTHROPIC_API_KEY);
-  return useClaude ? new ClaudeAgent() : new OfflineAgent();
+export function createEngine(apiKey = config.ANTHROPIC_API_KEY): AgentEngine {
+  const useClaude = config.AI_ENGINE === "claude" || (config.AI_ENGINE === "auto" && !!apiKey);
+  return useClaude ? new ClaudeAgent({ apiKey }) : new OfflineAgent();
 }
 
-let engine: AgentEngine = createEngine();
-export const getEngine = () => engine;
-/** Picks the engine again, after the Claude key was connected or removed. */
+/** Engine on the platform's own key, used by every business that did not connect its own Claude key. */
+let platform: AgentEngine = createEngine();
+/** Businesses that connected their own Anthropic key on the Integrations page. */
+const ownKey = new Map<string, AgentEngine>();
+const ownKeyText = new Map<string, string>();
+let override: AgentEngine | null = null;
+
+/** The engine that answers for the business of the current request. */
+export const getEngine = (): AgentEngine => override ?? ownKey.get(currentTenant()?.id ?? "") ?? platform;
+/** Uses this business's own Claude key, or the platform engine again when key is null. */
+export function setBusinessKey(tenantId: string, key: string | null): void {
+  if (key) {
+    ownKey.set(tenantId, createEngine(key));
+    ownKeyText.set(tenantId, key);
+  } else {
+    ownKey.delete(tenantId);
+    ownKeyText.delete(tenantId);
+  }
+}
+/** Anthropic key for one-off calls (Ask, Teach) of the current business. */
+export const claudeKey = (): string | undefined => ownKeyText.get(currentTenant()?.id ?? "") ?? config.ANTHROPIC_API_KEY;
+/** Picks the platform engine again, after the environment changed. */
 export const resetEngine = () => {
-  engine = createEngine();
+  platform = createEngine();
 };
-/** Tests swap in a fake or a specific engine. */
-export const setEngine = (e: AgentEngine) => {
-  engine = e;
+/** Tests swap in a fake or a specific engine for every business. */
+export const setEngine = (e: AgentEngine | null) => {
+  override = e;
 };
 
+// Conversation ids like CV-0001 repeat in every business, so runs are keyed by business and chat.
 const running = new Map<string, AbortController>();
 const again = new Set<string>();
 const status = new Map<string, string>();
+const keyOf = (convId: string) => `${currentTenant()?.id ?? "-"}:${convId}`;
 
-export const aiStatus = (convId: string) => status.get(convId) ?? null;
+export const aiStatus = (convId: string) => status.get(keyOf(convId)) ?? null;
 
 function setStatus(convId: string, s: string | null) {
-  if (s) status.set(convId, s);
-  else status.delete(convId);
+  if (s) status.set(keyOf(convId), s);
+  else status.delete(keyOf(convId));
   bus.publish({ type: "ai", conversation_id: convId, status: s });
 }
 
@@ -42,12 +64,14 @@ function setStatus(convId: string, s: string | null) {
  * messages still get an answer to both.
  */
 export async function replyTo(convId: string): Promise<void> {
-  if (running.has(convId)) {
-    again.add(convId);
+  const key = keyOf(convId);
+  if (running.has(key)) {
+    again.add(key);
     return;
   }
+  const engine = getEngine();
   const ctl = new AbortController();
-  running.set(convId, ctl);
+  running.set(key, ctl);
   setStatus(convId, "Thinking…");
   const started = performance.now();
   let outcome: "replied" | "handoff" | "error" | "cancelled" = "replied";
@@ -71,7 +95,7 @@ export async function replyTo(convId: string): Promise<void> {
     const e = err as Error;
     if (e.name === "AbortError" || ctl.signal.aborted) {
       outcome = "cancelled";
-      again.delete(convId);
+      again.delete(key);
     } else {
       outcome = "error";
       error = e.message;
@@ -80,7 +104,7 @@ export async function replyTo(convId: string): Promise<void> {
     }
   } finally {
     const latency = Math.round(performance.now() - started);
-    running.delete(convId);
+    running.delete(key);
     setStatus(convId, null);
     await pool
       .query(
@@ -89,8 +113,8 @@ export async function replyTo(convId: string): Promise<void> {
         [convId, engine.name, latency, JSON.stringify(toolCalls), usage?.input_tokens ?? null, usage?.output_tokens ?? null, outcome, error],
       )
       .catch((e) => logger.warn({ err: e }, "could not log ai run"));
-    if (again.has(convId)) {
-      again.delete(convId);
+    if (again.has(key)) {
+      again.delete(key);
       const c = await getOrThrow(convId).catch(() => null);
       if (c?.ai_enabled) void replyTo(convId);
     }
@@ -98,9 +122,9 @@ export async function replyTo(convId: string): Promise<void> {
 }
 
 export function stop(convId: string): boolean {
-  const ctl = running.get(convId);
+  const ctl = running.get(keyOf(convId));
   if (!ctl) return false;
-  again.delete(convId);
+  again.delete(keyOf(convId));
   ctl.abort();
   return true;
 }

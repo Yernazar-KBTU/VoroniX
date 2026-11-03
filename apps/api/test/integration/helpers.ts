@@ -1,13 +1,24 @@
-import { migrate } from "../../src/db/migrate.js";
+import { migrate, resetDatabase } from "../../src/db/migrate.js";
 import { pool } from "../../src/db/pool.js";
-import { seedDemo } from "../../src/db/seed.js";
+import { createDemoBusiness } from "../../src/db/seed.js";
 import { addDays, ymd } from "../../src/lib/time.js";
+import { setFallbackTenant, type Tenant } from "../../src/tenancy/context.js";
 
-/** Empty schema, all migrations, demo data. Every test file starts from here. */
+export let demo: Tenant;
+
+/**
+ * Empty database, all migrations, and the demo business with demo data. The
+ * demo business becomes the default one, so tests can call routes and
+ * services without signing in. Every test file starts from here.
+ */
 export async function freshDb() {
-  await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;");
+  setFallbackTenant(null);
+  await resetDatabase(pool);
   await migrate(pool);
-  return seedDemo(pool);
+  const { tenant, counts } = await createDemoBusiness(pool);
+  demo = tenant;
+  setFallbackTenant(tenant);
+  return counts;
 }
 
 /** A Wednesday about six weeks ahead: every master works, no demo bookings yet. */

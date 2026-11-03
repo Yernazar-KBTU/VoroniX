@@ -1,33 +1,55 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import express, { type RequestHandler } from "express";
+import express from "express";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import { config } from "./config.js";
 import { pool } from "./db/pool.js";
 import { errorHandler } from "./lib/errors.js";
-import { logger } from "./lib/logger.js";
+import { httpLogSerializers, logger } from "./lib/logger.js";
 import { sseHandler } from "./realtime/bus.js";
 import { catalogRouter } from "./routes/catalog.routes.js";
 import { conversationsRouter } from "./routes/conversations.routes.js";
 import { crmRouter } from "./routes/crm.routes.js";
 import { insightsRouter } from "./routes/insights.routes.js";
 import { integrationsRouter } from "./routes/integrations.routes.js";
+import { authRouter } from "./routes/auth.routes.js";
+import { requireAuth } from "./auth/auth.service.js";
 import { getEngine } from "./ai/runner.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST ?? path.resolve(here, "../../web/dist");
 
-/** HTTP basic auth for the admin UI when BASIC_AUTH_USER/PASSWORD are set. Webhooks use their own secret. */
-const basicAuth: RequestHandler = (req, res, next) => {
-  if (!config.BASIC_AUTH_USER || !config.BASIC_AUTH_PASSWORD) return next();
-  if (req.path.startsWith("/api/channels/") || req.path === "/api/health" || req.path === "/api/integrations/calendar.ics") return next();
-  const [type, value] = (req.headers.authorization ?? "").split(" ");
-  const [user, pass] = type === "Basic" && value ? Buffer.from(value, "base64").toString().split(":") : [];
-  if (user === config.BASIC_AUTH_USER && pass === config.BASIC_AUTH_PASSWORD) return next();
-  res.set("WWW-Authenticate", 'Basic realm="CRM"').status(401).json({ error: "unauthorized", message: "Login required" });
-};
+/**
+ * The web pages: the landing page at /, the CRM at /app (one page that routes
+ * by #hash), /terms and /privacy. HTML is always revalidated so a new release
+ * shows up at once; the hashed files in /assets are cached for a year.
+ */
+function serveWeb(app: express.Express) {
+  const page = (name: string) => path.join(WEB_DIST, `${name}.html`);
+  const fresh = (res: express.Response) => res.setHeader("Cache-Control", "no-cache");
+  app.use(
+    express.static(WEB_DIST, {
+      index: "index.html",
+      extensions: ["html"],
+      setHeaders: (res, file) => {
+        if (file.endsWith(".html")) fresh(res);
+        else if (file.includes(`${path.sep}assets${path.sep}`)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        else res.setHeader("Cache-Control", "public, max-age=3600");
+      },
+    }),
+  );
+  app.get(/^\/app(?:\/.*)?$/, (_req, res) => {
+    fresh(res);
+    res.sendFile(page("app"));
+  });
+  // Any other address: the landing page, with a 404 status for search engines.
+  app.get(/^\/(?!api\/).*/, (_req, res) => {
+    fresh(res);
+    res.status(404).sendFile(page("index"));
+  });
+}
 
 export function createApp() {
   const app = express();
@@ -44,9 +66,11 @@ export function createApp() {
       },
     }),
   );
-  if (config.NODE_ENV !== "test") app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === "/api/events" || req.url === "/api/health" } }));
+  if (config.NODE_ENV !== "test")
+    app.use(pinoHttp({ logger, serializers: httpLogSerializers, autoLogging: { ignore: (req) => req.url === "/api/events" || req.url === "/api/health" } }));
   app.use(express.json({ limit: "1mb" }));
-  app.use(basicAuth);
+  app.set("trust proxy", 1);
+  app.use(requireAuth);
 
   app.get("/api/health", async (_req, res) => {
     const started = performance.now();
@@ -54,15 +78,12 @@ export function createApp() {
     res.json({ status: "ok", db_ms: Math.round(performance.now() - started), ai_engine: getEngine().name, time: new Date().toISOString() });
   });
   app.get("/api/events", sseHandler);
-  app.use("/api", catalogRouter, crmRouter, conversationsRouter, insightsRouter, integrationsRouter);
+  app.use("/api", authRouter, catalogRouter, crmRouter, conversationsRouter, insightsRouter, integrationsRouter);
   app.use("/api", (_req, res) => {
     res.status(404).json({ error: "not_found", message: "No such API route" });
   });
 
-  if (existsSync(WEB_DIST)) {
-    app.use(express.static(WEB_DIST, { maxAge: "1h", index: "index.html" }));
-    app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(WEB_DIST, "index.html")));
-  }
+  if (existsSync(WEB_DIST)) serveWeb(app);
   app.use(errorHandler);
   return app;
 }

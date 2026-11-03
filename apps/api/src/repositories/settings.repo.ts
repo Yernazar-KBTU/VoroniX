@@ -5,20 +5,21 @@ const SELECT = `SELECT name, business_type AS type, city, address, hours, phone,
   staff_label, service_label, prepay_percent, prepay_min_price_kzt AS prepay_min_price, autopilot, catchphrase
   FROM business_settings WHERE id = 1`;
 
+/** Only used if a business somehow has no settings row; new businesses get one when they sign up. */
 const FALLBACK: BusinessSettings = {
   name: "My business",
-  type: "Beauty salon",
+  type: "Appointment-based business",
   city: "",
   address: "",
   hours: "",
   phone: "",
   tone: "Warm, short and polite.",
   catchphrase: "",
-  languages: "Russian, Kazakh, English",
-  staff_label: "Master",
+  languages: "English",
+  staff_label: "Specialist",
   service_label: "Service",
-  prepay_percent: 30,
-  prepay_min_price: 20000,
+  prepay_percent: 0,
+  prepay_min_price: 0,
   autopilot: true,
 };
 

@@ -1,11 +1,12 @@
--- 001_init.sql
--- Core schema of the CRM. Times of visits are stored as local salon time
--- (TIMESTAMP without time zone); audit times are TIMESTAMPTZ.
-
-CREATE EXTENSION IF NOT EXISTS btree_gist;
+-- tenant/001_init.sql
+-- CRM tables of one business. Every business gets its own schema t_<id> with
+-- a copy of these tables, so its data is physically apart from every other
+-- business. Visit times are local business time (TIMESTAMP without time
+-- zone); audit times are TIMESTAMPTZ. btree_gist is created once in public
+-- by core/001_accounts.sql.
 
 -- ---------------------------------------------------------------------------
--- Business profile: one row. The AI reads it on every reply.
+-- Business profile: one row per business schema. The AI reads it on every reply.
 -- ---------------------------------------------------------------------------
 CREATE TABLE business_settings (
   id                   SMALLINT     PRIMARY KEY DEFAULT 1 CHECK (id = 1),
@@ -31,8 +32,8 @@ CREATE TABLE business_settings (
 -- ---------------------------------------------------------------------------
 CREATE SEQUENCE clients_seq;
 CREATE TABLE clients (
-  client_id    VARCHAR(7)  PRIMARY KEY DEFAULT 'CL-' || lpad(nextval('clients_seq')::text, 4, '0')
-               CHECK (client_id ~ '^CL-[0-9]{4}$'),
+  client_id    VARCHAR(12)  PRIMARY KEY DEFAULT 'CL-' || lpad(nextval('clients_seq')::text, 4, '0')
+               CHECK (client_id ~ '^CL-[0-9]{4,}$'),
   display_name VARCHAR(50) NOT NULL CHECK (length(btrim(display_name)) > 0),
   phone        VARCHAR(20) UNIQUE,
   notes        TEXT        NOT NULL DEFAULT '',
@@ -41,8 +42,8 @@ CREATE TABLE clients (
 
 CREATE SEQUENCE client_channels_seq;
 CREATE TABLE client_channels (
-  channel_id       VARCHAR(7)  PRIMARY KEY DEFAULT 'CH-' || lpad(nextval('client_channels_seq')::text, 4, '0'),
-  client_id        VARCHAR(7)  NOT NULL REFERENCES clients (client_id) ON DELETE CASCADE,
+  channel_id       VARCHAR(12)  PRIMARY KEY DEFAULT 'CH-' || lpad(nextval('client_channels_seq')::text, 4, '0'),
+  client_id        VARCHAR(12)  NOT NULL REFERENCES clients (client_id) ON DELETE CASCADE,
   messenger        VARCHAR(10) NOT NULL CHECK (messenger IN ('Telegram', 'WhatsApp', 'Instagram')),
   external_user_id VARCHAR(64) NOT NULL,
   UNIQUE (messenger, external_user_id)
@@ -63,8 +64,8 @@ CREATE TABLE services (
 
 CREATE SEQUENCE masters_seq;
 CREATE TABLE masters (
-  master_id      VARCHAR(5)  PRIMARY KEY DEFAULT 'MS-' || lpad(nextval('masters_seq')::text, 2, '0')
-                 CHECK (master_id ~ '^MS-[0-9]{2}$'),
+  master_id      VARCHAR(8)  PRIMARY KEY DEFAULT 'MS-' || lpad(nextval('masters_seq')::text, 2, '0')
+                 CHECK (master_id ~ '^MS-[0-9]{2,}$'),
   full_name      VARCHAR(60) NOT NULL CHECK (length(btrim(full_name)) > 0),
   specialization VARCHAR(40) NOT NULL DEFAULT '',
   work_start     TIME        NOT NULL DEFAULT '09:00',
@@ -78,7 +79,7 @@ CREATE TABLE masters (
 -- Bridge table for the M:N relation. Rows are deactivated, not deleted, so
 -- old appointments keep a valid (master, service) pair.
 CREATE TABLE master_services (
-  master_id    VARCHAR(5)  NOT NULL REFERENCES masters (master_id) ON DELETE CASCADE,
+  master_id    VARCHAR(8)  NOT NULL REFERENCES masters (master_id) ON DELETE CASCADE,
   service_code CHAR(5)     NOT NULL REFERENCES services (service_code) ON DELETE CASCADE,
   skill_level  VARCHAR(10) NOT NULL DEFAULT 'Senior' CHECK (skill_level IN ('Junior', 'Senior')),
   since_date   DATE        NOT NULL DEFAULT CURRENT_DATE,
@@ -89,7 +90,7 @@ CREATE TABLE master_services (
 -- 1:1 with masters: each master has at most one login.
 CREATE TABLE master_accounts (
   account_id    SERIAL       PRIMARY KEY,
-  master_id     VARCHAR(5)   NOT NULL UNIQUE REFERENCES masters (master_id) ON DELETE CASCADE,
+  master_id     VARCHAR(8)   NOT NULL UNIQUE REFERENCES masters (master_id) ON DELETE CASCADE,
   login         VARCHAR(30)  NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   last_login    TIMESTAMPTZ
@@ -104,9 +105,9 @@ CREATE TABLE master_accounts (
 -- ---------------------------------------------------------------------------
 CREATE SEQUENCE appointments_seq START 1001;
 CREATE TABLE appointments (
-  appointment_id VARCHAR(8)  PRIMARY KEY DEFAULT 'AP-' || nextval('appointments_seq')::text,
-  client_id      VARCHAR(7)  NOT NULL REFERENCES clients (client_id) ON DELETE RESTRICT,
-  master_id      VARCHAR(5)  NOT NULL,
+  appointment_id VARCHAR(12)  PRIMARY KEY DEFAULT 'AP-' || nextval('appointments_seq')::text,
+  client_id      VARCHAR(12)  NOT NULL REFERENCES clients (client_id) ON DELETE RESTRICT,
+  master_id      VARCHAR(8)  NOT NULL,
   service_code   CHAR(5)     NOT NULL,
   start_at       TIMESTAMP   NOT NULL,
   end_at         TIMESTAMP   NOT NULL,
@@ -131,8 +132,8 @@ CREATE INDEX appointments_service_status_idx ON appointments (service_code, stat
 -- ---------------------------------------------------------------------------
 CREATE SEQUENCE payments_seq;
 CREATE TABLE payments (
-  payment_id     VARCHAR(8)  PRIMARY KEY DEFAULT 'PM-' || lpad(nextval('payments_seq')::text, 5, '0'),
-  appointment_id VARCHAR(8)  NOT NULL REFERENCES appointments (appointment_id) ON DELETE CASCADE,
+  payment_id     VARCHAR(12)  PRIMARY KEY DEFAULT 'PM-' || lpad(nextval('payments_seq')::text, 5, '0'),
+  appointment_id VARCHAR(12)  NOT NULL REFERENCES appointments (appointment_id) ON DELETE CASCADE,
   amount_kzt     INTEGER     NOT NULL CHECK (amount_kzt > 0),
   kind           VARCHAR(10) NOT NULL CHECK (kind IN ('prepayment', 'full')),
   method         VARCHAR(10) NOT NULL DEFAULT 'Kaspi QR' CHECK (method IN ('Kaspi QR', 'Card', 'Cash')),
@@ -148,12 +149,12 @@ CREATE INDEX payments_appointment_idx ON payments (appointment_id);
 -- ---------------------------------------------------------------------------
 CREATE SEQUENCE conversations_seq;
 CREATE TABLE conversations (
-  conversation_id  VARCHAR(7)  PRIMARY KEY DEFAULT 'CV-' || lpad(nextval('conversations_seq')::text, 4, '0'),
+  conversation_id  VARCHAR(12)  PRIMARY KEY DEFAULT 'CV-' || lpad(nextval('conversations_seq')::text, 4, '0'),
   messenger        VARCHAR(10) NOT NULL CHECK (messenger IN ('Telegram', 'WhatsApp', 'Instagram')),
   external_user_id VARCHAR(64) NOT NULL,
   contact_name     VARCHAR(60) NOT NULL,
-  client_id        VARCHAR(7)  REFERENCES clients (client_id) ON DELETE SET NULL,
-  appointment_id   VARCHAR(8)  REFERENCES appointments (appointment_id) ON DELETE SET NULL,
+  client_id        VARCHAR(12)  REFERENCES clients (client_id) ON DELETE SET NULL,
+  appointment_id   VARCHAR(12)  REFERENCES appointments (appointment_id) ON DELETE SET NULL,
   stage            VARCHAR(10) NOT NULL DEFAULT 'New'
                    CHECK (stage IN ('New', 'In dialog', 'Booked', 'Paid', 'Visited', 'Lost')),
   ai_enabled       BOOLEAN     NOT NULL DEFAULT TRUE,
@@ -165,10 +166,10 @@ CREATE TABLE conversations (
 
 CREATE TABLE messages (
   message_id      BIGSERIAL   PRIMARY KEY,
-  conversation_id VARCHAR(7)  NOT NULL REFERENCES conversations (conversation_id) ON DELETE CASCADE,
+  conversation_id VARCHAR(12)  NOT NULL REFERENCES conversations (conversation_id) ON DELETE CASCADE,
   sender          VARCHAR(6)  NOT NULL CHECK (sender IN ('client', 'ai', 'admin', 'system', 'pay')),
   body            TEXT        NOT NULL DEFAULT '',
-  payment_id      VARCHAR(8)  REFERENCES payments (payment_id) ON DELETE SET NULL,
+  payment_id      VARCHAR(12)  REFERENCES payments (payment_id) ON DELETE SET NULL,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
   CHECK (sender <> 'pay' OR payment_id IS NOT NULL)
 );
@@ -179,7 +180,7 @@ CREATE INDEX messages_conversation_idx ON messages (conversation_id, message_id)
 -- ---------------------------------------------------------------------------
 CREATE SEQUENCE knowledge_seq;
 CREATE TABLE knowledge_entries (
-  entry_id   VARCHAR(8)   PRIMARY KEY DEFAULT 'KB-' || nextval('knowledge_seq')::text,
+  entry_id   VARCHAR(12)   PRIMARY KEY DEFAULT 'KB-' || nextval('knowledge_seq')::text,
   title      VARCHAR(120) NOT NULL CHECK (length(btrim(title)) > 0),
   category   VARCHAR(40)  NOT NULL DEFAULT 'General',
   content    TEXT         NOT NULL CHECK (length(content) BETWEEN 1 AND 60000),
@@ -192,7 +193,7 @@ CREATE TABLE knowledge_entries (
 -- ---------------------------------------------------------------------------
 CREATE TABLE ai_runs (
   run_id          BIGSERIAL   PRIMARY KEY,
-  conversation_id VARCHAR(7)  REFERENCES conversations (conversation_id) ON DELETE CASCADE,
+  conversation_id VARCHAR(12)  REFERENCES conversations (conversation_id) ON DELETE CASCADE,
   engine          VARCHAR(40) NOT NULL,
   latency_ms      INTEGER     NOT NULL CHECK (latency_ms >= 0),
   tool_calls      JSONB       NOT NULL DEFAULT '[]',

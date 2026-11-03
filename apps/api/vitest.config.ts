@@ -14,6 +14,7 @@ export default defineConfig({
       TZ: "Asia/Almaty",
       NODE_ENV: "test",
       AI_ENGINE: "offline",
+      AUTH_REQUIRED: "false",
       DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://crm:crm@localhost:5432/crm_test",
     },
   },

@@ -6,12 +6,15 @@ import { badRequest, notFound } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { bus, type BusEvent } from "../realtime/bus.js";
 import { deleteIntegration, getIntegration, listIntegrations, saveIntegration, type IntegrationRow } from "../repositories/integrations.repo.js";
-import { resetEngine } from "../ai/runner.js";
+import { setBusinessKey } from "../ai/runner.js";
 import { startTelegram } from "../channels/telegram.js";
+import { requireTenant } from "../tenancy/context.js";
+import { forEachTenant } from "../tenancy/tenants.js";
 import { PROVIDERS, type Provider } from "./catalog.js";
 
 /**
- * Connections to outside services. Each provider has its own check: Telegram
+ * Connections to outside services, per business: every business keeps its
+ * own rows in its own integrations table. Each provider has its own check: Telegram
  * and Claude validate the token against the real API and start working at
  * once; WhatsApp and Instagram get an inbound webhook with its own secret;
  * Google Calendar gets a private iCal feed; the outgoing webhook posts CRM
@@ -48,17 +51,19 @@ export const deps = {
   startTelegram,
 };
 
-let telegram: { stop: () => Promise<void> } | null = null;
-const envClaudeKey = config.ANTHROPIC_API_KEY;
+/** Running Telegram bots, one per business that connected one. */
+const telegrams = new Map<string, { stop: () => Promise<void> }>();
 
+/** Starts, replaces or stops the bot of the current business. */
 async function setTelegram(token: string | null) {
-  await telegram?.stop().catch(() => {});
-  telegram = token ? deps.startTelegram(token) : null;
+  const t = requireTenant();
+  await telegrams.get(t.id)?.stop().catch(() => {});
+  telegrams.delete(t.id);
+  if (token) telegrams.set(t.id, deps.startTelegram(token, t));
 }
 
-function setClaudeKey(key: string | undefined) {
-  config.ANTHROPIC_API_KEY = key;
-  resetEngine();
+function setClaudeKey(key: string | null) {
+  setBusinessKey(requireTenant().id, key);
 }
 
 const newSecret = () => randomBytes(18).toString("base64url");
@@ -80,14 +85,17 @@ export interface IntegrationView extends Provider {
 /** Every provider with its state. Secrets are never returned in full. */
 export async function listView(): Promise<IntegrationView[]> {
   const rows = new Map((await listIntegrations(pool)).map((r) => [r.provider, r]));
-  return PROVIDERS.map((p) => {
+  // Kaspi Pay only works in Kazakhstan: offered to tenge businesses, or to one that already connected it.
+  const offered = PROVIDERS.filter((p) => p.id !== "kaspi" || requireTenant().currency === "KZT" || rows.has("kaspi"));
+  return offered.map((p) => {
     const r = rows.get(p.id);
-    const env = !r && ((p.id === "telegram" && !!config.TELEGRAM_BOT_TOKEN) || (p.id === "claude" && !!config.ANTHROPIC_API_KEY));
+    // AI replies are included with the platform key; a business may still connect its own.
+    const env = !r && p.id === "claude" && !!config.ANTHROPIC_API_KEY;
     return {
       ...p,
       enabled: r?.enabled ?? env,
       status: r?.status ?? (env ? "connected" : "off"),
-      status_detail: r?.status_detail ?? (env ? "Connected through the server environment" : ""),
+      status_detail: r?.status_detail ?? (env ? "Included: Claude writes the replies on the VoroniX key" : ""),
       settings: r?.settings ?? {},
       secret_hint: mask(r?.secret ?? null),
       shared_secret: r?.enabled && !p.fields.some((f) => f.secret) ? (r.secret ?? "") : "",
@@ -121,8 +129,8 @@ export async function connect(id: string, input: { secret?: string; settings?: R
 
   const check = await run(p, settings, secret);
   await saveIntegration(pool, { provider: id, enabled: check.ok, settings, secret, status: check.ok ? "connected" : "error", status_detail: check.detail });
-  if (id === "telegram") await setTelegram(check.ok ? secret : (config.TELEGRAM_BOT_TOKEN ?? null));
-  if (id === "claude") setClaudeKey(check.ok ? secret! : envClaudeKey);
+  if (id === "telegram") await setTelegram(check.ok ? secret : null);
+  if (id === "claude") setClaudeKey(check.ok ? secret : null);
   logger.info({ provider: id, ok: check.ok }, "integration connected");
   return view(id);
 }
@@ -140,8 +148,8 @@ export async function test(id: string): Promise<IntegrationView> {
 export async function disconnect(id: string): Promise<IntegrationView> {
   provider(id);
   await deleteIntegration(pool, id);
-  if (id === "telegram") await setTelegram(config.TELEGRAM_BOT_TOKEN ?? null);
-  if (id === "claude") setClaudeKey(envClaudeKey);
+  if (id === "telegram") await setTelegram(null);
+  if (id === "claude") setClaudeKey(null);
   return view(id);
 }
 
@@ -154,7 +162,7 @@ async function run(p: Provider, settings: Record<string, string>, secret: string
         return await deps.checkClaude(secret!);
       case "whatsapp":
       case "instagram":
-        return { ok: true, detail: `Waiting for messages at /api/channels/${p.id}/inbound` };
+        return { ok: true, detail: `Waiting for messages at /api/channels/${requireTenant().id}/${p.id}/inbound` };
       case "google_calendar":
         return { ok: true, detail: "Calendar feed is ready. Add it in Google Calendar by URL." };
       case "kaspi":
@@ -182,24 +190,30 @@ export async function calendarToken(): Promise<string | null> {
   return row?.enabled ? row.secret : null;
 }
 
-/** Starts what was connected before the restart and forwards CRM events to the outgoing webhook. */
+/** Starts what every business had connected before the restart and forwards CRM events to their outgoing webhooks. */
 export async function bootIntegrations(): Promise<void> {
-  const rows = await listIntegrations(pool).catch(() => [] as IntegrationRow[]);
-  const tg = rows.find((r) => r.provider === "telegram" && r.enabled);
-  const tgToken = tg?.secret ?? config.TELEGRAM_BOT_TOKEN ?? null;
-  if (tgToken) await setTelegram(tgToken);
-  const cl = rows.find((r) => r.provider === "claude" && r.enabled);
-  if (cl?.secret) setClaudeKey(cl.secret);
+  await forEachTenant(
+    async () => {
+      const rows = await listIntegrations(pool).catch(() => [] as IntegrationRow[]);
+      const tg = rows.find((r) => r.provider === "telegram" && r.enabled);
+      if (tg?.secret) await setTelegram(tg.secret);
+      const cl = rows.find((r) => r.provider === "claude" && r.enabled);
+      if (cl?.secret) setClaudeKey(cl.secret);
+    },
+    (t, err) => logger.error({ err, business: t.id }, "could not start integrations"),
+  );
   bus.on("event", forwardDomainEvent);
 }
 
 export async function stopIntegrations(): Promise<void> {
   bus.off("event", forwardDomainEvent);
-  await setTelegram(null);
+  await Promise.all([...telegrams.values()].map((b) => b.stop().catch(() => {})));
+  telegrams.clear();
 }
 
+/** Runs in the context of the business that published the event, so it reads that business's webhook. */
 async function forwardDomainEvent(e: BusEvent) {
-  if (e.type !== "domain") return;
+  if (e.type !== "domain" || !e.tenant) return;
   const row = await getIntegration(pool, "webhook").catch(() => null);
   if (!row?.enabled || !row.settings.url) return;
   const wanted = (row.settings.events ?? "").split(",").map((s) => s.trim()).filter(Boolean);

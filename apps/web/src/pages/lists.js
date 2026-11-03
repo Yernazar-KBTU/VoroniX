@@ -2,7 +2,7 @@
 
 import { S, biz, cli, mastersFor, mst, prepayFor, revenueOf, servicesOf, svc, vals, active } from "../store.js";
 import { render, ui } from "../ui.js";
-import { DOW, esc, head, money, msIcon, pill, ymd } from "../util.js";
+import { DOW, esc, head, money, msIcon, nowLocal, pill, ymd } from "../util.js";
 
 export const clients = {
   head: () => head("Clients", "", `<button class="btn create" data-act="newClient">+ Add client</button>`),
@@ -23,7 +23,7 @@ export const clients = {
     if (ui.gq) L = L.filter((c) => `${c.display_name} ${c.phone} ${c.id}`.toLowerCase().includes(ui.gq));
     L.sort((a, b) => b.spent - a.spent);
     return `<div class="panel tw">${ui.gq ? `<div class="ph"><span>Search: <b>${esc(ui.gq)}</b> · ${L.length} found</span></div>` : ""}<table class="t"><thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Messengers</th><th>Visits</th><th>No-shows</th><th>Last visit</th><th style="text-align:right">Spent</th></tr></thead><tbody>
-  ${L.map((c) => `<tr class="click" data-client="${c.id}"><td class="code">${c.id}</td><td><b>${esc(c.display_name)}</b></td><td>${esc(c.phone || "—")}</td><td>${c.ch.map((x) => msIcon(x.messenger)).join(" ")}</td><td>${c.visits}</td><td>${c.ns ? `<span class="pill No-show">${c.ns}</span>` : "0"}</td><td>${esc(c.last.slice(0, 10) || "—")}</td><td style="text-align:right">${money(c.spent)}</td></tr>`).join("") || `<tr><td colspan="8"><div class="empty"><b>No clients found</b>Clients are created by the AI from chats, or with “Add client”.</div></td></tr>`}</tbody></table></div>`;
+  ${L.map((c) => `<tr class="click" data-client="${c.id}"><td class="code">${c.id}</td><td><b>${esc(c.display_name)}</b></td><td>${esc(c.phone || "")}</td><td>${c.ch.map((x) => msIcon(x.messenger)).join(" ")}</td><td>${c.visits}</td><td>${c.ns ? `<span class="pill No-show">${c.ns}</span>` : "0"}</td><td>${esc(c.last.slice(0, 10) || "Never")}</td><td style="text-align:right">${money(c.spent)}</td></tr>`).join("") || `<tr><td colspan="8"><div class="empty"><b>No clients found</b>Clients are created by the AI from chats, or with “Add client”.</div></td></tr>`}</tbody></table></div>`;
   },
 };
 
@@ -31,14 +31,14 @@ export const services = {
   head: () => head(biz().service_label ? biz().service_label + "s" : "Services", "The AI can only offer what is in this list, at these prices.", `<button class="btn create" data-act="newService">+ Add service</button>`),
   body: () =>
     `<div class="panel tw"><table class="t"><thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Duration</th><th style="text-align:right">Price</th><th>Prepayment</th><th>Who does it</th><th>Status</th></tr></thead><tbody>${vals("services")
-      .map((s) => `<tr class="click" data-service="${s.id}"><td class="code">${s.id}</td><td><b>${esc(s.name)}</b></td><td>${esc(s.category || "")}</td><td>${s.duration_min} min</td><td style="text-align:right">${money(s.price_kzt)}</td><td>${prepayFor(s.id) ? money(prepayFor(s.id)) : "—"}</td><td>${mastersFor(s.id).map((m) => esc(mst(m).full_name)).join(", ") || '<span class="pill warn">nobody</span>'}</td><td>${s.is_active === false ? pill("Hidden", "Cancelled") : pill("Active", "Completed")}</td></tr>`)
+      .map((s) => `<tr class="click" data-service="${s.id}"><td class="code">${s.id}</td><td><b>${esc(s.name)}</b></td><td>${esc(s.category || "")}</td><td>${s.duration_min} min</td><td style="text-align:right">${money(s.price_kzt)}</td><td>${prepayFor(s.id) ? money(prepayFor(s.id)) : "None"}</td><td>${mastersFor(s.id).map((m) => esc(mst(m).full_name)).join(", ") || '<span class="pill warn">nobody</span>'}</td><td>${s.is_active === false ? pill("Hidden", "Cancelled") : pill("Active", "Completed")}</td></tr>`)
       .join("")}</tbody></table></div>`,
 };
 
 export const staff = {
   head: () => head((biz().staff_label || "Master") + "s", "", `<button class="btn create" data-act="newMaster">+ Add ${esc((biz().staff_label || "master").toLowerCase())}</button>`),
   body() {
-    const today = ymd(new Date());
+    const today = ymd(nowLocal());
     return `<div class="panel tw"><table class="t"><thead><tr><th>ID</th><th>Name</th><th>Specialization</th><th>Services (master_services)</th><th>Working days</th><th>Hours</th><th>Today</th></tr></thead><tbody>${vals("masters")
       .map((m) => {
         const n = vals("appointments").filter((a) => a.master_id === m.id && a.start_datetime.startsWith(today) && active(a)).length;
@@ -59,7 +59,7 @@ export const payments = {
       P.slice(0, 300)
         .map((p) => {
           const a = S.appointments[p.appointment_id] || {};
-          return `<tr><td class="code">${p.id}</td><td>${esc(p.created_at)}</td><td>${esc(cli(a.client_id)?.display_name || "—")}</td><td>${esc(svc(a.service_code)?.name || "—")}</td><td>${esc(p.kind)}</td><td>${esc(p.method)}</td><td style="text-align:right">${money(p.amount_kzt)}</td><td>${pill(p.status)}</td><td>${p.status === "Pending" ? `<button class="btn sm" data-markpaid="${p.id}">Mark paid</button>` : p.status === "Paid" ? `<button class="btn sm danger" data-refund="${p.id}">Refund</button>` : ""}</td></tr>`;
+          return `<tr><td class="code">${p.id}</td><td>${esc(p.created_at)}</td><td>${esc(cli(a.client_id)?.display_name || "")}</td><td>${esc(svc(a.service_code)?.name || "")}</td><td>${esc(p.kind)}</td><td>${esc(p.method)}</td><td style="text-align:right">${money(p.amount_kzt)}</td><td>${pill(p.status)}</td><td>${p.status === "Pending" ? `<button class="btn sm" data-markpaid="${p.id}">Mark paid</button>` : p.status === "Paid" ? `<button class="btn sm danger" data-refund="${p.id}">Refund</button>` : ""}</td></tr>`;
         })
         .join("") || `<tr><td colspan="9"><div class="empty"><b>No payments here</b>Payment links sent by the AI appear as Pending.</div></td></tr>`
     }</tbody></table></div>`;

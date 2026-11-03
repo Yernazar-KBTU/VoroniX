@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>VoroniX</title>
+  <meta name="description" content="VoroniX workspace: chats, bookings, clients and the AI administrator in one place.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0d1130">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="side" id="side" aria-label="Main menu">
+      <div class="side-brand"><span id="sideLogo"></span><span class="biz"><b id="bizName">VoroniX</b><small id="bizMeta"></small></span></div>
+      <nav class="rail" id="rail" aria-label="Sections"></nav>
+      <div class="side-foot">
+        <div class="ai-state" id="aiState"><span class="led"></span><span id="aiText">AI replies</span></div>
+        <div class="acct" id="acct"></div>
+      </div>
+    </aside>
+    <div class="scrim-side" data-closemenu></div>
+    <div class="main">
+      <header class="top">
+        <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <label class="tsearch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="gsearch" type="search" placeholder="Search clients, phones, services" aria-label="Search clients"></label>
+        <span class="grow"></span>
+        <span class="chip warn" id="modeChip" hidden>Reconnecting…</span>
+        <span class="chip" id="clock"></span>
+      </header>
+      <div class="phead" id="phead"></div>
+      <div id="banner"></div>
+      <main id="view"></main>
+    </div>
+  </div>
+  <div id="modal"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -34,7 +34,7 @@ export const PROVIDERS: Provider[] = [
     group: "Messengers",
     description: "Messages from WhatsApp Business come into Chats.",
     mode: "bridge",
-    fields: [{ key: "phone", label: "Business phone", placeholder: "+7 700 000 0000" }],
+    fields: [{ key: "phone", label: "Business phone", placeholder: "Your WhatsApp Business number" }],
     steps: [
       "Connect your number to WhatsApp Business API (Meta, 360dialog or Wazzup).",
       "Set the incoming webhook to the address below and add the header x-channel-secret.",
@@ -47,7 +47,7 @@ export const PROVIDERS: Provider[] = [
     group: "Messengers",
     description: "Direct messages from your Instagram business account.",
     mode: "bridge",
-    fields: [{ key: "account", label: "Instagram account", placeholder: "@barberista.almaty" }],
+    fields: [{ key: "account", label: "Instagram account", placeholder: "@yourbusiness" }],
     steps: [
       "Link the Instagram business account to a Facebook page in Meta Business Suite.",
       "In Make, n8n or your Meta app, forward new direct messages to the address below with the header x-channel-secret.",

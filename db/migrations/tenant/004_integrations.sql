@@ -1,7 +1,7 @@
--- 004_integrations.sql
+-- tenant/004_integrations.sql
 -- Connections to outside services, managed from the Integrations page.
 -- secret holds tokens and API keys; the API never returns it in full and the
--- read-only reporting role cannot read the table.
+-- read-only reporting role cannot read the table (the migrator never grants it).
 CREATE TABLE integrations (
   provider      VARCHAR(20)  PRIMARY KEY
                 CHECK (provider IN ('telegram', 'whatsapp', 'instagram', 'claude', 'kaspi', 'google_calendar', 'webhook')),
@@ -13,5 +13,3 @@ CREATE TABLE integrations (
   checked_at    TIMESTAMPTZ,
   updated_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
-
-REVOKE ALL ON integrations FROM crm_readonly;

@@ -1,5 +1,8 @@
-// Local salon time helpers. The process runs with TZ set to the salon zone,
-// so Date's local getters return salon time.
+// Wall-clock time helpers. Every business has its own time zone, so the
+// process itself runs in UTC (see config.ts) and a "local" Date here is a
+// wall-clock reading: its getHours(), getDate() and so on return the time on
+// the business's clock. wallClock() makes one for the current moment.
+import { currentTenant } from "../tenancy/context.js";
 
 export const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
@@ -38,3 +41,20 @@ export const fromMin = (n: number) => `${pad(Math.floor(n / 60))}:${pad(n % 60)}
 
 /** Normalises "2026-10-30T14:00" / "2026-10-30 14:00:00" to "2026-10-30 14:00". */
 export const normDT = (s: string) => String(s).replace("T", " ").slice(0, 16);
+
+const clocks = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * The current time on the clock of a business, as a Date whose local getters
+ * return that wall-clock time. Defaults to the business of the current
+ * request, or UTC when there is none.
+ */
+export function wallClock(at: Date = new Date(), timeZone = currentTenant()?.timezone ?? "UTC"): Date {
+  let f = clocks.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    clocks.set(timeZone, f);
+  }
+  const p = Object.fromEntries(f.formatToParts(at).map((x) => [x.type, x.value]));
+  return new Date(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second, at.getMilliseconds());
+}

@@ -1,6 +1,14 @@
 # Render Blueprint: the full system (API + web CRM + PostgreSQL) on Render's free plan.
-# New → Blueprint → pick this repository. Migrations run on start; load the demo salon
-# from the banner on the first page.
+# New → Blueprint → pick this repository. Migrations run on start. Open the site,
+# press "Start free" and create the first business.
+#
+# Free plan (https://render.com/docs/free): the site sleeps after 15 minutes without
+# visitors and takes about a minute to wake up; the free database expires 30 days
+# after it is created. Move to paid plans before real clients sign up.
+#
+# Optional settings, added later on the service's Environment page:
+# APP_URL (defaults to the service's onrender.com address), ANTHROPIC_API_KEY,
+# RESEND_API_KEY, MAIL_FROM, SUPPORT_EMAIL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET.
 services:
   - type: web
     name: voronix
@@ -12,17 +20,6 @@ services:
         fromDatabase:
           name: voronix-db
           property: connectionString
-      - key: ALLOW_DEMO_RESET
-        value: "true"
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      # Optional login for the CRM pages (leave empty for an open demo).
-      - key: BASIC_AUTH_USER
-        sync: false
-      - key: BASIC_AUTH_PASSWORD
-        sync: false
 
 databases:
   - name: voronix-db

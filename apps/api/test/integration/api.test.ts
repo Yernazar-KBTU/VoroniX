@@ -88,8 +88,13 @@ describe("booking", () => {
   });
 
   it("moves the visit through its statuses", async () => {
-    const r = await api.patch(`/api/appointments/${id}/status`).send({ status: "Completed" }).expect(200);
-    expect(r.body.status).toBe("Completed");
+    const r = await api.patch(`/api/appointments/${id}/status`).send({ status: "Confirmed" }).expect(200);
+    expect(r.body.status).toBe("Confirmed");
+  });
+
+  it("refuses to close a visit that has not happened yet (Task 7, P6)", async () => {
+    const r = await api.patch(`/api/appointments/${id}/status`).send({ status: "Completed" }).expect(409);
+    expect(r.body.error).toBe("visit_not_started");
   });
 });
 

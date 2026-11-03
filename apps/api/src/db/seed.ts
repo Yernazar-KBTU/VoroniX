@@ -1,17 +1,20 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type pg from "pg";
-import { addDays, dt, pad, toMin, ymd } from "../lib/time.js";
+import { addDays, dt, pad, toMin, wallClock, ymd } from "../lib/time.js";
 import { migrate } from "./migrate.js";
 import { pool, tx } from "./pool.js";
+import { withTenant, type Tenant } from "../tenancy/context.js";
+import { openBusiness } from "../tenancy/tenants.js";
 
 /**
  * Demo barbershop "Barberista": 8 services, 4 barbers, 30 clients,
  * about 300 visits from 45 days ago to 10 days ahead, payments, 4 chats and a
  * knowledge base. Data is generated relative to `today` with a fixed random
- * seed, so every run gives the same picture.
+ * seed, so every run gives the same picture. Replaces the data of the current
+ * business only.
  */
-export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<Record<string, number>> {
+export async function seedDemo(db: pg.Pool = pool, today = wallClock()): Promise<Record<string, number>> {
   const day0 = new Date(today);
   day0.setHours(0, 0, 0, 0);
   let r = 7;
@@ -134,7 +137,9 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
     }
   }
 
-  const ago = (min: number) => new Date(today.getTime() - min * 60_000).toISOString();
+  // TIMESTAMPTZ values are real instants, not wall-clock readings.
+  const realNow = Date.now();
+  const ago = (min: number) => new Date(realNow - min * 60_000).toISOString();
   const fri = `${ymd(friday).slice(8)}.${ymd(friday).slice(5, 7)}`;
   const conversations = [
     {
@@ -149,7 +154,7 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
         ["ai", "Записали вас на пятницу в 18:00 к Тимуру Б. Для VIP-ритуала нужна предоплата 30%: 6 600 ₸, кнопка оплаты ниже.", 189],
         ["pay", "Payment for VIP-ритуал", 189, "PM-00001"],
         ["system", "Payment received: 6 600 ₸ (Kaspi QR). Booking confirmed.", 182],
-        ["ai", "Оплата получена, спасибо! Ждём вас в пятницу в 18:00. Напомним за день до визита. Barberista — стиль без компромиссов 💈", 181],
+        ["ai", "Оплата получена, спасибо! Ждём вас в пятницу в 18:00. Напомним за день до визита. Barberista: стиль без компромиссов 💈", 181],
       ],
     },
     {
@@ -188,7 +193,7 @@ export async function seedDemo(db: pg.Pool = pool, today = new Date()): Promise<
     await c.query(
       `INSERT INTO business_settings (id, name, business_type, city, address, hours, phone, tone, languages, prepay_percent, prepay_min_price_kzt, autopilot, catchphrase)
        VALUES (1, 'Barberista', 'Barbershop', 'Almaty', 'ул. Панфилова 98 (демо-адрес)', 'ежедневно 10:00–21:00',
-               '+7 700 000 0000 (demo)', 'Дружелюбно и по делу, как хороший барбер. Обращаться на «вы». Не больше одного эмодзи.', 'Russian, Kazakh, English', 30, 20000, TRUE, 'Barberista — стиль без компромиссов 💈')`,
+               '+7 700 000 0000 (demo)', 'Дружелюбно и по делу, как хороший барбер. Обращаться на «вы». Не больше одного эмодзи.', 'Russian, Kazakh, English', 30, 20000, TRUE, 'Barberista: стиль без компромиссов 💈')`,
     );
     await insertMany(c, "services (service_code, name, duration_min, price_kzt, category)", services);
     await insertMany(c, "masters (master_id, full_name, specialization, work_start, work_end, work_days)", masters);
@@ -234,10 +239,33 @@ async function insertMany(c: pg.PoolClient, target: string, rows: readonly (read
   await c.query(`INSERT INTO ${target} VALUES ${values}`, rows.flat());
 }
 
+/** The demo business: an Almaty barbershop priced in tenge. */
+export const DEMO_BUSINESS = { name: "Barberista", type: "Barbershop", country: "KZ", timezone: "Asia/Almaty", currency: "KZT", languages: "Russian, Kazakh, English" };
+
+/** Adds the demo business with its own schema (no users) and fills it with demo data. */
+export async function createDemoBusiness(db: pg.Pool = pool): Promise<{ tenant: Tenant; counts: Record<string, number> }> {
+  const { tenant } = await tx((c) => openBusiness(c, DEMO_BUSINESS), db);
+  const counts = await withTenant(tenant, () => seedDemo(db));
+  return { tenant, counts };
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  migrate(pool, console.log)
-    .then(() => seedDemo(pool))
-    .then((counts) => console.log("demo data loaded:", counts))
+  // npm run db:seed: a demo business with an owner you can sign in as.
+  const email = process.env.DEMO_EMAIL ?? "demo@voronix.dev";
+  const password = process.env.DEMO_PASSWORD ?? "demo-password";
+  (async () => {
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_RESET !== "true") throw new Error("Refusing to add demo data in production. Set ALLOW_DEMO_RESET=true if you really mean it.");
+    await migrate(pool, console.log);
+    const { createAccount } = await import("../auth/auth.service.js");
+    const existing = await pool.query<{ business_id: string }>(`SELECT business_id FROM public.users WHERE email = $1`, [email]);
+    let businessId = existing.rows[0]?.business_id;
+    if (!businessId) businessId = (await createAccount({ ...DEMO_BUSINESS, business_name: DEMO_BUSINESS.name, business_type: DEMO_BUSINESS.type, full_name: "Demo Owner", email, password })).business.id;
+    const { findTenant } = await import("../tenancy/tenants.js");
+    const tenant = (await findTenant(businessId))!;
+    const counts = await withTenant(tenant, () => seedDemo(pool));
+    console.log("demo data loaded:", counts);
+    console.log(`sign in as ${email} / ${password}`);
+  })()
     .catch((e) => {
       console.error(e);
       process.exitCode = 1;

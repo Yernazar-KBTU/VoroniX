@@ -1,7 +1,7 @@
 import { api } from "../api.js";
 import { S, act, cli, convClientAppts, mst, svc, vals } from "../store.js";
 import { ui } from "../ui.js";
-import { $, addDays, esc, fmtAt, head, money, msIcon, parseDT, pill } from "../util.js";
+import { $, addDays, businessCurrency, esc, fmtAt, head, money, msIcon, nowLocal, parseDT, pill } from "../util.js";
 
 export const STAGES = [["New", "#3fa9f5"], ["In dialog", "#7b4dff"], ["Booked", "#f2a516"], ["Paid", "#4fae33"], ["Visited", "#2fb8a7"], ["Lost", "#9aa1b8"]];
 
@@ -23,7 +23,7 @@ export const inbox = {
         .map((m) => {
           if (m.from === "pay") {
             const p = S.payments[m.payment_id] || {};
-            return `<div class="paycard"><div class="muted small">Payment link · ${esc(p.kind || "")}</div><div class="amt">${money(p.amount_kzt)}</div><div class="small">${esc(m.text)}</div><div style="margin-top:8px;display:flex;gap:8px;align-items:center">${p.status === "Paid" ? pill("Paid") : `<button class="btn primary sm" data-pay="${m.payment_id}">Pay with Kaspi QR (demo)</button>`}<span class="muted small">client side</span></div></div>`;
+            return `<div class="paycard"><div class="muted small">Payment link · ${esc(p.kind || "")}</div><div class="amt">${money(p.amount_kzt)}</div><div class="small">${esc(m.text)}</div><div style="margin-top:8px;display:flex;gap:8px;align-items:center">${p.status === "Paid" ? pill("Paid") : `<button class="btn primary sm" data-pay="${m.payment_id}">${businessCurrency() === "KZT" ? "Pay with Kaspi QR" : "Pay by card"} (test)</button>`}<span class="muted small">client side</span></div></div>`;
           }
           const who = { client: esc(c.contact), ai: "AI administrator", admin: "Administrator" }[m.from] || "";
           return `<div class="m ${m.from}">${m.from !== "system" && m.from !== "client" ? `<div class="who">${who}</div>` : ""}${esc(m.text)}${m.from !== "system" ? `<div class="at">${fmtAt(m.at)}</div>` : ""}</div>`;
@@ -34,12 +34,12 @@ export const inbox = {
       <button class="btn ai sm" data-aireply="${c.id}">Ask AI to reply</button></div>
       <div class="msgs" id="msgs">${msgs}<div id="typing"></div></div>
       <div class="composer"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="seg"><button data-as="client" class="${ui.composeAs === "client" ? "on" : ""}">Write as client</button><button data-as="admin" class="${ui.composeAs === "admin" ? "on" : ""}">Write as administrator</button></div><span class="muted small">${ui.composeAs === "client" ? "Simulates a message from " + esc(c.messenger) : "Your reply goes to the client"}</span></div>
-      <form class="row" id="sendForm"><textarea id="composeText" rows="1" aria-label="Message" placeholder="${ui.composeAs === "client" ? "e.g. здравствуйте можно завтра после 6 подстричься?" : "Type a reply"}"></textarea><button class="btn primary" type="submit">Send</button></form></div></div>`;
+      <form class="row" id="sendForm"><textarea id="composeText" rows="1" aria-label="Message" placeholder="${ui.composeAs === "client" ? (businessCurrency() === "KZT" ? "e.g. здравствуйте можно завтра после 6 подстричься?" : "e.g. Hi, can I book for tomorrow after 6?") : "Type a reply"}"></textarea><button class="btn primary" type="submit">Send</button></form></div></div>`;
       const cc = c.client_id ? cli(c.client_id) : null;
-      const ap = convClientAppts(c).filter((a) => parseDT(a.start_datetime) >= addDays(new Date(), -1));
+      const ap = convClientAppts(c).filter((a) => parseDT(a.start_datetime) >= addDays(nowLocal(), -1));
       const pays = vals("payments").filter((p) => ap.some((a) => a.id === p.appointment_id));
       info = `<aside class="info"><div><h4>Deal stage</h4><select class="inp" id="stageSel" data-stage="${c.id}" aria-label="Deal stage">${STAGES.map((s) => `<option ${s[0] === c.stage ? "selected" : ""}>${s[0]}</option>`).join("")}</select></div>
-      <div><h4>Client card</h4>${cc ? `<div class="kv"><span>ID</span><span class="code">${esc(c.client_id)}</span><span>Name</span><span>${esc(cc.display_name)}</span><span>Phone</span><span>${esc(cc.phone || "—")}</span><span>Notes</span><span>${esc(cc.notes || "—")}</span></div><button class="btn sm" style="margin-top:8px" data-client="${c.client_id}">Open card</button>` : `<div class="muted small">Not linked yet. The AI links or creates the card when the client gives a name.</div>`}</div>
+      <div><h4>Client card</h4>${cc ? `<div class="kv"><span>ID</span><span class="code">${esc(c.client_id)}</span><span>Name</span><span>${esc(cc.display_name)}</span><span>Phone</span><span>${esc(cc.phone || "Not given")}</span><span>Notes</span><span>${esc(cc.notes || "None")}</span></div><button class="btn sm" style="margin-top:8px" data-client="${c.client_id}">Open card</button>` : `<div class="muted small">Not linked yet. The AI links or creates the card when the client gives a name.</div>`}</div>
       <div><h4>Visits</h4>${ap.length ? ap.map((a) => `<div style="margin-bottom:6px;cursor:pointer" data-appt="${a.id}"><div>${a.start_datetime} ${pill(a.status)}</div><div class="muted small">${esc(svc(a.service_code)?.name)} · ${esc(mst(a.master_id)?.full_name)}</div></div>`).join("") : '<div class="muted small">None</div>'}</div>
       <div><h4>Payments</h4>${pays.length ? pays.map((p) => `<div class="small">${money(p.amount_kzt)} ${pill(p.status)} <span class="muted">${esc(p.kind)}</span></div>`).join("") : '<div class="muted small">None</div>'}</div>
       <div><h4>What the AI used</h4><div class="muted small">Services, prices and free slots from the database, plus ${Object.keys(S.knowledge).length} knowledge base entries. <a href="#knowledge">Edit what the AI knows</a>.</div></div>

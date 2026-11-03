@@ -20,17 +20,17 @@ export const knowledge = {
     const size = K.reduce((s, k) => s + k.title.length + k.content.length + 20, 0);
     return `<div class="grid kbwrap">
   <section class="panel"><div class="ph"><div class="seg">${cats.map((c) => `<button data-kbcat="${esc(c)}" class="${kbCat === c ? "on" : ""}">${esc(c)}</button>`).join("")}</div><span class="grow"></span><span class="muted small">${K.length} entries · ${size.toLocaleString()} characters${size > KB_LIMIT ? ' · <span class="pill warn">only the first 14 000 are sent to the AI</span>' : ""}</span></div>
-   <div class="pad"><div class="kbgrid">${shown.map((k) => `<div class="kbc" data-kb="${k.id}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(k.title)}</b>${pill(k.category || "General", "ai")}</div><p>${esc(k.content)}</p><span class="muted small">Updated ${fmtAt(k.updated_at)}</span></div>`).join("") || `<div class="empty"><b>Teach the AI about your business</b>Add prices by hair length, rules, promotions, FAQ, or upload a .txt / .csv file.</div>`}</div></div></section>
+   <div class="pad"><div class="kbgrid">${shown.map((k) => `<div class="kbc" data-kb="${k.id}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(k.title)}</b>${pill(k.category || "General", "ai")}</div><p>${esc(k.content)}</p><span class="muted small">Updated ${fmtAt(k.updated_at)}</span></div>`).join("") || `<div class="empty"><b>Teach the AI about your business</b>Add prices, rules, promotions and answers to common questions, or upload a .txt or .csv file.</div>`}</div></div></section>
   <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
   <section class="panel"><div class="ph"><h3>Teach the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
    <p class="muted small" style="margin:0">Paste anything about your business: a promotion, discounts, rules, your slogan, FAQ. The AI sorts it into entries and settings, you check them, and they are saved to the database.</p>
-   <textarea class="inp" id="teachT" style="min-height:120px" aria-label="Notes about your business" placeholder="Например: до конца ноября скидка 15% на бритьё по будням до 14:00. Опоздание больше 15 минут — запись переносится. Наш слоган: «Barberista — стиль без компромиссов»."></textarea>
+   <textarea class="inp" id="teachT" style="min-height:120px" aria-label="Notes about your business" placeholder="For example: 15% off on weekdays before 2 pm until the end of the month. If a client is more than 15 minutes late, the visit moves to the next free time. Our slogan: Look sharp, feel great."></textarea>
    <div style="display:flex;gap:8px"><button class="btn ai" id="teachGo" type="button">Organise with AI</button></div>
    <div id="teachOut"></div>
   </div></section>
   <section class="panel"><div class="ph"><h3>Test the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
    <p class="muted small" style="margin:0">Ask the way a client would. The AI answers only from the services table and this knowledge base.</p>
-   <form id="kbAsk" style="display:flex;gap:8px"><input class="inp" id="kbQ" aria-label="Question" placeholder="e.g. у меня борода 10 см, сколько будет оформление?"><button class="btn ai" type="submit">Ask</button></form>
+   <form id="kbAsk" style="display:flex;gap:8px"><input class="inp" id="kbQ" aria-label="Question" placeholder="e.g. How long does a first visit take, and how much is it?"><button class="btn ai" type="submit">Ask</button></form>
    <div class="answer" id="kbA"><span class="muted">The answer appears here.</span></div>
    <h4 class="muted small" style="margin:6px 0 0">How the AI uses this</h4>
    <ol class="small muted" style="margin:0;padding-left:18px"><li>The backend reads services, staff, free slots and these entries from the database.</li><li>It sends them to the AI together with the client's message.</li><li>The AI writes the reply and calls CRM actions (book, payment link, hand over to a human). It never touches the database directly.</li></ol>

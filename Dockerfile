@@ -9,7 +9,7 @@ COPY . .
 RUN npm run build && npm prune --omit=dev
 
 FROM node:22-alpine
-ENV NODE_ENV=production TZ=Asia/Almaty PORT=3000
+ENV NODE_ENV=production PORT=3000
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./

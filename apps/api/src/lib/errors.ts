@@ -32,6 +32,8 @@ export function fromPg(err: unknown): HttpError | null {
         return badRequest("This master does not do this service.");
       return conflict(`Linked record problem: ${e.detail ?? e.message}`, "foreign_key");
     case "23514":
+      if (e.constraint === "appointments_result_after_visit")
+        return conflict("This visit has not happened yet. Mark it Completed or No-show after it starts.", "visit_not_started");
       return badRequest(`Value is not allowed (${e.constraint ?? "check"}).`);
     case "23502":
       return badRequest(`Missing required value: ${e.message}`);

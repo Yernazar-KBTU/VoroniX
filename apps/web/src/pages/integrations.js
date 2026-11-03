@@ -1,4 +1,5 @@
 import { api } from "../api.js";
+import { meta } from "../store.js";
 import { render } from "../ui.js";
 import { $, esc, fmtAt, head, toast } from "../util.js";
 
@@ -45,15 +46,15 @@ function details(p) {
     .join("");
   let extra = "";
   if ((p.id === "whatsapp" || p.id === "instagram") && conn)
-    extra = copyRow("Incoming webhook", addr(`/channels/${p.id}/inbound`)) + copyRow("Header x-channel-secret", p.shared_secret);
-  if (p.id === "google_calendar" && conn) extra = copyRow("Calendar address", addr(`/integrations/calendar.ics?token=${p.shared_secret}`));
+    extra = copyRow("Incoming webhook", addr(`/channels/${meta.business?.id}/${p.id}/inbound`)) + copyRow("Header x-channel-secret", p.shared_secret);
+  if (p.id === "google_calendar" && conn) extra = copyRow("Calendar address", addr(`/integrations/${meta.business?.id}/calendar.ics?token=${p.shared_secret}`));
   if (p.id === "webhook" && conn) extra = copyRow("Header x-voronix-secret", p.shared_secret);
   if (p.id === "telegram" && conn) extra = `<p class="small muted" style="margin:0">Replies from the AI and from administrators in Chats go back to the client in Telegram.</p>`;
   return `<section class="panel ipanel"><div class="ph">${logo(p.id)}<div style="min-width:0"><h3>${esc(p.name)}</h3><span class="muted small">${esc(p.group)}</span></div><span class="grow"></span>${statusPill(p.status)}</div>
   <div class="pad" style="display:flex;flex-direction:column;gap:12px">
    <p style="margin:0">${esc(p.description)}</p>
    ${p.status_detail ? `<div class="answer ${p.status === "error" ? "bad" : ""}">${esc(p.status_detail)}${fmtAt(p.checked_at) ? `<span class="muted small"> · checked ${fmtAt(p.checked_at)}</span>` : ""}</div>` : ""}
-   ${p.from_env ? `<p class="small muted" style="margin:0">Set on the server through an environment variable. Connecting here overrides it.</p>` : ""}
+   ${p.from_env ? `<p class="small muted" style="margin:0">Included in VoroniX. You can connect your own Anthropic key instead if you want the AI usage billed to you.</p>` : ""}
    <form id="intForm" data-int="${p.id}" style="display:flex;flex-direction:column;gap:10px">${fields}
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn create" type="submit" ${st.busy ? "disabled" : ""}>${st.busy ? "Checking…" : conn ? "Save and check" : "Connect"}</button>
     ${conn && !p.from_env ? `<button class="btn" type="button" data-inttest="${p.id}" ${st.busy ? "disabled" : ""}>Test</button><button class="btn danger" type="button" data-intoff="${p.id}">Disconnect</button>` : ""}</div>

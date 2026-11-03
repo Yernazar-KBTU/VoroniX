@@ -1,9 +1,11 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { pool } from "../db/pool.js";
 import { HttpError } from "../lib/errors.js";
 import { bus } from "../realtime/bus.js";
 import { calendarToken, connect, disconnect, listView, test } from "../integrations/manager.js";
+import { currentTenant, requireTenant, withTenant } from "../tenancy/context.js";
+import { findTenant } from "../tenancy/tenants.js";
 
 export const integrationsRouter = Router();
 
@@ -33,10 +35,23 @@ integrationsRouter.delete("/integrations/:id", async (req, res) => {
 });
 
 /**
- * Private iCal feed of visits for Google or Apple Calendar. The token in the
- * URL is the only key, so this path skips the admin login.
+ * Private iCal feed of one business's visits for Google or Apple Calendar.
+ * The token in the URL is the only key, so this path skips the sign-in.
  */
+integrationsRouter.get("/integrations/:business/calendar.ics", async (req, res) => {
+  const tenant = await findTenant(String(req.params.business));
+  if (!tenant) throw new HttpError(404, "Calendar feed not found", "not_found");
+  await withTenant(tenant, () => calendar(req, res));
+});
+
+/** Address without a business id, from before accounts. Only answers where a default business is set (the test setup). */
 integrationsRouter.get("/integrations/calendar.ics", async (req, res) => {
+  if (!currentTenant()) throw new HttpError(404, "Calendar feed not found", "not_found");
+  await calendar(req, res);
+});
+
+async function calendar(req: Request, res: Response) {
+  const tz = requireTenant().timezone;
   const token = await calendarToken();
   if (!token || req.query.token !== token) throw new HttpError(404, "Calendar feed not found", "not_found");
   const { rows } = await pool.query<{ id: string; start: string; end: string; service: string; master: string; client: string; status: string }>(
@@ -54,13 +69,13 @@ integrationsRouter.get("/integrations/calendar.ics", async (req, res) => {
     "VERSION:2.0",
     "PRODID:-//VoroniX//CRM//EN",
     `X-WR-CALNAME:${esc(biz?.name ?? "VoroniX")} visits`,
-    "X-WR-TIMEZONE:Asia/Almaty",
+    `X-WR-TIMEZONE:${tz}`,
     ...rows.flatMap((r) => [
       "BEGIN:VEVENT",
-      `UID:${r.id}@voronix`,
+      `UID:${r.id}.${requireTenant().id}@voronix`,
       `DTSTAMP:${stamp}`,
-      `DTSTART;TZID=Asia/Almaty:${r.start}`,
-      `DTEND;TZID=Asia/Almaty:${r.end}`,
+      `DTSTART;TZID=${tz}:${r.start}`,
+      `DTEND;TZID=${tz}:${r.end}`,
       `SUMMARY:${esc(`${r.service} · ${r.client}`)}`,
       `DESCRIPTION:${esc(`${r.master} · ${r.status} · ${r.id}`)}`,
       ...(biz?.address ? [`LOCATION:${esc(biz.address)}`] : []),
@@ -69,4 +84,4 @@ integrationsRouter.get("/integrations/calendar.ics", async (req, res) => {
     "END:VCALENDAR",
   ];
   res.type("text/calendar; charset=utf-8").send(lines.join("\r\n") + "\r\n");
-});
+}

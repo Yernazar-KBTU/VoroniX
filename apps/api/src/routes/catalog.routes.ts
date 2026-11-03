@@ -5,6 +5,8 @@ import { bus } from "../realtime/bus.js";
 import * as catalog from "../repositories/catalog.repo.js";
 import { getSettings, saveSettings } from "../repositories/settings.repo.js";
 import { MasterBody, ServiceBody, ServiceCode, SettingsBody } from "./schemas.js";
+import { requireTenant } from "../tenancy/context.js";
+import { renameBusiness } from "../tenancy/tenants.js";
 
 export const catalogRouter = Router();
 
@@ -14,6 +16,7 @@ catalogRouter.get("/settings", async (_req, res) => {
 
 catalogRouter.put("/settings", async (req, res) => {
   const saved = await saveSettings(pool, SettingsBody.parse(req.body));
+  await renameBusiness(requireTenant(), saved.name);
   bus.changed("settings");
   res.json(saved);
 });

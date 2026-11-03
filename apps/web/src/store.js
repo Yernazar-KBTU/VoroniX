@@ -20,7 +20,7 @@ const ENDPOINT = {
 
 /** S[table][id] = row */
 export const S = Object.fromEntries(COLS.map((c) => [c, {}]));
-export const meta = { aiEngine: "", loaded: false, online: false };
+export const meta = { aiEngine: "", loaded: false, online: false, user: null, business: null, features: {} };
 /** conversation id -> "Thinking…" etc. while the AI works */
 export const aiBusy = {};
 
@@ -34,6 +34,8 @@ export async function loadAll() {
   const b = await api.get("/bootstrap");
   for (const c of COLS) put(c, b[c]);
   meta.aiEngine = b.ai_engine;
+  meta.business = b.business ?? meta.business;
+  meta.features = b.features ?? {};
   meta.loaded = true;
 }
 
