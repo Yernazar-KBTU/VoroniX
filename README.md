@@ -77,15 +77,16 @@ The **Integrations** page connects a business to outside services. Tokens are ch
 
 ## On one computer (CRM + VoroniX AI + data server)
 
-Everything runs in the background on one Mac or PC, with no browser tab needed:
+Everything runs in the background on one Mac, with no browser tab and no Docker:
 
-1. Install Docker Desktop and turn on "Start Docker Desktop when you sign in".
-2. `git clone https://github.com/Yernazar-KBTU/VoroniX.git && cd VoroniX`
-3. `docker compose up -d --build`
-4. Open http://localhost:3000, create an account, then Integrations, Telegram: paste the bot token.
-5. Click the AI chip at the top of the CRM to watch VoroniX AI work live (http://localhost:4000/live).
+1. Install Node.js (LTS, nodejs.org) and PostgreSQL (Postgres.app). Only their programs are used; the script makes its own database on port 5433.
+2. In Terminal: `curl -fsSL https://raw.githubusercontent.com/Yernazar-KBTU/VoroniX/main/scripts/mac/install.sh | bash`
+3. Open http://localhost:3000, create an account, then Integrations, Telegram: paste the bot token.
+4. Click the AI chip at the top of the CRM to watch VoroniX AI work live (http://localhost:4000/live).
 
-Clients' messages go from Telegram to the CRM and on to VoroniX AI. Its memory (clients, bookings, lessons, model versions) is kept by the [VoroniX data server](https://github.com/kamilabalabatyr/voronix-data-server) in the CRM's own database, and its bookings appear in the CRM calendar. It keeps working while the computer is on and starts again after a restart. Update with `git pull && docker compose up -d --build`; stop with `docker compose down`.
+The script ([scripts/mac/install.sh](scripts/mac/install.sh)) downloads and builds the CRM, VoroniX AI and the data server from GitHub, and macOS (launchd) starts them at every login. Run the same command again to update; add `-s -- --remove` after `bash` to stop and remove them (the data stays in `~/.voronix/pgdata`). Logs: `~/Library/Logs/VoroniX`. `docker-compose.yml` does the same with Docker.
+
+Clients' messages go from Telegram to the CRM and on to VoroniX AI. Its memory (clients, bookings, lessons, model versions) is kept by the [VoroniX data server](https://github.com/kamilabalabatyr/voronix-data-server) in the CRM's own database, and its bookings appear in the CRM calendar.
 
 ## Quick start
 
