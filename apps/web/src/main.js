@@ -28,7 +28,24 @@ function setStatus() {
       : v.state === "ok"
         ? "VoroniX AI, our own model, understands every client message."
         : "Set VORONIX_AI_URL on the server to connect VoroniX AI.";
+  const live = meta.aiEngine === "voronix-ai";
+  $("#aiState").classList.toggle("link", live);
+  if (live) $("#aiState").title += " Click to watch it work live.";
 }
+
+/** The VoroniX AI site, showing this business's AI live (chats, what it understood, what it learns). */
+document.addEventListener("click", async (e) => {
+  if (!e.target.closest("#aiState.link")) return;
+  const w = window.open("", "_blank");
+  try {
+    const { url } = await api.get("/ai/live-link");
+    if (w) w.location.href = url;
+    else location.href = url;
+  } catch (err) {
+    w?.close();
+    alert(`Could not open VoroniX AI: ${err.message}`);
+  }
+});
 
 /** The signed-in person at the bottom of the sidebar, with sign out. */
 function setAccount(me) {

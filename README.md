@@ -75,6 +75,18 @@ The **Integrations** page connects a business to outside services. Tokens are ch
 | Webhook | New bookings and payments go to Make, Zapier, n8n, 1C, Google Sheets | Paste a URL; a test event is sent on connect |
 | Kaspi Pay | Prepayment buttons lead to Kaspi QR | Offered to businesses in tenge. Merchant ID and key are stored; buttons stay in test mode until the contract is active |
 
+## On one computer (CRM + VoroniX AI + data server)
+
+Everything runs in the background on one Mac or PC, with no browser tab needed:
+
+1. Install Docker Desktop and turn on "Start Docker Desktop when you sign in".
+2. `git clone https://github.com/Yernazar-KBTU/VoroniX.git && cd VoroniX`
+3. `docker compose up -d --build`
+4. Open http://localhost:3000, create an account, then Integrations, Telegram: paste the bot token.
+5. Click the AI chip at the top of the CRM to watch VoroniX AI work live (http://localhost:4000/live).
+
+Clients' messages go from Telegram to the CRM and on to VoroniX AI. Its memory (clients, bookings, lessons, model versions) is kept by the [VoroniX data server](https://github.com/kamilabalabatyr/voronix-data-server) in the CRM's own database, and its bookings appear in the CRM calendar. It keeps working while the computer is on and starts again after a restart. Update with `git pull && docker compose up -d --build`; stop with `docker compose down`.
+
 ## Quick start
 
 ```bash
@@ -105,6 +117,8 @@ A database from before accounts (tables directly in `public`) is not migrated in
 | `APP_URL` | Public address of the app, used in email links and the Google redirect. On Render it defaults to the service's onrender.com address (`RENDER_EXTERNAL_URL`) |
 | `ANTHROPIC_API_KEY` | Claude writes the replies for every business that has not connected its own key. Without it the built-in rule engine answers, with the same tools and data |
 | `VORONIX_AI_URL`, `VORONIX_AI_KEY` | Address (and optional key) of [VoroniX AI](apps/voronix-ai/README.md), our own intent model. The built-in agent asks it what each client message means; without it, or when it does not answer within `VORONIX_AI_TIMEOUT_MS` (2500 ms), the rules decide alone |
+| `VORONIX_DATA_URL` | Address of the VoroniX data server. With it and `VORONIX_AI_URL` set, VoroniX AI answers every chat itself, with its memory in this database (see "On one computer"). When it does not answer, the chat goes to a person and the CRM shows "VoroniX AI is down" |
+| `VORONIX_AI_PUBLIC_URL`, `VORONIX_DATA_PUBLIC_URL` | Addresses the browser uses to open the live AI page from the AI chip |
 | `RESEND_API_KEY`, `MAIL_FROM` | Password reset emails. `MAIL_FROM` must use a domain verified in Resend |
 | `SUPPORT_EMAIL` | “Help” on the sign-in page and “Contact” on the public pages; hidden when empty |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | “Continue with Google” |
