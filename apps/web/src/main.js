@@ -16,11 +16,18 @@ const SIGN_OUT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 function setStatus() {
   $("#modeChip").hidden = meta.online;
   const claude = String(meta.aiEngine).startsWith("claude"); // "claude:<model>" or "offline-rules"
-  $("#aiState .led").classList.toggle("off", !claude);
-  $("#aiText").textContent = claude ? "AI replies: Claude" : "AI replies: basic rules";
+  const v = meta.voronix;
+  const down = !claude && v.state === "down";
+  $("#aiState .led").classList.toggle("off", !claude && v.state !== "ok");
+  $("#aiState").classList.toggle("down", down);
+  $("#aiText").textContent = claude ? "AI replies: Claude" : v.state === "ok" ? "AI: VoroniX AI works" : down ? "VoroniX AI is DOWN" : "AI: basic rules (VoroniX AI not connected)";
   $("#aiState").title = claude
     ? "Claude writes the replies to your clients."
-    : "Claude is not available on this server, so simple built-in rules answer clients. Add a Claude key in Integrations.";
+    : down
+      ? `VoroniX AI does not answer: ${v.error}. Clients get no automatic replies; their chats wait for a person.`
+      : v.state === "ok"
+        ? "VoroniX AI, our own model, understands every client message."
+        : "Set VORONIX_AI_URL on the server to connect VoroniX AI.";
 }
 
 /** The signed-in person at the bottom of the sidebar, with sign out. */
@@ -77,6 +84,9 @@ async function boot() {
       if (e.type === "changed") {
         await reload(e.resources);
         scheduleRender();
+      } else if (e.type === "voronix") {
+        meta.voronix = { state: e.state, error: e.error };
+        setStatus();
       } else if (e.type === "ai") {
         if (e.status) aiBusy[e.conversation_id] = e.status;
         else delete aiBusy[e.conversation_id];

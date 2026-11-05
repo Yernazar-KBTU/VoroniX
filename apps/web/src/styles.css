@@ -63,6 +63,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ai-state{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#ffffff0a;color:var(--side-fg);font-size:12.5px}
 .ai-state .led{width:8px;height:8px;border-radius:50%;background:#3fcf8a;box-shadow:0 0 0 3px #3fcf8a33;flex:none}
 .ai-state .led.off{background:#f2b24a;box-shadow:0 0 0 3px #f2b24a33}
+.ai-state.down{background:#e5484d2e;color:#fff;font-weight:700;outline:1px solid #e5484d88}
+.ai-state.down .led{background:#ff4d6d;box-shadow:0 0 0 3px #ff4d6d55}
 .acct{display:flex;align-items:center;gap:10px;padding:6px 6px 6px 8px;border-radius:12px;min-width:0}
 .acct .avatar{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;font-size:13px}
 .acct .who{min-width:0;display:flex;flex-direction:column;line-height:1.3}

@@ -18,6 +18,7 @@ import { getEngine, idle } from "../ai/runner.js";
 import { SqlBody } from "./schemas.js";
 import { askKnowledge } from "../ai/ask.js";
 import { organiseNotes } from "../ai/teach.js";
+import { checkVoronix } from "../ai/voronix-ai.js";
 
 export const insightsRouter = Router();
 
@@ -39,6 +40,7 @@ insightsRouter.get("/bootstrap", async (_req, res) => {
   res.json({
     settings, services, masters, master_services, clients, client_channels, appointments, payments, conversations, knowledge,
     ai_engine: getEngine().name,
+    voronix_ai: await checkVoronix(),
     business: { id: t.id, name: t.name, timezone: t.timezone, currency: t.currency },
     features: { sql_console: config.SQL_CONSOLE, demo_reset: config.ALLOW_DEMO_RESET },
   });

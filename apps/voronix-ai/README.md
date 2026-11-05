@@ -1,5 +1,7 @@
 # VoroniX AI
 
+> Its own repository is now https://github.com/Yernazar-KBTU/voronix-ai (with this history). Render deploys the AI from there; this copy stays for the CRM's integration tests.
+
 Our own small AI model for the VoroniX CRM, with its own API and home page.
 It reads a message from a salon client in **Russian, Kazakh or English** and
 says what the client wants and which language they write in. The CRM's AI
@@ -40,7 +42,7 @@ A message can have several intents: «Здравствуйте! Сколько �
 
 The project's NFR-02 asks for 95%. More phrases are the way there: going from 297 to 638 phrases took exact match from 57% to 76%. Add phrases to `data/phrases.tsv`, then run `npm run train` and commit the new report (a test checks that it is current).
 
-In the CRM the model works together with the old rules: an intent counts when either sees it, so the model adds what the rules miss (for example the Kazakh complaint «Маған мүлдем ұнамады, қызмет нашар») and the CRM keeps working when the service is down.
+In the CRM the model works together with the old rules: an intent counts when either sees it, so the model adds what the rules miss (for example the Kazakh complaint «Маған мүлдем ұнамады, қызмет нашар»). If the service is configured but down, the CRM gives no automatic answer: the chat gets a system message with the reason, waits for a person (needs_human), and the sidebar and /api/health show "VoroniX AI is DOWN". The basic rules answer alone only when VORONIX_AI_URL is not set at all.
 
 ## API
 
@@ -76,6 +78,35 @@ When `VORONIX_AI_KEY` is set, `/v1/classify` and `/v1/explain` need `Authorizati
 - **Inside the model**: the message cut into features, every feature voting for or against every intent (line thickness = weight), and the arithmetic: start value + votes = z, sigmoid(z) = score.
 - **Training**: a replay of a real training run (80 % of the phrases to learn, 20 % to check) from epoch 0, when the model knows nothing, to epoch 60; settings; every training phrase with filters.
 - **Data & storage**: what is kept where: the phrases file in git, weights only in memory, API messages not stored.
+
+## The live site: VoroniX AI at work
+
+`npm run build:demo` builds one HTML page (`dist-demo/index.html`) where the AI
+works and learns in the browser, with its data in a database
+(`src/live/`, about 4,100 lines). Published copy: https://claude.ai/artifact/WBotxYRsPFsCg7mkdjY1GK
+
+- **Live**: a social inbox (Instagram, Telegram, WhatsApp). Write as a client or play the demo stream (28 clients, 56 messages with words the AI has never seen). For every message: what it understood, its reply, what it did in the CRM and what it learned. A chart compares the learning AI with the same model frozen, measured before each lesson (test-then-train).
+- **Real time**: every message and every lesson drawn while the model computes it ([`src/live/viz.ts`](src/live/viz.ts)). Left to right: the words, the features cut from them (about 100 per message), every weight that carries a feature's vote to the 10 intents and 3 languages (one line per weight, about 1,300 per message; green for, red against), the scores, and the action (reply, CRM, knowledge, a person). A lesson runs right to left: the error goes back along the lines and the weights change. Speed, pause, one step at a time, replay; pointing at a dot or an intent shows its weights and its sum. The demo stream waits for the picture, so each message is seen. Every number comes from `IntentModel.forward()`, the same arithmetic as `predict()` (tested to the last digit). The model has one layer of weights, so there are no hidden layers to draw.
+- **CRM**: the calendar the AI books into, every client's memory card (language, services, masters, times, mood, last 14 messages) and staff commands in plain words: «Запиши Алию на завтра в 15:00 на стрижку», «Cancel Bekzat's booking», «Кто не приходил 30 дней?». Writes wait for a confirm click.
+- **Training**: the review queue the AI fills itself (unsure readings, questions without an answer, complaints), teaching by hand, model versions and the learning log.
+- **Knowledge**: texts and files from the business, found with BM25. A person's answer from the queue becomes knowledge at once.
+- **Data & storage**: the 8 collections, their size, the newest documents as saved, export to one JSON file.
+
+How it learns:
+
+1. A phrase is learned when the conversation proves it (a booking confirms the request, «спасибо» confirms the answer), when a person checks the queue, or when the business adds a service (the AI writes 6 phrases about it in three languages).
+2. Online learning: up to 8 small gradient steps until the phrase is read right, each mixed with 4 older phrases so it does not forget (rehearsal).
+3. Every 50 new phrases (25 and 100 can be chosen) the model is retrained. The old data and the new data are both trained without a fifth kept aside and tested on it; the new version goes live only if it is not worse (one test phrase less counts as equal).
+4. The model is not stored. Every page rebuilds it from the saved phrases: the live version, then the later phrases in the order they were learned, each step using only what was known then, so every page runs exactly the same weights (tested).
+
+Storage sits behind one small interface, `Store` in `src/live/store.ts` (read all, save, change, delete, watch): `SiteStore` uses the site's database, `MemoryStore` runs the tests. A server database is one more class with the same five methods.
+
+```bash
+npm run build:demo                      # dist-demo/index.html
+node scripts/e2e-demo.cjs <screenshots> # the whole site in Chromium, with a stand-in database
+```
+
+Limits: the inbox is simulated until the CRM server forwards real messages; the AI runs while the page is open; it answers about the salon from its data and knowledge, and sends any other question to a person.
 
 ## Run
 

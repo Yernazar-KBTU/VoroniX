@@ -6,6 +6,7 @@ import { logger } from "./lib/logger.js";
 import { bootIntegrations, stopIntegrations } from "./integrations/manager.js";
 import { getEngine, idle } from "./ai/runner.js";
 import { startReminders } from "./services/reminder.service.js";
+import { checkVoronix } from "./ai/voronix-ai.js";
 
 async function main() {
   const applied = await migrate(pool);
@@ -13,6 +14,9 @@ async function main() {
 
   await bootIntegrations();
   const reminders = startReminders();
+  // VoroniX AI is watched all the time, so a fall shows in the CRM before a client writes.
+  void checkVoronix();
+  const watchAi = setInterval(() => void checkVoronix(), 30_000);
   const app = createApp();
   const server = app.listen(config.PORT, () => {
     logger.info(`CRM API on http://localhost:${config.PORT} (AI engine: ${getEngine().name})`);
@@ -22,6 +26,7 @@ async function main() {
     logger.info(`${signal}: shutting down`);
     server.close();
     reminders.stop();
+    clearInterval(watchAi);
     await stopIntegrations();
     await idle(10_000);
     await pool.end();
