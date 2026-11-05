@@ -10,9 +10,12 @@
 # APP_URL (defaults to the service's onrender.com address), ANTHROPIC_API_KEY,
 # RESEND_API_KEY, MAIL_FROM, SUPPORT_EMAIL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET.
 #
-# VoroniX AI (our own intent model) is the second service below. After the first
-# deploy, copy its address (https://voronix-ai-....onrender.com) into the CRM's
-# VORONIX_AI_URL. To close the API to outsiders, set the same VORONIX_AI_KEY on both.
+# VoroniX AI (our own intent model) is the second service below, built from its own
+# repository https://github.com/Yernazar-KBTU/voronix-ai. Render generates its
+# VORONIX_AI_KEY and copies the same key into the CRM. After the first deploy, copy
+# the AI's address (https://voronix-ai-....onrender.com) into the CRM's VORONIX_AI_URL.
+# From then on, if the AI does not answer, the CRM shows "VoroniX AI is DOWN" and
+# the chats wait for a person (no automatic replies on old rules).
 services:
   - type: web
     name: voronix
@@ -24,14 +27,24 @@ services:
         fromDatabase:
           name: voronix-db
           property: connectionString
+      - key: VORONIX_AI_KEY
+        fromService:
+          name: voronix-ai
+          type: web
+          envVarKey: VORONIX_AI_KEY
 
   - type: web
     name: voronix-ai
     runtime: docker
     plan: free
-    dockerfilePath: ./apps/voronix-ai/Dockerfile
+    repo: https://github.com/Yernazar-KBTU/voronix-ai.git
+    branch: main
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
+    envVars:
+      - key: VORONIX_AI_KEY
+        generateValue: true
 
 databases:
   - name: voronix-db

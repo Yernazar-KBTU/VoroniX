@@ -1,5 +1,7 @@
 # VoroniX AI
 
+> Its own repository is now https://github.com/Yernazar-KBTU/voronix-ai (with this history). Render deploys the AI from there; this copy stays for the CRM's integration tests.
+
 Our own small AI model for the VoroniX CRM, with its own API and home page.
 It reads a message from a salon client in **Russian, Kazakh or English** and
 says what the client wants and which language they write in. The CRM's AI
