@@ -13,6 +13,7 @@ import { getOrThrow, pushMessage, receiveInbound } from "../services/conversatio
 import { ConversationCreate, ConversationPatchBody, InboundBody, MessageBody } from "./schemas.js";
 import { currentTenant, withTenant } from "../tenancy/context.js";
 import { findTenant } from "../tenancy/tenants.js";
+import { telegramHooks } from "../channels/telegram.js";
 
 export const conversationsRouter = Router();
 
@@ -105,6 +106,13 @@ conversationsRouter.post("/channels/:business/:messenger/inbound", async (req, r
   const tenant = await findTenant(String(req.params.business));
   if (!tenant) throw notFound("Business");
   await withTenant(tenant, () => inbound(req, res, true));
+});
+
+/** Telegram calls this for a business whose bot runs in webhook mode. The bot checks Telegram's secret header. */
+conversationsRouter.post("/channels/:business/telegram/webhook", async (req, res, next) => {
+  const hook = telegramHooks.get(String(req.params.business));
+  if (!hook) throw notFound("Telegram bot");
+  await hook(req, res, next);
 });
 
 /** Address without a business id, from before accounts. Only answers where a default business is set (the test setup). */

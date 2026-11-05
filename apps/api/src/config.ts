@@ -35,6 +35,9 @@ const Env = z.object({
 
   // Public address of the app, used in links inside emails and for the Google sign-in redirect.
   APP_URL: z.string().url().default("http://localhost:3000"),
+  // Telegram bots: "webhook" lets Telegram wake a sleeping server (Render free plan);
+  // "polling" asks Telegram for messages itself. Default: webhook when APP_URL is https.
+  TELEGRAM_MODE: z.enum(["webhook", "polling"]).optional(),
   // Email (password reset links). Without a key, mails are only logged.
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().default("VoroniX <no-reply@example.com>"),
@@ -67,6 +70,7 @@ export const config = {
   ALLOW_DEMO_RESET: parsed.data.ALLOW_DEMO_RESET ? parsed.data.ALLOW_DEMO_RESET === "true" : parsed.data.NODE_ENV !== "production",
   SQL_CONSOLE: (parsed.data.SQL_CONSOLE ?? (parsed.data.NODE_ENV === "production" ? "off" : "on")) === "on",
   APP_URL: parsed.data.APP_URL.replace(/\/+$/, ""),
+  TELEGRAM_MODE: parsed.data.TELEGRAM_MODE ?? (parsed.data.APP_URL.startsWith("https://") ? "webhook" : "polling"),
 };
 // Every business has its own time zone (see lib/time.ts wallClock), so the
 // process clock is neutral UTC.
