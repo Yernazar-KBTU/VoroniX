@@ -552,7 +552,6 @@ async function aiReply(convId){
   aiBusy[convId]="Thinking…";renderTyping();
   let retrain=null;
   try{
-    await new Promise(r=>setTimeout(r,250));
     const key="chat:"+convId,T=toolsFor(convId,()=>{}),tool=n=>T.find(t=>t.name===n);
     const own=conv.client_id&&cli(conv.client_id);
     const r=brain.reply({client:{id:key,name:own?own.display_name:(conv.contact||""),channel:conv.messenger,handle:conv.external_user_id},text:last.text,business:crmBusiness(),
@@ -591,9 +590,14 @@ async function tgStart(token){
     // A webhook set earlier (for example by the VoroniX server) blocks getUpdates.
     const hook=await tgApi("getWebhookInfo");if(hook.url)await tgApi("deleteWebhook",{drop_pending_updates:false});
     tg.on=true;try{localStorage.setItem(TG_KEY,token)}catch(_){}
-    tgSave("connected",`@${me.username} is answering with VoroniX AI. It works while this page is open; close it and the bot stops.`);
     toast(`Telegram: @${me.username} is on`);
-    tgLoop(run);
+    // Only one open tab may read the bot: two readers make Telegram answer "Conflict" and slow every reply.
+    // The other tabs wait and take over when that tab closes.
+    if(navigator.locks&&navigator.locks.request){
+      const held=await navigator.locks.query().then(q=>q.held.some(l=>l.name==="vx-telegram")).catch(()=>false);
+      if(held)tgSave("connected",`@${me.username} is answered by another open tab of this page. This tab takes over when that one closes.`);
+      navigator.locks.request("vx-telegram",async()=>{if(run!==tg.run||!tg.on)return;tgSave("connected",`@${me.username} is answering with VoroniX AI. It works while this page is open; close it and the bot stops.`);await tgLoop(run)});
+    }else{tgSave("connected",`@${me.username} is answering with VoroniX AI. It works while this page is open; close it and the bot stops.`);tgLoop(run)}
   }catch(e){tg.on=false;tg.err=e.message||String(e);
     tgSave("error",/Unauthorized|Not Found/i.test(tg.err)?"Telegram does not accept this token. Copy it again from @BotFather.":/fetch|network|load/i.test(tg.err)?"This browser could not reach api.telegram.org: "+tg.err:"Telegram: "+tg.err)}
 }
