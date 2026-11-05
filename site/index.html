@@ -66,6 +66,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .chip.ai{background:#7b4dff55;border-color:#b9a4ff55}
 .chip .led{width:8px;height:8px;border-radius:50%;background:var(--green-hi)}
 .chip .led.off{background:#ffb84a}
+.chip.ai.down{background:#e5484d55;border-color:#ff8a8a88;font-weight:700}
+.chip.ai.down .led{background:#ff4d6d}
 .tsearch{display:flex;align-items:center;gap:8px;background:var(--glass);border:1px solid #ffffff22;border-radius:20px;padding:5px 12px;min-width:0;flex:0 1 280px}
 .tsearch input{background:transparent;border:0;outline:0;color:var(--chrome);width:100%}
 .tsearch input::placeholder{color:var(--chrome-dim)}
@@ -266,7 +268,7 @@ table.t tr.click:hover td{background:var(--panel2)}
       <div class="brand"><span class="dot"></span><span id="bizName">VoroniX</span> <small>VoroniX</small></div>
       <label class="tsearch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="gsearch" placeholder="Search clients, phones, services"></label>
       <span class="grow"></span>
-      <span class="chip ai" id="aiChip"><span class="led"></span>AI administrator</span>
+      <span class="chip ai" id="aiChip"><span class="led off"></span>VoroniX AI is starting…</span>
       <span class="chip" id="modeChip">Connecting…</span>
       <span class="chip" id="clock"></span>
     </header>
@@ -277,6 +279,7 @@ table.t tr.click:hover td{background:var(--panel2)}
 </div>
 <div id="modal"></div>
 <div id="toast" class="toast" hidden></div>
+<script src="voronix-brain.js"></script>
 <script>
 "use strict";
 /* ---------- utilities ---------- */
@@ -413,7 +416,7 @@ function demoData(){
 }
 
 /* ---------- AI administrator ---------- */
-let sample=null;const aiBusy={},aiAgain={};
+const aiBusy={},aiAgain={};
 function catalogText(){
   return vals("services").filter(s=>s.is_active!==false).map(s=>`- ${s.id} | ${s.name} | ${s.duration_min} min | ${s.price_kzt} KZT | masters: ${mastersFor(s.id).map(m=>m+" "+mst(m).full_name+" ("+mst(m).specialization+")").join(", ")||"none"}${prepayFor(s.id)?" | prepayment "+prepayFor(s.id)+" KZT required":""}`).join("\n");
 }
@@ -515,26 +518,59 @@ function turnsFor(conv){
   return out;
 }
 let aiCtl={};
+/* ---------- VoroniX AI: our own model, running in this page ----------
+   voronix-brain.js comes from https://github.com/Yernazar-KBTU/VoroniX-AI (npm run build:brain).
+   It reads the message, decides the CRM action and learns from what conversations prove.
+   What it learned is kept in this browser (localStorage) and survives a reload. */
+let brain=null,brainErr="";const BRAIN_KEY="vx-brain-v1";
+function brainSave(st){try{localStorage.setItem(BRAIN_KEY,JSON.stringify(st))}catch(_){}}
+async function brainStart(){
+  if(!window.VoronixBrain){brainErr="voronix-brain.js did not load";aiChip();return}
+  let saved=null;try{saved=JSON.parse(localStorage.getItem(BRAIN_KEY)||"null")}catch(_){}
+  try{brain=await VoronixBrain.create(saved);brain.onChange=brainSave}catch(e){brainErr=(e&&e.message)||String(e)}
+  aiChip();scheduleRender();
+}
+function aiChip(){const el=$("#aiChip");if(!el)return;
+  if(brain){const s=brain.stats();el.classList.remove("down");el.innerHTML=`<span class="led"></span>VoroniX AI · ${s.version} · learned ${s.phrases}`;el.title=`Our own model, running in this page. Learned ${s.phrases} phrases at work; retrains after ${s.retrainEvery} new ones (${s.pending} so far). ${s.questions} questions wait for a person.`}
+  else if(brainErr){el.classList.add("down");el.innerHTML='<span class="led off"></span>VoroniX AI is DOWN';el.title="VoroniX AI does not work: "+brainErr+". Clients get no automatic replies."}
+  else el.innerHTML='<span class="led off"></span>VoroniX AI is starting…';
+}
+function crmBusiness(){const b=biz();const h=/(\d{1,2}:\d\d)\D+(\d{1,2}:\d\d)/.exec(b.hours||"")||[0,"10:00","21:00"];
+  return {name:b.name,city:b.city,address:b.address||"",from:h[1],to:h[2],phone:b.phone,currency:"₸",
+    services:vals("services").map(s=>({id:s.id,name:s.name,minutes:s.duration_min||60,price:s.price_kzt||0,active:s.is_active!==false})),
+    staff:vals("masters").map(m=>({id:m.id,name:m.full_name,role:m.specialization,days:m.days||[1,2,3,4,5,6],from:m.work_start||"09:00",to:m.work_end||"20:00",services:servicesOf(m.id),active:m.is_active!==false}))}}
+const crmKnowledge=()=>vals("knowledge").map(k=>({id:k.id,title:k.title||"",text:k.content||""}));
+const PREPAY={ru:a=>`Чтобы подтвердить запись, нужна предоплата ${a}. Кнопка оплаты ниже.`,kk:a=>`Жазылуды растау үшін ${a} алдын ала төлем керек. Төлем түймесі төменде.`,en:a=>`To confirm the booking, a prepayment of ${a} is needed. The payment button is below.`};
 async function aiReply(convId){
-  if(!sample){toast("The AI needs the Claude viewer. Open this page on claude.ai to use it.");return}
+  if(!brain){
+    if(brainErr){await pushMsg(convId,{from:"system",text:"VoroniX AI is down: "+brainErr+". The chat waits for a person."});patch("conversations",convId,{needs_human:true})}
+    else toast("VoroniX AI is still starting. Try again in a second.");
+    return}
   if(aiBusy[convId]){aiAgain[convId]=true;return}const conv=S.conversations[convId];if(!conv)return;
+  const last=[...(conv.messages||[])].reverse().find(m=>m.from==="client");if(!last){toast("There is no client message to answer yet.");return}
   aiBusy[convId]="Thinking…";renderTyping();
-  const ctl=new AbortController();aiCtl[convId]=ctl;
+  let retrain=null;
   try{
-    const tier=biz().ai_tier||"quick";let seen="",cut=0;
-    const progress=t=>{aiBusy[convId]=t;renderTyping()};progress.cut=()=>{cut=seen.length};
-    const res=await sample(turnsFor(conv),{tools:toolsFor(convId,progress),modelTier:tier,signal:ctl.signal,onText:({text})=>{seen=text;aiBusy[convId]="Writing…";renderTyping()}});
-    let text=(res.text||"").slice(cut).trim()||(res.text||"").trim();
-    if(text)await pushMsg(convId,{from:"ai",text});
+    await new Promise(r=>setTimeout(r,250));
+    const key="chat:"+convId,T=toolsFor(convId,()=>{}),tool=n=>T.find(t=>t.name===n);
+    const own=conv.client_id&&cli(conv.client_id);
+    const r=brain.reply({client:{id:key,name:own?own.display_name:(conv.contact||""),channel:conv.messenger,handle:conv.external_user_id},text:last.text,business:crmBusiness(),
+      bookings:vals("appointments").map(a=>({id:a.id,client:conv.client_id&&a.client_id===conv.client_id?key:a.client_id,service:a.service_code,staff:a.master_id,start:a.start_datetime,minutes:(svc(a.service_code)||{}).duration_min,cancelled:a.status==="Cancelled"})),
+      knowledge:crmKnowledge()});
+    retrain=r.retrain||null;const o=r.outcome;let booked=null;
+    if(r.book){tool("link_client").execute({name:r.book.name||conv.contact||"Client"});booked=tool("create_appointment").execute({service_code:r.book.service,master_id:r.book.staff,start_datetime:r.book.start})}
+    if(r.cancel)tool("cancel_or_move_appointment").execute({appointment_id:r.cancel.id,action:"cancel"});
+    if(o.reply)await pushMsg(convId,{from:"ai",text:o.reply});
+    if(booked&&booked.prepayment_required_kzt){await pushMsg(convId,{from:"ai",text:PREPAY[o.lang](money(booked.prepayment_required_kzt))});tool("create_payment_link").execute({appointment_id:booked.appointment_id,kind:"prepayment"})}
+    if(r.handoff)tool("handoff_to_human").execute({reason:r.handoff});
+    const top=o.prediction.intents.map(i=>`${i.label} ${Math.round(i.score*100)}%`).join(", ")||"nothing sure";
+    await pushMsg(convId,{from:"system",text:`VoroniX AI understood: ${top} (${o.lang})${o.unsure?" · unsure, a person will check":""}${r.lessons.length?` · learned ${r.lessons.length} phrase${r.lessons.length>1?"s":""} from this chat`:""}${r.question?" · question saved for a person (AI knowledge base)":""}`});
     const c=S.conversations[convId];if(c&&c.stage==="New")patch("conversations",convId,{stage:"In dialog"});
   }catch(e){
-    if(e&&e.code==="cancelled"){delete aiAgain[convId]}
-    else if(e&&(e.code==="not_granted"||e.code==="sampling_disabled")){toast("Claude access was not allowed for this page, so the AI cannot answer.")}
-    else if(e&&e.code==="tools_unavailable"){toast("This viewer cannot run AI actions. Try the Claude web app.")}
-    else if(e&&e.code==="rate_limited"){toast("Too many AI requests right now. Try again in a minute.")}
-    else toast("AI could not answer: "+((e&&e.message)||e));
-  }finally{delete aiBusy[convId];delete aiCtl[convId];renderTyping();scheduleRender();
+    await pushMsg(convId,{from:"system",text:"VoroniX AI could not finish: "+((e&&e.message)||e)+". The chat waits for a person."});patch("conversations",convId,{needs_human:true});
+  }finally{delete aiBusy[convId];delete aiCtl[convId];renderTyping();aiChip();scheduleRender();
     if(aiAgain[convId]){delete aiAgain[convId];const c=S.conversations[convId];if(c&&c.ai_enabled)aiReply(convId)}}
+  if(retrain)retrain.then(v=>{if(v)toast(v.status==="live"?`VoroniX AI retrained itself: ${v.id} is live`:`VoroniX AI tried ${v.id}: not better, kept the old version`);aiChip();scheduleRender()}).catch(()=>{});
 }
 
 /* ---------- navigation ---------- */
@@ -761,9 +797,9 @@ PAGES.knowledge={head:()=>head("AI knowledge base","Everything you add here beco
    <div class="pad"><div class="kbgrid">${shown.map(k=>`<div class="kbc" data-kb="${k.id}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(k.title)}</b>${pill(k.category||"General","ai")}</div><p>${esc(k.content)}</p><span class="muted small">Updated ${fmtAt(k.updated_at)}</span></div>`).join("")||`<div class="empty"><b>Teach the AI about your business</b>Add prices by hair length, rules, promotions, FAQ, or upload a .txt / .csv file.</div>`}</div></div></section>
   <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
   <section class="panel"><div class="ph"><h3>Teach the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
-   <p class="muted small" style="margin:0">Paste anything about your business in any form: a promotion, discounts, rules, your slogan, FAQ, a price list. The AI sorts it into entries and settings, you check them, and they are saved to the database.</p>
+   <p class="muted small" style="margin:0">Paste anything about your business in any form: a promotion, discounts, rules, your slogan, FAQ, a price list. VoroniX AI splits it into entries and settings, you check them, and they are saved. The AI uses them from the next message.</p>
    <textarea class="inp" id="teachT" style="min-height:120px" placeholder="Например: до конца ноября скидка 15% на бритьё по будням до 14:00. Опоздание больше 15 минут: запись переносится. Наш слоган: «Barberista: стиль без компромиссов»."></textarea>
-   <div style="display:flex;gap:8px"><button class="btn ai" id="teachGo" type="button">Organise with AI</button><span class="grow"></span></div>
+   <div style="display:flex;gap:8px"><button class="btn ai" id="teachGo" type="button">Sort into entries</button><span class="grow"></span></div>
    <div id="teachOut"></div>
   </div></section>
   <section class="panel"><div class="ph"><h3>Test the AI</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:10px">
@@ -771,11 +807,43 @@ PAGES.knowledge={head:()=>head("AI knowledge base","Everything you add here beco
    <form id="kbAsk" style="display:flex;gap:8px"><input class="inp" id="kbQ" placeholder="e.g. у меня борода 10 см, сколько будет оформление?"><button class="btn ai" type="submit">Ask</button></form>
    <div class="answer" id="kbA"><span class="muted">The answer appears here.</span></div>
    <h4 class="muted small" style="margin:6px 0 0">How the AI uses this</h4>
-   <ol class="small muted" style="margin:0;padding-left:18px"><li>The backend reads services, staff, free slots and these entries from the database.</li><li>It sends them to the AI together with the client's message.</li><li>The AI writes the reply and calls CRM actions (book, payment link, hand over to a human). It never touches the database directly.</li></ol>
-  </div></section></div></div>`},
+   <ol class="small muted" style="margin:0;padding-left:18px"><li>VoroniX AI, our own model, reads the client's message: what they want (10 intents) and the language (ru, kk, en).</li><li>It answers from the services table, the staff schedules, free times and these entries (search by words).</li><li>It takes the CRM action: offer times, book, payment link, cancel, hand over to a human. No outside AI service is used.</li></ol>
+  </div></section>${brainPanel()}</div></div>`},
  after(){teachView();const f=$("#kbFile");if(f)f.addEventListener("change",async()=>{for(const file of f.files){if(file.size>200000){toast(file.name+" is larger than 200 KB. Split it into smaller files.");continue}const text=await file.text();put("knowledge",nextId("knowledge","KB-",1),{title:file.name.replace(/\.[^.]+$/,""),category:"Uploaded",content:text.slice(0,60000),updated_at:nowISO()})}toast("Added to the knowledge base")})}};
 document.addEventListener("click",e=>{const c=e.target.closest("[data-kbcat]");if(c){kbCat=c.dataset.kbcat;render()}});
 let kbCtl=null,teachDraft=null;
+/* Notes from the owner -> knowledge entries and settings, by VoroniX AI's own rules (no outside service). */
+function sortNotes(txt){
+  const parts=txt.split(/\n\s*\n|(?<=[.!?])\s+(?=[A-ZА-ЯЁӘҒҚҢӨҰҮҺІ«"])/).map(x=>x.trim()).filter(x=>x.length>3);
+  const settings={},entries=[];
+  const cat=t=>/скидк|акци|%|бесплат|подар|discount|promo|free|жеңілдік/i.test(t)?"Promotions":/цен|стоит|₸|тенге|kzt|price|cost|баға/i.test(t)?"Prices":/опозд|отмен|перенос|правил|предоплат|late|cancel|rule|prepay|ереже/i.test(t)?"Rules":/телефон|адрес|instagram|whatsapp|телеграм|phone|address|мекенжай/i.test(t)?"Contacts":"FAQ";
+  for(const t of parts){
+    const slogan=/(слоган|slogan|девиз|ұран)[^«"“]*[«"“]([^»"”]+)[»"”]/i.exec(t);if(slogan){settings.catchphrase=slogan[2].trim();continue}
+    const hours=/(работаем|часы работы|open|hours|жұмыс уақыты)[^\d]*(\d{1,2}[:.]\d\d)\s*[–—-]\s*(\d{1,2}[:.]\d\d)/i.exec(t);if(hours){settings.hours=`Daily ${hours[2].replace(".",":")}–${hours[3].replace(".",":")}`;continue}
+    const words=t.replace(/[^\p{L}\p{N}%₸ ]/gu," ").split(/\s+/).filter(Boolean);
+    entries.push({title:words.slice(0,6).join(" ").slice(0,60),category:cat(t),content:t});
+  }
+  return {entries,settings};
+}
+function brainPanel(){
+  if(!brain)return `<section class="panel"><div class="ph"><h3>VoroniX AI</h3></div><div class="pad muted small">${brainErr?"VoroniX AI is DOWN: "+esc(brainErr):"Starting: the model trains in this page (about a second)…"}</div></section>`;
+  const s=brain.stats(),Q=brain.questions.slice(0,20),m=s.metrics;
+  return `<section class="panel"><div class="ph"><h3>VoroniX AI brain</h3><span class="pill ai">own model</span><span class="grow"></span><button class="btn ghost" id="brainRetrain" type="button" ${s.retraining?"disabled":""}>${s.retraining?"Retraining…":"Retrain now"}</button></div>
+   <div class="pad" style="display:flex;flex-direction:column;gap:8px">
+   <div class="small">Version <b>${s.version}</b>${m?` · exact ${Math.round(m.exact*100)}% on unseen phrases`:""} · learned at work <b>${s.phrases}</b> phrases · next retrain after ${Math.max(0,s.retrainEvery-s.pending)} more · remembers ${s.clients} clients</div>
+   <p class="muted small" style="margin:0">It learns by itself: a booking proves the request meant «book», a thank-you proves the answer was right. Every ${s.retrainEvery} new phrases it retrains on everything and keeps the new version only if it is not worse on phrases it never saw. Kept in this browser.</p>
+   <h4 style="margin:6px 0 0">Questions it could not answer (${s.questions})</h4>
+   ${Q.length?Q.map(q=>`<div class="answer" style="display:flex;flex-direction:column;gap:6px"><div><b>${esc(q.text)}</b> <span class="muted small">${esc(q.kind)}${q.guess.length?" · thinks: "+esc(q.guess.join(", ")):""}</span></div>
+     <div style="display:flex;gap:6px"><input class="inp" data-qa="${q.id}" placeholder="Write the answer once: it becomes knowledge"><button class="btn ai" data-qsave="${q.id}" type="button">Save</button><button class="btn ghost" data-qdrop="${q.id}" type="button">Skip</button></div></div>`).join(""):'<div class="muted small">None. When a client asks something it does not know, the question appears here.</div>'}
+   </div></section>`;
+}
+document.addEventListener("click",async e=>{
+  if(!brain)return;
+  if(e.target.id==="brainRetrain"){const j=brain.maybeRetrain(true);render();const v=await j;toast(v&&v.status==="live"?`${v.id} is live`:`${v?v.id:"New version"} was not better, kept the old one`);aiChip();render();return}
+  const sv=e.target.closest("[data-qsave]");if(sv){const id=sv.dataset.qsave;const inp=document.querySelector(`[data-qa="${id}"]`);const ans=(inp&&inp.value||"").trim();if(!ans)return toast("Write the answer first");
+    const k=brain.answer(id,ans);if(k){const kid=nextId("knowledge","KB-",1),kv={title:k.title,category:"Answers",content:`${k.title}\n${k.text}`,updated_at:nowISO()};put("knowledge",kid,kv);if(!live)try{const A=JSON.parse(localStorage.getItem("vx-answers")||"[]");A.push(kv);localStorage.setItem("vx-answers",JSON.stringify(A.slice(-100)))}catch(_){}toast("Saved: VoroniX AI answers this from now on")}aiChip();render();return}
+  const dr=e.target.closest("[data-qdrop]");if(dr){brain.dismiss(dr.dataset.qdrop);aiChip();render()}
+});
 const TEACH_KEYS={name:"Business name",type:"Type of business",address:"Address",hours:"Opening hours",phone:"Phone",tone:"Tone of voice",catchphrase:"Brand phrase",languages:"Client languages"};
 function teachView(){const o=$("#teachOut");if(!o)return;if(!teachDraft){o.innerHTML="";return}
   const E=teachDraft.entries||[],St=Object.entries(teachDraft.settings||{}).filter(([k,v])=>TEACH_KEYS[k]&&v);
@@ -790,29 +858,13 @@ document.addEventListener("click",async e=>{
     teachDraft=null;const t=$("#teachT");if(t)t.value="";toast(`Saved ${n}. The AI uses it from the next message.`);render();return}
   if(e.target.id!=="teachGo")return;
   const txt=($("#teachT")?.value||"").trim();const o=$("#teachOut");if(!txt)return toast("Paste some text about your business first");
-  if(!sample){o.innerHTML='<div class="answer">The AI needs the Claude viewer. Open this page on claude.ai.</div>';return}
-  o.innerHTML='<div class="answer">Organising…</div>';
-  const cats=[...new Set(["Promotions","Rules","Prices","FAQ","Brand","Contacts",...vals("knowledge").map(k=>k.category).filter(Boolean)])];
-  try{const r=await sample(`You turn a business owner's free-form notes into structured CRM data for ${biz().name} (${biz().type||"business"}).
-Return ONLY a JSON object, no markdown fences:
-{"entries":[{"title":"short title","category":"one of: ${cats.join(", ")} (or a new short category)","content":"the fact written clearly for an AI administrator, keep every number, date and condition exactly"}],
- "settings":{"catchphrase":"","tone":"","hours":"","address":"","phone":"","name":"","languages":""}}
-Rules: one entry per separate fact (a promotion, a rule, a FAQ answer). Keep the owner's language. Put a slogan or catchphrase ONLY in settings.catchphrase; put a change of opening hours, address, phone, name, tone or languages ONLY in settings; leave unused settings as "". Do not invent anything that is not in the notes.
-
-Current settings: ${JSON.stringify({name:biz().name,hours:biz().hours,address:biz().address,phone:biz().phone,tone:biz().tone,catchphrase:biz().catchphrase||""})}
-Existing knowledge titles: ${vals("knowledge").map(k=>k.title).join("; ")||"none"}
-
-NOTES:
-${txt.slice(0,20000)}`,{modelTier:"quick",cache:false});
-    const raw=(r.text||"").replace(/^[^{]*/,"").replace(/[^}]*$/,"");teachDraft=JSON.parse(raw);
-    if(!Array.isArray(teachDraft.entries))teachDraft.entries=[];teachView();
-  }catch(err){o.innerHTML=`<div class="answer">${err.code==="not_granted"?"Claude access was not allowed for this page.":"Could not organise the text: "+esc(err.message||err)}</div>`}
+  teachDraft=sortNotes(txt);teachView();return;
 });
 document.addEventListener("submit",async e=>{if(e.target.id!=="kbAsk")return;e.preventDefault();const q=$("#kbQ").value.trim();const out=$("#kbA");if(!q)return;
-  if(!sample){out.textContent="The AI needs the Claude viewer. Open this page on claude.ai.";return}
-  kbCtl?.abort();kbCtl=new AbortController();out.textContent="Thinking…";
-  try{await sample(`You are the AI administrator of ${biz().name}. Answer this client question using ONLY the data below. If the answer is not in the data, say you would hand it to the administrator. Reply in the client's language, 1-4 sentences, no markdown.\n\nSERVICES:\n${catalogText()}\n\nKNOWLEDGE BASE:\n${kbText()}\n\nClient: ${q}`,{modelTier:"quick",cache:false,signal:kbCtl.signal,onText:({text})=>{out.textContent=text}})}
-  catch(err){if(err.code!=="cancelled")out.textContent=err.code==="not_granted"?"Claude access was not allowed for this page.":"The AI could not answer: "+err.message}});
+  if(!brain){out.textContent=brainErr?"VoroniX AI is DOWN: "+brainErr:"VoroniX AI is still starting. Try again in a second.";return}
+  const p=brain.read(q),hit=brain.ask(q,crmBusiness(),crmKnowledge());
+  const intents=p.intents.map(i=>`${i.label} ${Math.round(i.score*100)}%`).join(", ")||"nothing sure";
+  out.innerHTML=`<div class="small muted">Understood: ${esc(intents)} · language ${esc(p.lang)}</div>${hit&&hit.score>=2.2?`<div style="margin-top:6px">${esc(hit.chunk)}</div><div class="small muted" style="margin-top:4px">From «${esc(hit.entry.title)}» · matched: ${esc(hit.matched.join(", "))}</div>`:`<div style="margin-top:6px">No answer in the data yet. In a chat the AI would say it will check and save the question for a person.</div>`}`});
 
 /* analytics */
 let anMonth=ymd(new Date()).slice(0,7);
@@ -1095,7 +1147,7 @@ async function seedAll(replace){
 }
 function setBanner(){
   const b=$("#banner");
-  if(!live){b.innerHTML=`<div class="banner"><span>Demo on GitHub Pages: changes stay in this browser tab and the AI is off. <a href="https://claude.ai/artifact/ADSNg68LNiherEJNbSeMdR" target="_blank" rel="noopener">Open the live version with the AI</a> or run the full system from the repository.</span></div>`;return}
+  if(!live){b.innerHTML=`<div class="banner"><span>Demo: the CRM data resets when the page reloads, but <b>VoroniX AI</b>, our own model, works right here and keeps what it learns in this browser. Write as a client in Chats. <a href="https://github.com/Yernazar-KBTU/VoroniX-AI" target="_blank" rel="noopener">How the AI works</a></span></div>`;return}
   if(seeding)return;
   if(loaded.size===COLS.length&&!Object.keys(S.services).length){b.innerHTML=`<div class="banner"><b>The database is empty.</b> Load the demo barbershop (services, staff, 30 clients, 6 weeks of bookings, sample chats) to try the CRM.${canWrite?' <button class="btn create sm" data-loaddemo>Load demo data</button>':""}</div>`;return}
   b.innerHTML="";
@@ -1106,15 +1158,15 @@ setInterval(tick,30000);tick();
 (async function boot(){
   const h=location.hash.slice(1);if(PAGES[h])route=h;
   const C=window.claude;
-  if(!(C&&C.use)){const D=demoData();COLS.forEach(c=>S[c]=D[c]);$("#modeChip").textContent="Offline demo";$("#aiChip").innerHTML='<span class="led off"></span>AI off (open on claude.ai)';setBanner();render();return}
+  brainStart();
+  const offline=()=>{const D=demoData();try{for(const a of JSON.parse(localStorage.getItem("vx-answers")||"[]")){const n=Object.keys(D.knowledge).length+1;D.knowledge["KB-"+n]=a}}catch(_){}COLS.forEach(c=>S[c]=D[c])};
+  if(!(C&&C.use)){offline();$("#modeChip").textContent="Offline demo";setBanner();render();return}
   render();
-  const [dbx,sx,ux]=C&&C.use?await Promise.all([C.use("db"),C.use("sample"),C.use("user")]):[null,null,null];
-  sample=sx||null;
-  $("#aiChip").innerHTML=`<span class="led ${sample?"":"off"}"></span>${sample?"AI administrator online":"AI off (open on claude.ai)"}`;
+  const [dbx,ux]=C&&C.use?await Promise.all([C.use("db"),C.use("user")]):[null,null];
   if(ux){try{const w=await ux.can("data.write");if(w===false)canWrite=false}catch(_){}}
   if(dbx){db=dbx;live=true;$("#modeChip").textContent="Live database";
     for(const c of COLS){db.collection(c).onSnapshot(snap=>{const o={};snap.docs.forEach(d=>{if(!deleting[c+"/"+d.id])o[d.id]=d.data()});for(const id in S[c])if(inflight[c+"/"+id]>0)o[id]=S[c][id];S[c]=o;loaded.add(c);setBanner();scheduleRender()},err=>toast("Database error: "+err.message))}
-  }else{$("#modeChip").textContent="Offline demo";const D=demoData();COLS.forEach(c=>S[c]=D[c]);setBanner();render()}
+  }else{$("#modeChip").textContent="Offline demo";offline();setBanner();render()}
 })();
 </script>
 
