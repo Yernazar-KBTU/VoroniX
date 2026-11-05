@@ -504,7 +504,7 @@ function toolsFor(convId,progress){
   ];
   return list.map(t=>({...t,execute:(i,c)=>{progress.cut&&progress.cut();return t.execute(i||{},c)}}));
 }
-function pushMsg(convId,m){const c=S.conversations[convId];if(!c)return;const msgs=[...(c.messages||[]),{at:nowISO(),...m}].slice(-200);return patch("conversations",convId,{messages:msgs,updated_at:nowISO()})}
+function pushMsg(convId,m){const c=S.conversations[convId];if(!c)return;if(c.tg_chat&&tg.on&&(m.from==="ai"||m.from==="admin"||m.from==="pay"))tgSend(c.tg_chat,m);const msgs=[...(c.messages||[]),{at:nowISO(),...m}].slice(-200);return patch("conversations",convId,{messages:msgs,updated_at:nowISO()})}
 function turnsFor(conv){
   const out=[{role:"user",content:rulesFor(conv)}];
   for(const m of conv.messages||[]){
@@ -547,7 +547,8 @@ async function aiReply(convId){
     else toast("VoroniX AI is still starting. Try again in a second.");
     return}
   if(aiBusy[convId]){aiAgain[convId]=true;return}const conv=S.conversations[convId];if(!conv)return;
-  const last=[...(conv.messages||[])].reverse().find(m=>m.from==="client");if(!last){toast("There is no client message to answer yet.");return}
+  const last0=[...(conv.messages||[])].reverse().find(m=>m.from==="client");if(!last0){toast("There is no client message to answer yet.");return}
+  const last=/^\/start\b/.test(last0.text)?{...last0,text:"Здравствуйте"}:last0;
   aiBusy[convId]="Thinking…";renderTyping();
   let retrain=null;
   try{
@@ -571,6 +572,56 @@ async function aiReply(convId){
   }finally{delete aiBusy[convId];delete aiCtl[convId];renderTyping();aiChip();scheduleRender();
     if(aiAgain[convId]){delete aiAgain[convId];const c=S.conversations[convId];if(c&&c.ai_enabled)aiReply(convId)}}
   if(retrain)retrain.then(v=>{if(v)toast(v.status==="live"?`VoroniX AI retrained itself: ${v.id} is live`:`VoroniX AI tried ${v.id}: not better, kept the old version`);aiChip();scheduleRender()}).catch(()=>{});
+}
+
+/* ---------- Telegram bot, run by this page while it is open ----------
+   The page asks Telegram for new messages (getUpdates, long polling), VoroniX AI answers,
+   and the answer goes back with sendMessage. No server is needed, but the bot answers only
+   while this page is open somewhere. The token is kept only in this browser. */
+const TG_KEY="vx-tg-token";const tg={token:"",offset:0,on:false,bot:"",err:"",ctl:null,run:0};
+async function tgApi(method,body){
+  const r=await fetch(`https://api.telegram.org/bot${tg.token}/${method}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body||{}),signal:tg.ctl&&tg.ctl.signal});
+  const j=await r.json().catch(()=>({ok:false,description:"Telegram answered "+r.status}));
+  if(!j.ok)throw new Error(j.description||"Telegram error");return j.result}
+function tgSave(status,detail){saveInt("telegram",{...(intState().telegram||{}),status,detail,hint:tg.token?"••••"+tg.token.slice(-4):"",at:new Date().toISOString(),settings:{}});scheduleRender()}
+async function tgStart(token){
+  tgStop();tg.token=token;tg.ctl=new AbortController();tg.err="";const run=++tg.run;
+  try{
+    const me=await tgApi("getMe");tg.bot=me.username;
+    // A webhook set earlier (for example by the VoroniX server) blocks getUpdates.
+    const hook=await tgApi("getWebhookInfo");if(hook.url)await tgApi("deleteWebhook",{drop_pending_updates:false});
+    tg.on=true;try{localStorage.setItem(TG_KEY,token)}catch(_){}
+    tgSave("connected",`@${me.username} is answering with VoroniX AI. It works while this page is open; close it and the bot stops.`);
+    toast(`Telegram: @${me.username} is on`);
+    tgLoop(run);
+  }catch(e){tg.on=false;tg.err=e.message||String(e);
+    tgSave("error",/Unauthorized|Not Found/i.test(tg.err)?"Telegram does not accept this token. Copy it again from @BotFather.":/fetch|network|load/i.test(tg.err)?"This browser could not reach api.telegram.org: "+tg.err:"Telegram: "+tg.err)}
+}
+function tgStop(){tg.on=false;tg.run++;if(tg.ctl)tg.ctl.abort();tg.ctl=null}
+async function tgLoop(run){
+  while(tg.on&&run===tg.run){
+    try{const ups=await tgApi("getUpdates",{offset:tg.offset,timeout:25,allowed_updates:["message"]});
+      for(const u of ups){tg.offset=u.update_id+1;await tgIncoming(u.message).catch(e=>toast("Telegram message failed: "+e.message))}
+      if(tg.err){tg.err="";tgSave("connected",`@${tg.bot} is answering with VoroniX AI. It works while this page is open; close it and the bot stops.`)}
+    }catch(e){if(!tg.on||run!==tg.run)return;tg.err=e.message||String(e);
+      if(/Conflict/i.test(tg.err))tgSave("error","Another program is reading this bot's messages (another open tab or the VoroniX server). Keep one.");
+      else tgSave("error","Telegram connection lost, trying again: "+tg.err);
+      await new Promise(r=>setTimeout(r,4000))}
+  }
+}
+async function tgIncoming(m){
+  if(!m||!m.chat)return;const text=(m.text||m.caption||"").trim();if(!text)return;
+  const ext="tg_"+m.chat.id;const who=m.from||{};
+  let id=Object.keys(S.conversations).find(k=>S.conversations[k].external_user_id===ext);
+  if(!id){id=nextId("conversations","CV-",4);
+    await put("conversations",id,{messenger:"Telegram",contact:[who.first_name,who.last_name].filter(Boolean).join(" ")||who.username||"Telegram client",external_user_id:ext,tg_chat:m.chat.id,client_id:null,stage:"New",ai_enabled:biz().autopilot!==false,needs_human:false,updated_at:nowISO(),messages:[]})}
+  await pushMsg(id,{from:"client",text});scheduleRender();
+  const c=S.conversations[id];if(c&&c.ai_enabled&&!c.needs_human)await aiReply(id);
+}
+function tgSend(chat,m){
+  let text=m.text||"";
+  if(m.from==="pay"){const p=S.payments[m.payment_id];text=p?`${m.text||"Payment"}: ${money(p.amount_kzt)}. Kaspi QR (demo).`:text}
+  if(!text)return;tgApi("sendMessage",{chat_id:chat,text}).catch(e=>toast("Telegram could not send: "+e.message));
 }
 
 /* ---------- navigation ---------- */
@@ -932,7 +983,7 @@ function intDetails(p){const conn=p.status!=="off";
   ${p.detail?`<div class="answer ${p.status==="error"?"bad":""}">${esc(p.detail)}${p.at?`<span class="muted small"> · ${fmtAt(p.at)}</span>`:""}</div>`:""}
   <form id="intForm" data-int="${p.id}" style="display:flex;flex-direction:column;gap:10px">${fields}<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn create" type="submit">${conn?"Save and check":"Connect"}</button>${conn?`<button class="btn danger" type="button" data-intoff="${p.id}">Disconnect</button>`:""}</div></form>
   ${extra}<h4 class="muted small" style="margin:4px 0 0">How to connect</h4><ol class="small muted" style="margin:0;padding-left:18px">${p.steps.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>
-  <p class="small muted" style="margin:0">Demo page: tokens are checked for format only and are not stored. Live connections run in the VoroniX server from the repository.</p></div></section>`}
+  <p class="small muted" style="margin:0">${p.id==="telegram"?"This page runs the bot itself: it reads new messages and VoroniX AI answers, while the page is open. The token is kept only in this browser. For a bot that answers day and night, run the VoroniX server from the repository.":"Demo page: tokens are checked for format only and are not stored. Live connections run in the VoroniX server from the repository."}</p></div></section>`}
 PAGES.integrations={head:()=>head("Integrations","Connect messengers, AI, payments and your calendar. Most take one token and one click.",""),
  body(){const L=INT_CAT.map(p=>intOf(p.id));const sel=intOf(intSel);const on=L.filter(p=>p.status!=="off"&&p.status!=="error").length;const groups=[...new Set(L.map(p=>p.group))];
   return `<div class="grid intwrap"><section class="panel"><div class="ph"><h3>Services</h3><span class="grow"></span><span class="muted small">${on} of ${L.length} set up</span></div><div class="pad" style="display:flex;flex-direction:column;gap:16px">${groups.map(g=>`<div><h4 class="muted small" style="margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em">${esc(g)}</h4><div class="igrid">${L.filter(p=>p.group===g).map(p=>`<button class="icard ${p.id===intSel?"on":""}" data-intsel="${p.id}">${intLogo(p.id)}<span class="ibody"><b>${esc(p.name)}</b><span class="muted small">${esc(p.description)}</span></span>${intPill(p.status)}</button>`).join("")}</div></div>`).join("")}</div></section>${intDetails(sel)}</div>`}};
@@ -941,10 +992,11 @@ document.addEventListener("submit",e=>{if(e.target.id!=="intForm")return;e.preve
   for(const x of p.fields){const v=$("#if_"+x.key).value.trim();if(x.secret)sec=v;else f[x.key]=v}
   if(!sec&&p.fields.some(x=>x.secret&&x.required)&&!p.hint)return toast(p.fields.find(x=>x.secret).label+" is required");
   const [status,detail]=sec||!p.fields.some(x=>x.secret&&x.required)?INT_CHECK[id](f,sec):[p.status,p.detail];
+  if(id==="telegram"){if(status==="error"){saveInt(id,{status,detail,hint:"",at:new Date().toISOString(),settings:f});return}if(sec)return tgStart(sec);if(tg.token)return tgStart(tg.token)}
   saveInt(id,{status,detail,hint:sec?"••••"+sec.slice(-4):p.hint,at:new Date().toISOString(),settings:f});toast(`${p.name}: ${INT_ST[status][0].toLowerCase()}`)});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-intsel],[data-intoff],#icsDl");if(!t)return;
   if(t.dataset.intsel){intSel=t.dataset.intsel;render();if(matchMedia("(max-width: 900px)").matches)$(".ipanel")?.scrollIntoView({behavior:"smooth"})}
-  else if(t.dataset.intoff){saveInt(t.dataset.intoff,null);toast("Disconnected")}
+  else if(t.dataset.intoff){if(t.dataset.intoff==="telegram"){tgStop();tg.token="";try{localStorage.removeItem(TG_KEY)}catch(_){}}saveInt(t.dataset.intoff,null);toast("Disconnected")}
   else dl("visits.ics",icsText())});
 function icsText(){const b=biz();const f=s=>s.replace(/[-: ]/g,"").slice(0,13)+"00";const e=s=>String(s).replace(/[\;,]/g,m=>"\\"+m);
   const from=dt(addDays(new Date(),-30)),to=dt(addDays(new Date(),90));
@@ -1158,7 +1210,7 @@ setInterval(tick,30000);tick();
 (async function boot(){
   const h=location.hash.slice(1);if(PAGES[h])route=h;
   const C=window.claude;
-  brainStart();
+  brainStart().then(()=>{let t="";try{t=localStorage.getItem(TG_KEY)||""}catch(_){}if(t)tgStart(t)});
   const offline=()=>{const D=demoData();try{for(const a of JSON.parse(localStorage.getItem("vx-answers")||"[]")){const n=Object.keys(D.knowledge).length+1;D.knowledge["KB-"+n]=a}}catch(_){}COLS.forEach(c=>S[c]=D[c])};
   if(!(C&&C.use)){offline();$("#modeChip").textContent="Offline demo";setBanner();render();return}
   render();
