@@ -6,6 +6,7 @@ const Env = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().default("postgresql://crm:crm@localhost:5432/crm"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  INTEGRATION_ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, "must be 64 hexadecimal characters").optional(),
 
   // AI. Without a key the deterministic offline agent answers instead of Claude.
   ANTHROPIC_API_KEY: z.string().optional(),

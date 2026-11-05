@@ -32,6 +32,8 @@ services:
           name: voronix-ai
           type: web
           envVarKey: VORONIX_AI_KEY
+      - key: INTEGRATION_ENCRYPTION_KEY
+        generateValue: true
 
   - type: web
     name: voronix-ai

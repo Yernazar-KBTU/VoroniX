@@ -12,6 +12,7 @@ import { wallClock } from "../../src/lib/time.js";
 import { bus, sseHandler } from "../../src/realtime/bus.js";
 import { setFallbackTenant, withTenant, type Tenant } from "../../src/tenancy/context.js";
 import { findTenant } from "../../src/tenancy/tenants.js";
+import { getIntegration } from "../../src/repositories/integrations.repo.js";
 import { demo, freshDb } from "./helpers.js";
 
 const app = createApp();
@@ -109,7 +110,7 @@ describe("webhooks and feeds per business", () => {
     await request(app).post(`/api/channels/${other.id}/whatsapp/inbound`).send(msg).expect(404);
     await request(app).post(`/api/channels/00000000-0000-4000-8000-000000000000/whatsapp/inbound`).send(msg).expect(404);
     await request(app).put("/api/integrations/whatsapp").set("Cookie", cookie).send({ settings: { phone: "+1 212 555 0100" } }).expect(200);
-    const secret = await as(other, async () => (await pool.query(`SELECT secret FROM integrations WHERE provider = 'whatsapp'`)).rows[0].secret as string);
+    const secret = (await as(other, () => getIntegration(pool, "whatsapp")))!.secret!;
     await request(app).post(`/api/channels/${other.id}/whatsapp/inbound`).set("x-channel-secret", "wrong").send(msg).expect(401);
     await request(app).post(`/api/channels/${other.id}/whatsapp/inbound`).set("x-channel-secret", secret).send(msg).expect(201);
     await idle();
@@ -119,7 +120,7 @@ describe("webhooks and feeds per business", () => {
 
   it("serves each calendar feed in its own time zone, and only with its own token", async () => {
     await request(app).put("/api/integrations/google_calendar").set("Cookie", cookie).send({}).expect(200);
-    const token = await as(other, async () => (await pool.query(`SELECT secret FROM integrations WHERE provider = 'google_calendar'`)).rows[0].secret as string);
+    const token = (await as(other, () => getIntegration(pool, "google_calendar")))!.secret!;
     const r = await request(app).get(`/api/integrations/${other.id}/calendar.ics?token=${token}`).expect(200);
     expect(r.text).toContain("X-WR-TIMEZONE:America/New_York");
     await request(app).get(`/api/integrations/${demo.id}/calendar.ics?token=${token}`).expect(404);

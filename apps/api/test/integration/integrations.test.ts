@@ -1,6 +1,7 @@
 // Integrations page: connecting services, keeping secrets out of responses,
 // the messenger webhook secret, the calendar feed and the outgoing webhook.
 import request from "supertest";
+import { randomBytes } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.js";
 import { config } from "../../src/config.js";
@@ -8,6 +9,8 @@ import { getEngine, idle, setEngine } from "../../src/ai/runner.js";
 import { OfflineAgent } from "../../src/ai/offline-agent.js";
 import { pool } from "../../src/db/pool.js";
 import { bootIntegrations, deps, stopIntegrations } from "../../src/integrations/manager.js";
+import { decryptIntegrationSecret, isEncryptedIntegrationSecret } from "../../src/integrations/encryption.js";
+import { getIntegration } from "../../src/repositories/integrations.repo.js";
 import { freshDb, quietWednesday, until } from "./helpers.js";
 
 const api = request(createApp());
@@ -15,6 +18,7 @@ const started: string[] = [];
 const posted: { url: string; body: { event: string; data: Record<string, unknown> }; secret: string }[] = [];
 
 beforeAll(async () => {
+  process.env.INTEGRATION_ENCRYPTION_KEY ??= randomBytes(32).toString("hex");
   await freshDb();
   deps.checkTelegram = async (token) => (token.startsWith("123:") ? { ok: true, detail: "Bot @barberista_bot is answering clients" } : { ok: false, detail: "Unauthorized" });
   deps.checkClaude = async (key) => (key === "sk-ant-good" ? { ok: true, detail: "Claude writes the replies" } : { ok: false, detail: "The API key was not accepted" });
@@ -35,7 +39,7 @@ afterAll(async () => {
   await pool.end();
 });
 
-const card = async (id: string) => ((await api.get("/api/integrations").expect(200)).body as { id: string; status: string; secret_hint: string; settings: Record<string, string>; status_detail: string }[]).find((x) => x.id === id)!;
+const card = async (id: string) => ((await api.get("/api/integrations").expect(200)).body as { id: string; status: string; secret_hint: string; shared_secret: string; settings: Record<string, string>; status_detail: string }[]).find((x) => x.id === id)!;
 
 describe("catalogue", () => {
   it("lists every service, all off on a fresh install", async () => {
@@ -47,6 +51,14 @@ describe("catalogue", () => {
   it("answers 404 for an unknown service and 400 without a required field", async () => {
     await api.put("/api/integrations/viber").send({}).expect(404);
     await api.put("/api/integrations/telegram").send({}).expect(400);
+  });
+
+  it("encrypts existing plaintext secrets when first loaded", async () => {
+    await pool.query("INSERT INTO integrations (provider, enabled, settings, secret, status, status_detail) VALUES ('telegram', false, '{}', $1, 'off', '')", ["legacy-plain-secret"]);
+    expect((await getIntegration(pool, "telegram"))?.secret).toBe("legacy-plain-secret");
+    const { rows } = await pool.query("SELECT secret FROM integrations WHERE provider = 'telegram'");
+    expect(isEncryptedIntegrationSecret(rows[0].secret)).toBe(true);
+    expect(decryptIntegrationSecret(rows[0].secret)).toBe("legacy-plain-secret");
   });
 });
 
@@ -60,6 +72,9 @@ describe("Telegram", () => {
   it("connects with a valid token, starts the bot and never returns the token", async () => {
     const r = await api.put("/api/integrations/telegram").send({ secret: "123:secret-token-abcd" }).expect(200);
     expect(r.body).toMatchObject({ status: "connected", secret_hint: "••••abcd" });
+    const { rows } = await pool.query("SELECT secret FROM integrations WHERE provider = 'telegram'");
+    expect(isEncryptedIntegrationSecret(rows[0].secret)).toBe(true);
+    expect(decryptIntegrationSecret(rows[0].secret)).toBe("123:secret-token-abcd");
     expect(JSON.stringify((await api.get("/api/integrations")).body)).not.toContain("secret-token");
     expect(started).toEqual(["123:secret-token-abcd"]);
   });
@@ -90,12 +105,12 @@ describe("WhatsApp webhook", () => {
     const wa = await card("whatsapp");
     expect(wa.status).toBe("connected");
     const { rows } = await pool.query("SELECT secret FROM integrations WHERE provider = 'whatsapp'");
-    const secret = rows[0].secret as string;
-    expect(wa.secret_hint).toBe(`••••${secret.slice(-4)}`);
+    expect(isEncryptedIntegrationSecret(rows[0].secret)).toBe(true);
+    expect(wa.secret_hint).toBe(`••••${wa.shared_secret.slice(-4)}`);
 
     const msg = { external_user_id: "wa_int_1", name: "Тест", text: "Сколько стоит стрижка?" };
     await api.post("/api/channels/whatsapp/inbound").send(msg).expect(401);
-    await api.post("/api/channels/whatsapp/inbound").set("x-channel-secret", secret).send(msg).expect(201);
+    await api.post("/api/channels/whatsapp/inbound").set("x-channel-secret", wa.shared_secret).send(msg).expect(201);
     await idle();
   });
 });
@@ -104,8 +119,10 @@ describe("Google Calendar feed", () => {
   it("serves upcoming visits as iCal only with the right token", async () => {
     await api.get("/api/integrations/calendar.ics?token=x").expect(404);
     await api.put("/api/integrations/google_calendar").send({}).expect(200);
+    const calendar = await card("google_calendar");
     const { rows } = await pool.query("SELECT secret FROM integrations WHERE provider = 'google_calendar'");
-    const r = await api.get(`/api/integrations/calendar.ics?token=${rows[0].secret}`).expect(200);
+    expect(isEncryptedIntegrationSecret(rows[0].secret)).toBe(true);
+    const r = await api.get(`/api/integrations/calendar.ics?token=${encodeURIComponent(calendar.shared_secret)}`).expect(200);
     expect(r.headers["content-type"]).toMatch(/text\/calendar/);
     expect(r.text).toMatch(/^BEGIN:VCALENDAR\r\n/);
     expect(r.text).toContain("X-WR-CALNAME:Barberista visits");
@@ -132,7 +149,8 @@ describe("outgoing webhook", () => {
     const sent = posted.at(-1)!;
     expect(sent.body).toMatchObject({ event: "appointment.created", data: { id: r.body.id, service_code: "HC-02" } });
     const { rows } = await pool.query("SELECT secret FROM integrations WHERE provider = 'webhook'");
-    expect(sent.secret).toBe(rows[0].secret);
+    expect(isEncryptedIntegrationSecret(rows[0].secret)).toBe(true);
+    expect(decryptIntegrationSecret(rows[0].secret)).toBe(sent.secret);
     expect(posted.filter((p) => p.body.event === "payment.paid")).toHaveLength(0);
   });
 
