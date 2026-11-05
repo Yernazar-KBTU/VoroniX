@@ -9,6 +9,10 @@
 # Optional settings, added later on the service's Environment page:
 # APP_URL (defaults to the service's onrender.com address), ANTHROPIC_API_KEY,
 # RESEND_API_KEY, MAIL_FROM, SUPPORT_EMAIL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET.
+#
+# VoroniX AI (our own intent model) is the second service below. After the first
+# deploy, copy its address (https://voronix-ai-....onrender.com) into the CRM's
+# VORONIX_AI_URL. To close the API to outsiders, set the same VORONIX_AI_KEY on both.
 services:
   - type: web
     name: voronix
@@ -20,6 +24,14 @@ services:
         fromDatabase:
           name: voronix-db
           property: connectionString
+
+  - type: web
+    name: voronix-ai
+    runtime: docker
+    plan: free
+    dockerfilePath: ./apps/voronix-ai/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
 
 databases:
   - name: voronix-db

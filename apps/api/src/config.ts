@@ -14,6 +14,13 @@ const Env = z.object({
   AI_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("low"),
   AI_MAX_TOOL_ROUNDS: z.coerce.number().int().min(1).max(20).default(8),
 
+  // VoroniX AI (apps/voronix-ai): our own intent model behind its own API.
+  // The built-in agent asks it what each client message means; without it,
+  // or when it does not answer in time, the built-in rules decide alone.
+  VORONIX_AI_URL: z.string().url().optional(),
+  VORONIX_AI_KEY: z.string().optional(),
+  VORONIX_AI_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(2500),
+
   // Channels. Each business connects its own Telegram bot on the Integrations
   // page. This optional secret is accepted by every business's inbound
   // webhook, for a gateway the platform runs itself.

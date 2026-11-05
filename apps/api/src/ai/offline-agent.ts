@@ -7,6 +7,7 @@ import { loadSnapshot, type CrmSnapshot } from "./context.js";
 import type { AgentContext, AgentEngine, AgentReply } from "./engine.js";
 import * as nlu from "./offline-nlu.js";
 import { runTool, type ToolCallLog } from "./tools.js";
+import { understand, type Intent } from "./voronix-ai.js";
 
 /**
  * Deterministic rule-based administrator. It runs when no Claude API key is
@@ -33,11 +34,16 @@ interface DialogState {
 }
 
 const durRu = (m: number) => (m < 60 ? `${m} минут` : m % 60 === 0 ? `${m / 60} ${m === 60 ? "час" : "часа"}` : `${String(m / 60).replace(".", ",")} часа`);
+const durKk = (m: number) => (m < 60 ? `${m} минут` : `${String(m / 60).replace(".", ",")} сағат`);
+
+/** Picks the reply in the client's language: Russian, English or Kazakh. */
+type Say = (ru: string, en: string, kk: string) => string;
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const dot = (s: string) => (s.endsWith(".") ? s : `${s}.`);
 
 const RU_DOW = ["воскресенье", "понедельник", "вторник", "среду", "четверг", "пятницу", "субботу"];
+const KK_DOW = ["жексенбі", "дүйсенбі", "сейсенбі", "сәрсенбі", "бейсенбі", "жұма", "сенбі"];
 
 /** " Красота начинается с заботы ✨" when the owner set a brand phrase. */
 const sign = (snap: CrmSnapshot) => (snap.biz.catchphrase ? ` ${snap.biz.catchphrase}` : "");
@@ -85,27 +91,32 @@ export class OfflineAgent implements AgentEngine {
     const since = conv.messages.slice(Math.max(lastReply, lastAdmin) + 1);
     const text = since.filter((m) => m.from === "client").map((m) => m.text).join(" \n ");
     const all = conv.messages.filter((m) => m.from === "client").map((m) => m.text).join(" ");
-    const lang = nlu.detectLang(all || "привет");
-    const R = (ru: string, en: string) => (lang === "ru" ? ru : en);
+    // VoroniX AI (our own model, apps/voronix-ai) says what the client wants;
+    // the rules below still work alone when the service is not reachable.
+    const ai = await understand(text);
+    const has = (intent: Intent, rule: (t: string) => boolean) => !!ai?.intents.has(intent) || rule(text);
+    const ruleLang = nlu.detectLang(all || "привет");
+    const lang: nlu.Lang = ai?.lang === "kk" ? "kk" : ruleLang;
+    const R: Say = (ru, en, kk) => (lang === "ru" ? ru : lang === "kk" ? kk : en);
     const now = wallClock();
 
     if (!text) {
       const paid = since.some((m) => m.from === "system" && /Payment received/.test(m.text));
-      if (paid) return { text: R("Оплата получена, спасибо! Запись подтверждена. Ждём вас, напомним за день до визита.", "Payment received, thank you! Your booking is confirmed. See you soon, we will remind you a day before."), toolCalls: calls };
+      if (paid) return { text: R("Оплата получена, спасибо! Запись подтверждена. Ждём вас, напомним за день до визита.", "Payment received, thank you! Your booking is confirmed. See you soon, we will remind you a day before.", "Төлем түсті, рахмет! Жазылуыңыз расталды. Сізді күтеміз, келуіңізден бір күн бұрын еске саламыз."), toolCalls: calls };
       return { text: "", toolCalls: calls };
     }
 
     // 1. Complaints and anything sensitive go to a human.
-    if (nlu.isComplaint(text)) {
+    if (has("complaint", nlu.isComplaint)) {
       await call("handoff_to_human", { reason: "complaint or sensitive request" });
-      return { text: R("Очень жаль, что так получилось. Я передаю ваш вопрос администратору, он свяжется с вами в ближайшее время.", "I am very sorry about this. I am passing your message to the administrator, they will contact you shortly."), toolCalls: calls };
+      return { text: R("Очень жаль, что так получилось. Я передаю ваш вопрос администратору, он свяжется с вами в ближайшее время.", "I am very sorry about this. I am passing your message to the administrator, they will contact you shortly.", "Осындай жағдай болғанына өте өкінемін. Сұрағыңызды әкімшіге жіберемін, ол сізбен жақын арада хабарласады."), toolCalls: calls };
     }
 
     // 2. Cancel an existing booking.
-    if (nlu.wantsCancel(text) && conv.appointment_id) {
+    if (has("cancel", nlu.wantsCancel) && conv.appointment_id) {
       await call("cancel_or_move_appointment", { appointment_id: conv.appointment_id, action: "cancel" });
       this.states.delete(conv.id);
-      return { text: R("Запись отменила. Если захотите выбрать другое время, просто напишите.", "Your booking is cancelled. Write any time if you want another slot."), toolCalls: calls };
+      return { text: R("Запись отменила. Если захотите выбрать другое время, просто напишите.", "Your booking is cancelled. Write any time if you want another slot.", "Жазылуыңызды өшірдім. Басқа уақыт керек болса, жаза салыңыз."), toolCalls: calls };
     }
 
     // 3. Update what we know from this message.
@@ -127,7 +138,7 @@ export class OfflineAgent implements AgentEngine {
       const name = nlu.parseName(text, !!st.awaitingName);
       if (!name) {
         st.awaitingName = true;
-        return { text: R("Подскажите, пожалуйста, как вас зовут? Это нужно для записи.", "May I have your name for the booking?"), toolCalls: calls };
+        return { text: R("Подскажите, пожалуйста, как вас зовут? Это нужно для записи.", "May I have your name for the booking?", "Жазылу үшін атыңызды айтыңызшы."), toolCalls: calls };
       }
       await call("link_client", { name, ...(st.phone ? { phone: st.phone } : {}) });
       st.awaitingName = false;
@@ -137,7 +148,8 @@ export class OfflineAgent implements AgentEngine {
     // 5. Picking one of the offered times.
     if (st.offered.length) {
       // A client who answers a single offer with their name has accepted it.
-      const pick = this.pickOffer(text, st, pref) ?? (st.offered.length === 1 && nlu.parseName(text, false) ? st.offered[0] : undefined);
+      const yes = has("confirm", nlu.saysYes);
+      const pick = this.pickOffer(text, st, pref, yes) ?? (st.offered.length === 1 && nlu.parseName(text, false) ? st.offered[0] : undefined);
       if (pick) {
         st.chosen = pick;
         if (!conv.client_id) {
@@ -147,7 +159,7 @@ export class OfflineAgent implements AgentEngine {
             return this.book(conv.id, st, snap, call, calls, R);
           }
           st.awaitingName = true;
-          return { text: R(`Отлично, ${this.when(pick, lang)} к мастеру ${dot(pick.master)} Как вас зовут?`, `Great, ${this.when(pick, lang)} with ${dot(pick.master)} May I have your name?`), toolCalls: calls };
+          return { text: R(`Отлично, ${this.when(pick, lang)} к мастеру ${dot(pick.master)} Как вас зовут?`, `Great, ${this.when(pick, lang)} with ${dot(pick.master)} May I have your name?`, `Керемет: ${this.when(pick, lang)}, шебер: ${dot(pick.master)} Атыңыз кім?`), toolCalls: calls };
         }
         return this.book(conv.id, st, snap, call, calls, R);
       }
@@ -155,64 +167,65 @@ export class OfflineAgent implements AgentEngine {
 
     // 6. Questions the knowledge base answers.
     const info: string[] = [];
-    if (nlu.asksAddress(text)) info.push(R(`Мы находимся по адресу: ${snap.biz.address}.`, `We are at ${snap.biz.address}.`));
-    if (nlu.asksHours(text)) info.push(R(`Работаем: ${snap.biz.hours}.`, `Opening hours: ${snap.biz.hours}.`));
+    if (has("address", nlu.asksAddress)) info.push(R(`Мы находимся по адресу: ${snap.biz.address}.`, `We are at ${snap.biz.address}.`, `Біздің мекенжай: ${snap.biz.address}.`));
+    if (has("hours", nlu.asksHours)) info.push(R(`Работаем: ${snap.biz.hours}.`, `Opening hours: ${snap.biz.hours}.`, `Жұмыс уақытымыз: ${snap.biz.hours}.`));
+    const greets = has("greeting", nlu.isGreeting);
 
     const service = snap.services.find((s) => s.id === st.service);
     if (!service) {
-      const greet = nlu.isGreeting(text) ? this.hello(conv, snap, R) : "";
-      if (info.length) return { text: greet + info.join(" ") + R(" Подсказать по услугам и свободному времени?", " Can I help you with a service or a free time?"), toolCalls: calls };
+      const greet = greets ? this.hello(conv, snap, R) : "";
+      if (info.length) return { text: greet + info.join(" ") + R(" Подсказать по услугам и свободному времени?", " Can I help you with a service or a free time?", " Қызметтер мен бос уақыт бойынша көмектесейін бе?"), toolCalls: calls };
       const list = snap.services.filter((s) => s.is_active).slice(0, 5).map((s) => `${s.name.toLowerCase()} (${money(s.price_kzt)})`).join(", ");
-      return { text: greet + R(`Подскажите, на какую услугу хотите записаться? Например: ${list}.`, `Which service would you like? For example: ${list}.`), toolCalls: calls };
+      return { text: greet + R(`Подскажите, на какую услугу хотите записаться? Например: ${list}.`, `Which service would you like? For example: ${list}.`, `Қай қызметке жазылғыңыз келеді? Мысалы: ${list}.`), toolCalls: calls };
     }
 
     // 7. Service known, day unknown: price and duration, then ask for a day.
     if (!st.date) {
       const pp = prepaymentFor(service, snap.biz);
-      const extra = pp ? R(` Для этой услуги нужна предоплата ${snap.biz.prepay_percent}%: ${money(pp)}.`, ` This service needs a ${snap.biz.prepay_percent}% prepayment: ${money(pp)}.`) : "";
-      const greet = nlu.isGreeting(text) ? this.hello(conv, snap, R) : "";
+      const extra = pp ? R(` Для этой услуги нужна предоплата ${snap.biz.prepay_percent}%: ${money(pp)}.`, ` This service needs a ${snap.biz.prepay_percent}% prepayment: ${money(pp)}.`, ` Бұл қызмет үшін ${snap.biz.prepay_percent}% алдын ала төлем керек: ${money(pp)}.`) : "";
+      const greet = greets ? this.hello(conv, snap, R) : "";
       return {
-        text: greet + info.join(" ") + (info.length ? " " : "") + R(`${service.name} стоит ${money(service.price_kzt)}, длится ${durRu(service.duration_min)}.${extra}${promoFor(service, snap, " ")} На какой день вам удобно?`, `${service.name} costs ${money(service.price_kzt)} and takes about ${service.duration_min} minutes.${extra}${promoFor(service, snap, " ")} Which day suits you?`),
+        text: greet + info.join(" ") + (info.length ? " " : "") + R(`${service.name} стоит ${money(service.price_kzt)}, длится ${durRu(service.duration_min)}.${extra}${promoFor(service, snap, " ")} На какой день вам удобно?`, `${service.name} costs ${money(service.price_kzt)} and takes about ${service.duration_min} minutes.${extra}${promoFor(service, snap, " ")} Which day suits you?`, `${service.name} бағасы ${money(service.price_kzt)}, ұзақтығы ${durKk(service.duration_min)}.${extra}${promoFor(service, snap, " ")} Қай күн ыңғайлы?`),
         toolCalls: calls,
       };
     }
 
     // 8. Service and day known: offer free times (and answer the price if asked).
     const offered = await this.offer(conv.id, st, service, call, calls, R, lang);
-    const greet = nlu.isGreeting(text) && conv.messages.filter((m) => m.from === "ai").length === 0 ? this.hello(conv, snap, R) : "";
+    const greet = greets && conv.messages.filter((m) => m.from === "ai").length === 0 ? this.hello(conv, snap, R) : "";
     let priceLine = "";
-    if (nlu.asksPrice(text)) {
+    if (has("price", nlu.asksPrice)) {
       const pp = prepaymentFor(service, snap.biz);
-      priceLine = R(`${service.name} стоит ${money(service.price_kzt)}${pp ? `, предоплата ${money(pp)}` : ""}. `, `${service.name} costs ${money(service.price_kzt)}${pp ? `, prepayment ${money(pp)}` : ""}. `) + promoFor(service, snap, "", " ");
+      priceLine = R(`${service.name} стоит ${money(service.price_kzt)}${pp ? `, предоплата ${money(pp)}` : ""}. `, `${service.name} costs ${money(service.price_kzt)}${pp ? `, prepayment ${money(pp)}` : ""}. `, `${service.name} бағасы ${money(service.price_kzt)}${pp ? `, алдын ала төлем ${money(pp)}` : ""}. `) + promoFor(service, snap, "", " ");
     }
     return { ...offered, text: greet + info.join(" ") + (info.length ? " " : "") + priceLine + offered.text };
   }
 
   /** Greeting; the first reply in a chat also carries the brand phrase. */
-  private hello(conv: Conversation, snap: CrmSnapshot, R: (ru: string, en: string) => string): string {
+  private hello(conv: Conversation, snap: CrmSnapshot, R: Say): string {
     const first = !conv.messages.some((m) => m.from === "ai");
     const phrase = first && snap.biz.catchphrase ? ` ${snap.biz.catchphrase}` : "";
-    return R(`Здравствуйте!${phrase} `, `Hello!${phrase} `);
+    return R(`Здравствуйте!${phrase} `, `Hello!${phrase} `, `Сәлеметсіз бе!${phrase} `);
   }
 
-  private pickOffer(text: string, st: DialogState, pref: nlu.TimePref | null): Offer | undefined {
+  private pickOffer(text: string, st: DialogState, pref: nlu.TimePref | null, yes: boolean): Offer | undefined {
     if (pref?.exact) {
       const hit = st.offered.find((o) => o.time === pref.exact);
       if (hit) return hit;
     }
     const lower = text.toLowerCase();
     const byMaster = st.offered.find((o) => lower.includes(o.master.split(" ")[0].toLowerCase()) && (!pref?.exact || o.time === pref.exact));
-    if (byMaster && (pref?.exact || nlu.saysYes(text))) return byMaster;
+    if (byMaster && (pref?.exact || yes)) return byMaster;
     const n = nlu.ordinal(text);
     if (n !== null && st.offered[n]) return st.offered[n];
-    if (nlu.saysYes(text) && st.offered.length === 1) return st.offered[0];
-    if (nlu.saysYes(text) && !nlu.parseDay(text, wallClock())) return st.offered[0];
+    if (yes && st.offered.length === 1) return st.offered[0];
+    if (yes && !nlu.parseDay(text, wallClock())) return st.offered[0];
     return undefined;
   }
 
-  private async offer(convId: string, st: DialogState, service: Service, call: (n: string, i: unknown) => Promise<Record<string, any>>, calls: ToolCallLog[], R: (ru: string, en: string) => string, lang: nlu.Lang): Promise<AgentReply> {
+  private async offer(convId: string, st: DialogState, service: Service, call: (n: string, i: unknown) => Promise<Record<string, any>>, calls: ToolCallLog[], R: Say, lang: nlu.Lang): Promise<AgentReply> {
     const res = await call("find_free_slots", { service_code: service.id, date: st.date });
-    if (res.error) return { text: R("Не получилось проверить расписание, уточню у администратора.", "I could not check the schedule, I will ask the administrator."), toolCalls: calls };
+    if (res.error) return { text: R("Не получилось проверить расписание, уточню у администратора.", "I could not check the schedule, I will ask the administrator.", "Кестені тексере алмадым, әкімшіден нақтылаймын."), toolCalls: calls };
     const fits = (t: string) => {
       const m = toMin(t);
       if (!st.pref) return true;
@@ -236,37 +249,37 @@ export class OfflineAgent implements AgentEngine {
         const next = await call("find_free_slots", { service_code: service.id, date: d });
         offers = collect(d, next.slots ?? [], true);
         if (offers.length) {
-          note = R(`${cap(this.dayWord(st.date!, lang, "на"))} в это время всё занято. `, `That time is taken on ${this.dayWord(st.date!, lang)}. `);
+          note = R(`${cap(this.dayWord(st.date!, lang, "на"))} в это время всё занято. `, `That time is taken on ${this.dayWord(st.date!, lang)}. `, `${cap(this.dayWord(st.date!, lang))} бұл уақыт бос емес. `);
           break;
         }
       }
     }
     if (!offers.length && res.slots?.length) {
       offers = collect(st.date!, res.slots, false);
-      note = R("В это время всё занято. ", "That time is taken. ");
+      note = R("В это время всё занято. ", "That time is taken. ", "Бұл уақыт бос емес. ");
     }
     if (!offers.length && res.nearest_available) {
       offers = collect(res.nearest_available.date, res.nearest_available.slots, true);
       if (!offers.length) offers = collect(res.nearest_available.date, res.nearest_available.slots, false);
-      note = R(`${cap(this.dayWord(st.date!, lang, "на"))} свободных окон нет. `, `There are no free times on ${this.dayWord(st.date!, lang)}. `);
+      note = R(`${cap(this.dayWord(st.date!, lang, "на"))} свободных окон нет. `, `There are no free times on ${this.dayWord(st.date!, lang)}. `, `${cap(this.dayWord(st.date!, lang))} бос уақыт жоқ. `);
     }
-    if (!offers.length) return { text: R("Ближайшие две недели всё занято, передам ваш запрос администратору.", "We are fully booked for the next two weeks, I will pass your request to the administrator."), toolCalls: calls };
+    if (!offers.length) return { text: R("Ближайшие две недели всё занято, передам ваш запрос администратору.", "We are fully booked for the next two weeks, I will pass your request to the administrator.", "Алдағы екі аптада бос орын жоқ, сұрауыңызды әкімшіге жіберемін."), toolCalls: calls };
     st.offered = offers;
     st.chosen = undefined;
     const list = offers.map((o) => `${o.time} (${o.master})`).join(", ");
-    return { text: note + R(`${cap(this.dayWord(offers[0].date, lang, "на"))} свободно: ${list}. Какое время выбрать?`, `Free on ${this.dayWord(offers[0].date, lang)}: ${list}. Which time works for you?`), toolCalls: calls };
+    return { text: note + R(`${cap(this.dayWord(offers[0].date, lang, "на"))} свободно: ${list}. Какое время выбрать?`, `Free on ${this.dayWord(offers[0].date, lang)}: ${list}. Which time works for you?`, `${cap(this.dayWord(offers[0].date, lang))} бос уақыт: ${list}. Қай уақытты таңдайсыз?`), toolCalls: calls };
   }
 
-  private async book(convId: string, st: DialogState, snap: CrmSnapshot, call: (n: string, i: unknown) => Promise<Record<string, any>>, calls: ToolCallLog[], R: (ru: string, en: string) => string): Promise<AgentReply> {
+  private async book(convId: string, st: DialogState, snap: CrmSnapshot, call: (n: string, i: unknown) => Promise<Record<string, any>>, calls: ToolCallLog[], R: Say): Promise<AgentReply> {
     const o = st.chosen!;
-    const lang: nlu.Lang = R("ru", "en") as nlu.Lang;
+    const lang = R("ru", "en", "kk") as nlu.Lang;
     const res = await call("create_appointment", { service_code: st.service, master_id: o.master_id, start_datetime: `${o.date} ${o.time}` });
     if (res.error) {
       st.chosen = undefined;
       st.date = o.date;
       const service = snap.services.find((s) => s.id === st.service)!;
       const again = await this.offer(convId, st, service, call, calls, R, lang);
-      return { ...again, text: R("Это время только что заняли. ", "That time was just taken. ") + again.text };
+      return { ...again, text: R("Это время только что заняли. ", "That time was just taken. ", "Бұл уақытты жаңа ғана алып қойды. ") + again.text };
     }
     this.states.delete(convId);
     if (res.prepayment_required_kzt > 0) {
@@ -275,17 +288,19 @@ export class OfflineAgent implements AgentEngine {
         text: R(
           `Записала вас ${this.when(o, lang)} к мастеру ${dot(o.master)} Для этой услуги нужна предоплата ${money(res.prepayment_required_kzt)}, кнопка оплаты ниже.${sign(snap)}`,
           `You are booked for ${this.when(o, lang)} with ${dot(o.master)} This service needs a prepayment of ${money(res.prepayment_required_kzt)}, the payment button is below.${sign(snap)}`,
+          `Сізді ${this.when(o, lang)} уақытына жаздым, шебер: ${dot(o.master)} Бұл қызмет үшін ${money(res.prepayment_required_kzt)} алдын ала төлем керек, төлем батырмасы төменде.${sign(snap)}`,
         ),
         toolCalls: calls,
       };
     }
-    return { text: R(`Готово! Записала вас ${this.when(o, lang)} к мастеру ${dot(o.master)} Ждём вас!${sign(snap)}`, `Done! You are booked for ${this.when(o, lang)} with ${dot(o.master)} See you!${sign(snap)}`), toolCalls: calls };
+    return { text: R(`Готово! Записала вас ${this.when(o, lang)} к мастеру ${dot(o.master)} Ждём вас!${sign(snap)}`, `Done! You are booked for ${this.when(o, lang)} with ${dot(o.master)} See you!${sign(snap)}`, `Дайын! Сізді ${this.when(o, lang)} уақытына жаздым, шебер: ${dot(o.master)} Күтеміз!${sign(snap)}`), toolCalls: calls };
   }
 
   /** "пятницу 30.10", with a preposition: "в пятницу 30.10", "во вторник 03.11", "на пятницу 30.10". */
   private dayWord(date: string, lang: nlu.Lang, prep?: "в" | "на") {
     const d = parseDate(date)!;
     const dm = `${date.slice(8)}.${date.slice(5, 7)}`;
+    if (lang === "kk") return `${KK_DOW[d.getDay()]} ${dm}`;
     if (lang !== "ru") return `${DOW[d.getDay()]} ${dm}`;
     const word = RU_DOW[d.getDay()];
     const p = prep === "в" && d.getDay() === 2 ? "во" : prep;
@@ -293,6 +308,7 @@ export class OfflineAgent implements AgentEngine {
   }
 
   private when(o: Offer, lang: nlu.Lang) {
+    if (lang === "kk") return `${this.dayWord(o.date, lang)}, сағат ${o.time}`;
     return lang === "ru" ? `${this.dayWord(o.date, lang, "в")} в ${o.time}` : `${this.dayWord(o.date, lang)} at ${o.time}`;
   }
 }

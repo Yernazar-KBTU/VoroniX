@@ -104,6 +104,7 @@ A database from before accounts (tables directly in `public`) is not migrated in
 | `DATABASE_URL` | PostgreSQL connection (the only required one) |
 | `APP_URL` | Public address of the app, used in email links and the Google redirect. On Render it defaults to the service's onrender.com address (`RENDER_EXTERNAL_URL`) |
 | `ANTHROPIC_API_KEY` | Claude writes the replies for every business that has not connected its own key. Without it the built-in rule engine answers, with the same tools and data |
+| `VORONIX_AI_URL`, `VORONIX_AI_KEY` | Address (and optional key) of [VoroniX AI](apps/voronix-ai/README.md), our own intent model. The built-in agent asks it what each client message means; without it, or when it does not answer within `VORONIX_AI_TIMEOUT_MS` (2500 ms), the rules decide alone |
 | `RESEND_API_KEY`, `MAIL_FROM` | Password reset emails. `MAIL_FROM` must use a domain verified in Resend |
 | `SUPPORT_EMAIL` | “Help” on the sign-in page and “Contact” on the public pages; hidden when empty |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | “Continue with Google” |
@@ -112,6 +113,10 @@ A database from before accounts (tables directly in `public`) is not migrated in
 | `CHANNEL_WEBHOOK_SECRET` | Optional secret that every business's inbound webhook accepts, for a gateway the platform runs itself |
 
 Empty values (`SUPPORT_EMAIL=`) count as not set.
+
+## VoroniX AI (our own model)
+
+[`apps/voronix-ai`](apps/voronix-ai/README.md) is a separate web service with its own API and home page. It was trained by the team on 638 client phrases in Russian, Kazakh and English and tells the CRM what a client wants (book, price, cancel, complaint, address, hours, agree, thanks, greeting). The built-in AI administrator uses it and now answers in Kazakh too. Run it with `npm run dev:ai` (port 4000) and set `VORONIX_AI_URL=http://localhost:4000`; retrain and re-measure with `npm run train`.
 
 ## Architecture
 
