@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAiServer } from "../../../voronix-ai/src/server.js";
 import { createApp } from "../../src/app.js";
 import { idle } from "../../src/ai/runner.js";
-import { understand } from "../../src/ai/voronix-ai.js";
+import { understand, VoronixDown } from "../../src/ai/voronix-ai.js";
 import { config } from "../../src/config.js";
 import { pool } from "../../src/db/pool.js";
 import { freshDb } from "./helpers.js";
@@ -52,9 +52,26 @@ describe("VoroniX AI API", () => {
     expect([...(u?.intents ?? [])].sort()).toEqual(["booking", "greeting", "price"]);
   });
 
-  it("needs the key, and the CRM copes when the service is down", async () => {
-    expect(await understand("Привет", url, "wrong")).toBeNull();
-    expect(await understand("Привет", "http://127.0.0.1:9", KEY)).toBeNull();
+  it("needs the key, and a failure is an error, never a quiet fallback", async () => {
+    await expect(understand("Привет", url, "wrong")).rejects.toThrow(/key is wrong \(401\)/);
+    await expect(understand("Привет", "http://127.0.0.1:9", KEY)).rejects.toBeInstanceOf(VoronixDown);
+  });
+
+  it("health and bootstrap say whether VoroniX AI works", async () => {
+    const ok = (await api.get("/api/health").expect(200)).body;
+    expect(ok.status).toBe("ok");
+    expect(ok.voronix_ai).toMatchObject({ state: "ok", error: null });
+    cfg.VORONIX_AI_URL = "http://127.0.0.1:9";
+    try {
+      const bad = (await api.get("/api/health").expect(200)).body;
+      expect(bad.status).toBe("degraded");
+      expect(bad.voronix_ai.state).toBe("down");
+      expect(bad.voronix_ai.error).toBeTruthy();
+      const boot = (await api.get("/api/bootstrap").expect(200)).body;
+      expect(boot.voronix_ai.state).toBe("down");
+    } finally {
+      cfg.VORONIX_AI_URL = url;
+    }
   });
 });
 
@@ -103,11 +120,24 @@ describe("our model understands what the rules miss", () => {
     expect(lastAi(conv)).toMatch(/әкімшіге жіберемін/);
   });
 
-  it("without it the rules alone do not see a complaint", async () => {
+  it("when VoroniX AI is down there is no rule answer: the chat shows why and waits for a person", async () => {
     cfg.VORONIX_AI_URL = "http://127.0.0.1:9";
     try {
       const conv = await say("tg_kk_3", complaint);
-      expect(conv.needs_human).toBe(false);
+      expect(lastAi(conv)).toBe("");
+      expect(conv.needs_human).toBe(true);
+      expect(conv.messages.some((m) => m.from === "system" && /VoroniX AI is down/.test(m.text))).toBe(true);
+      const { rows } = await pool.query(`SELECT outcome FROM ai_runs WHERE conversation_id = $1 ORDER BY 1`, [conv.id]);
+      expect(rows.map((r) => r.outcome)).toContain("error");
+    } finally {
+      cfg.VORONIX_AI_URL = url;
+    }
+  });
+
+  it("not connected at all: the basic rules answer, as before VoroniX AI", async () => {
+    cfg.VORONIX_AI_URL = undefined;
+    try {
+      const conv = await say("tg_kk_4", "Сәлеметсіз бе! VIP ритуал қанша тұрады?");
       expect(lastAi(conv)).not.toBe("");
     } finally {
       cfg.VORONIX_AI_URL = url;

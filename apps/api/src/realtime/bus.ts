@@ -17,6 +17,7 @@ export type Resource =
 type Payload =
   | { type: "changed"; resources: Resource[] }
   | { type: "ai"; conversation_id: string; status: string | null }
+  | { type: "voronix"; state: "off" | "ok" | "down"; error: string | null }
   | { type: "message"; conversation_id: string; from: string; text: string; messenger: string; external_user_id: string }
   | { type: "domain"; name: "appointment.created" | "payment.paid"; data: Record<string, unknown> };
 
@@ -47,7 +48,7 @@ export function sseHandler(req: Request, res: Response) {
   });
   res.write("retry: 2000\n\n");
   const send = (e: BusEvent) => {
-    if (e.type === "message" || e.tenant !== tenant) return; // "message" is internal, for channel adapters
+    if (e.type === "message" || (e.tenant !== tenant && e.type !== "voronix")) return; // "message" is internal, for channel adapters; VoroniX AI's state is the same for every business
     const { tenant: _own, ...out } = e;
     res.write(`data: ${JSON.stringify(out)}\n\n`);
   };

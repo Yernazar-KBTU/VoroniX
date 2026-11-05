@@ -8,6 +8,7 @@ import { getOrThrow, pushMessage } from "../services/conversation.service.js";
 import { ClaudeAgent } from "./claude-agent.js";
 import type { AgentEngine } from "./engine.js";
 import { OfflineAgent } from "./offline-agent.js";
+import { VoronixDown } from "./voronix-ai.js";
 
 export function createEngine(apiKey = config.ANTHROPIC_API_KEY): AgentEngine {
   const useClaude = config.AI_ENGINE === "claude" || (config.AI_ENGINE === "auto" && !!apiKey);
@@ -101,6 +102,11 @@ export async function replyTo(convId: string): Promise<void> {
       error = e.message;
       logger.error({ err: e, convId }, "AI reply failed");
       await pushMessage(convId, { from: "system", text: `AI could not answer: ${e.message}` }).catch(() => {});
+      // Our AI is down: no automatic answer, a person takes the chat and sees why.
+      if (e instanceof VoronixDown) {
+        await patchConversation(pool, convId, { needs_human: true }).catch(() => {});
+        bus.changed("conversations");
+      }
     }
   } finally {
     const latency = Math.round(performance.now() - started);

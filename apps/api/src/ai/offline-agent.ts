@@ -91,8 +91,9 @@ export class OfflineAgent implements AgentEngine {
     const since = conv.messages.slice(Math.max(lastReply, lastAdmin) + 1);
     const text = since.filter((m) => m.from === "client").map((m) => m.text).join(" \n ");
     const all = conv.messages.filter((m) => m.from === "client").map((m) => m.text).join(" ");
-    // VoroniX AI (our own model, apps/voronix-ai) says what the client wants;
-    // the rules below still work alone when the service is not reachable.
+    // VoroniX AI (our own model, apps/voronix-ai) says what the client wants.
+    // If it is set up and does not answer, this throws: no answer from rules,
+    // the chat goes to a person and the CRM shows that the AI is down.
     const ai = await understand(text);
     const has = (intent: Intent, rule: (t: string) => boolean) => !!ai?.intents.has(intent) || rule(text);
     const ruleLang = nlu.detectLang(all || "привет");

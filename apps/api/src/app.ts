@@ -18,6 +18,7 @@ import { integrationsRouter } from "./routes/integrations.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { requireAuth } from "./auth/auth.service.js";
 import { getEngine } from "./ai/runner.js";
+import { checkVoronix } from "./ai/voronix-ai.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST ?? path.resolve(here, "../../web/dist");
@@ -78,7 +79,8 @@ export function createApp() {
   app.get("/api/health", async (_req, res) => {
     const started = performance.now();
     await pool.query("SELECT 1");
-    res.json({ status: "ok", db_ms: Math.round(performance.now() - started), ai_engine: getEngine().name, time: new Date().toISOString() });
+    const voronix = await checkVoronix();
+    res.json({ status: voronix.state === "down" ? "degraded" : "ok", db_ms: Math.round(performance.now() - started), ai_engine: getEngine().name, voronix_ai: voronix, time: new Date().toISOString() });
   });
   app.get("/api/events", sseHandler);
   app.use("/api", authRouter, catalogRouter, crmRouter, conversationsRouter, insightsRouter, integrationsRouter, importRouter);
