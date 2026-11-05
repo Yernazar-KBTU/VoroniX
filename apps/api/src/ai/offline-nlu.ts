@@ -4,29 +4,40 @@
 import { addDays, pad, ymd } from "../lib/time.js";
 import type { Service } from "../domain/types.js";
 
-export type Lang = "ru" | "en";
+export type Lang = "ru" | "kk" | "en";
 
-export const detectLang = (text: string): Lang => (/[а-яёәғқңөұүһі]/i.test(text) ? "ru" : "en");
+/** Kazakh letters, or common Kazakh words typed on a Russian keyboard. */
+const KAZAKH = /[әғқңөұүһі]|(^|[^а-я])(сәлем|салем|салеметсиз|рахмет|канша|кашан|бола ма|жазыл|ертен|бугин|келеди|жок|ия|макул|жарайды)/i;
 
-const norm = (s: string) => ` ${s.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}:.\/+ ]+/gu, " ").replace(/\s+/g, " ")} `;
+export const detectLang = (text: string): Lang => (KAZAKH.test(text) ? "kk" : /[а-яё]/i.test(text) ? "ru" : "en");
+
+// Kazakh letters are folded to their Russian look-alikes, so "қанша" and "канша" match the same stems.
+const PLAIN: Record<string, string> = { ә: "а", ғ: "г", қ: "к", ң: "н", ө: "о", ұ: "у", ү: "у", һ: "х", і: "и" };
+const norm = (s: string) =>
+  ` ${s
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[әғқңөұүһі]/g, (c) => PLAIN[c])
+    .replace(/[^\p{L}\p{N}:.\/+ ]+/gu, " ")
+    .replace(/\s+/g, " ")} `;
 
 // Word groups. A service matches a group when its English name contains the
 // key; the client's text matches when it contains one of the stems.
 const GROUPS: Record<string, string[]> = {
-  haircut: ["стриж", "подстри", "постри", "haircut", "hair cut", "трим"],
+  haircut: ["стриж", "подстри", "постри", "haircut", "hair cut", "трим", "шаш ки", "шаш ал", "шашымды ки"],
   "men's": ["мужск", "муж ", "мужу", "мужа", "барбер", "парн", " men", " man ", "barber"],
-  kids: ["детск", "ребен", "сын", "дочк", "kid", "child", "son "],
+  kids: ["детск", "ребен", " сын", "дочк", "kid", "child", "son ", "бала", "улым", "кызым"],
   clipper: ["машинк", "под ноль", "clipper", "buzz"],
-  beard: ["бород", "усы", "beard"],
-  shave: ["брить", "бритье", "побри", "shave"],
+  beard: ["бород", "усы", "beard", "сакал"],
+  shave: ["брить", "бритье", "побри", "shave", "кырын", "устара"],
   vip: ["вип", "vip", "ритуал"],
   camouflage: ["камуфл", "седин", "grey", "gray"],
   "women's": ["женск", "women", "woman"],
-  colouring: ["окраш", "покрас", "краск", "цвет", "колор", "colour", "color", "dye"],
+  colouring: ["окраш", "покрас", "краск", "цвет", "колор", "colour", "color", "dye", "бояу", "бояп", "боят"],
   manicure: ["маникюр", "ногт", "ноготоч", "гель лак", "гельлак", "manicure", "nails"],
   pedicure: ["педикюр", "pedicure"],
-  brow: ["бров", "brow"],
-  styling: ["уклад", "причес", "вечерн", "styling", "updo"],
+  brow: ["бров", "brow", " кас "],
+  styling: ["уклад", "причес", "вечерн", "styling", "updo", "санде"],
 };
 
 /** Best matching active service for the text, or null. */
@@ -47,21 +58,21 @@ export function matchService(text: string, services: Service[]): Service | null 
 }
 
 const WEEKDAYS: [RegExp, number][] = [
-  [/воскресень|sunday/, 0],
-  [/понедельник|monday/, 1],
-  [/вторник|tuesday/, 2],
-  [/сред[уаы]|wednesday/, 3],
-  [/четверг|thursday/, 4],
-  [/пятниц|friday/, 5],
-  [/суббот|saturday/, 6],
+  [/воскресень|sunday|жексенби/, 0],
+  [/понедельник|monday|дуйсенби/, 1],
+  [/вторник|tuesday|сейсенби/, 2],
+  [/сред[уаы]|wednesday|сарсенби/, 3],
+  [/четверг|thursday|бейсенби/, 4],
+  [/пятниц|friday| жума/, 5],
+  [/суббот|saturday|(^|\s)сенби/, 6],
 ];
 
 /** "завтра", "в пятницу", "30.10", "today" ... -> "YYYY-MM-DD", or null. */
 export function parseDay(text: string, now: Date): string | null {
   const t = norm(text);
-  if (/послезавтра|day after tomorrow/.test(t)) return ymd(addDays(now, 2));
-  if (/завтра|tomorrow/.test(t)) return ymd(addDays(now, 1));
-  if (/сегодня|today|tonight/.test(t)) return ymd(now);
+  if (/послезавтра|day after tomorrow|бурсигуни/.test(t)) return ymd(addDays(now, 2));
+  if (/завтра|tomorrow|ертен/.test(t)) return ymd(addDays(now, 1));
+  if (/сегодня|today|tonight|бугин/.test(t)) return ymd(now);
   const dm = /(?:^|\s)(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?(?=\s)/.exec(t);
   if (dm) {
     const d = +dm[1];
@@ -73,7 +84,7 @@ export function parseDay(text: string, now: Date): string | null {
       return `${y}-${pad(m)}-${pad(d)}`;
     }
   }
-  if (/выходн|weekend/.test(t)) return nextWeekday(now, 6);
+  if (/выходн|weekend|демалыс кун/.test(t)) return nextWeekday(now, 6);
   for (const [re, dow] of WEEKDAYS) if (re.test(t)) return nextWeekday(now, dow);
   return null;
 }
@@ -94,21 +105,22 @@ export function parseTime(text: string): TimePref | null {
   const t = norm(text);
   const exact = /(?:^|\s)(\d{1,2})[:.](\d{2})(?=\s)/.exec(t);
   if (exact && +exact[1] <= 23 && +exact[2] < 60 && !/\d[./]\d{1,2}[./]/.test(t)) return { exact: `${pad(+exact[1])}:${exact[2]}` };
-  const after = /после\s+(\d{1,2})|after\s+(\d{1,2})/.exec(t);
+  const after = /после\s+(\d{1,2})|after\s+(\d{1,2})|(\d{1,2})\s?-?(?:дан|ден|тан|тен) кейин/.exec(t);
   if (after) {
-    let h = +(after[1] ?? after[2]);
+    let h = +(after[1] ?? after[2] ?? after[3]);
     if (h < 9) h += 12;
     return { from: h * 60 };
   }
-  const at = /(?:^|\s)(?:в|к|на|at)\s+(\d{1,2})(?:\s?(?:часов|часа|час|ч|pm|am)(?=\s))?(?=\s)/.exec(t);
+  const at =
+    /(?:^|\s)(?:в|к|на|at|сагат)\s+(\d{1,2})(?:\s?(?:часов|часа|час|ч|pm|am)(?=\s))?(?=\s|-)/.exec(t) ?? /(?:^|\s)(\d{1,2})\s?-?(?:де|да|те|та|ге|га|ке|ка)(?=\s)/.exec(t);
   if (at && !/(?:^|\s)(?:в|на)\s+\d{1,2}\s+(?:числ|октяб|ноябр|декабр)/.test(t)) {
     let h = +at[1];
     if (h >= 1 && h <= 8) h += 12;
     if (h >= 9 && h <= 21) return { exact: `${pad(h)}:00` };
   }
-  if (/после работы|вечер|evening|after work/.test(t)) return { from: 17 * 60 };
-  if (/после обеда|днем|днём|afternoon/.test(t)) return { from: 13 * 60, to: 17 * 60 };
-  if (/утр|morning/.test(t)) return { to: 12 * 60 };
+  if (/после работы|вечер|evening|after work|кешке|кешки|жумыстан кейин/.test(t)) return { from: 17 * 60 };
+  if (/после обеда|днем|днём|afternoon|тустен кейин/.test(t)) return { from: 13 * 60, to: 17 * 60 };
+  if (/утр|morning|танерте|тангы/.test(t)) return { to: 12 * 60 };
   return null;
 }
 
@@ -117,13 +129,13 @@ export function parsePhone(text: string): string | null {
   return m ? m[1] : null;
 }
 
-const NOT_NAMES = new Set(["да", "нет", "ок", "окей", "хорошо", "спасибо", "давайте", "yes", "no", "ok", "okay", "thanks", "здравствуйте", "привет", "hello", "hi"]);
+const NOT_NAMES = new Set(["да", "нет", "ок", "окей", "хорошо", "спасибо", "давайте", "yes", "no", "ok", "okay", "thanks", "здравствуйте", "привет", "hello", "hi", "иә", "ия", "жоқ", "рахмет", "жарайды", "болады", "сәлем", "мақұл"]);
 
 /** Client's name: "меня зовут Алия", "я Алия", "my name is Aliya", or a bare name when we just asked for it. */
 export function parseName(text: string, expectingName: boolean): string | null {
-  const explicit = /(?:меня зовут|зовут меня|my name is|i am|i'm|это)\s+([\p{L}-]{2,20}(?:\s+[\p{L}-]{2,20})?)/iu.exec(text);
+  const explicit = /(?:меня зовут|зовут меня|my name is|i am|i'm|это|менің атым|атым|есімім)\s+([\p{L}-]{2,20}(?:\s+[\p{L}-]{2,20})?)/iu.exec(text);
   if (explicit) return cap(explicit[1]);
-  const ya = /^\s*я\s+([\p{L}-]{2,20})\s*[.!]?\s*$/iu.exec(text);
+  const ya = /^\s*(?:я|мен)\s+([\p{L}-]{2,20})\s*[.!]?\s*$/iu.exec(text);
   if (ya) return cap(ya[1]);
   if (expectingName) {
     const words = text.replace(parsePhone(text) ?? "", " ").trim().replace(/[.,!]+$/g, "").split(/\s+/).filter(Boolean);
@@ -135,17 +147,18 @@ export function parseName(text: string, expectingName: boolean): string | null {
 const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1);
 
 export const isComplaint = (t: string) =>
-  /(жалоб|ужас|скол(?!ьк)|сколол|отвратит|верните деньги|возврат|недовол|испортил|аллерги|ожог|refund|complain|terrible|awful)/i.test(t);
-export const isGreeting = (t: string) => /(здравств|привет|добр(ый|ое|ого) (день|утро|вечер)|сәлем|салем|hello|\bhi\b|good (morning|evening|afternoon))/i.test(t);
-export const asksPrice = (t: string) => /(сколько|цен|стоим|прайс|price|how much|cost)/i.test(t);
-export const asksAddress = (t: string) => /(адрес|где вы|как добраться|находитесь|парков|address|where are you|location)/i.test(t);
-export const asksHours = (t: string) => /(до скольки|во сколько открыва|график|часы работы|режим работы|работаете|opening hours|open until)/i.test(t);
-export const wantsCancel = (t: string) => /(отмен|не смогу прийти|не приду|cancel)/i.test(t);
-export const saysYes = (t: string) => /^(да|ага|давайте|подходит|хорошо|ок|окей|отлично|супер|yes|ok|okay|sure|sounds good|perfect)(?=$|[\s,.!)])/i.test(t.trim());
+  /(жалоб|ужас|скол(?!ьк)|сколол|отвратит|верните деньги|возврат|недовол|испортил|аллерги|ожог|refund|complain|terrible|awful|шағым|наразы|сұмдық|ақшамды қайтар|бүлдір|күйіп)/i.test(t);
+export const isGreeting = (t: string) => /(здравств|привет|добр(ый|ое|ого) (день|утро|вечер)|сәлем|салем|қайырлы (күн|кеш|таң)|армысыз|hello|\bhi\b|good (morning|evening|afternoon))/i.test(t);
+export const asksPrice = (t: string) => /(сколько|цен|стоим|прайс|price|how much|cost|қанша|канша|баға|бага|неше теңге)/i.test(t);
+export const asksAddress = (t: string) => /(адрес|где вы|как добраться|находитесь|парков|address|where are you|location|мекенжай|қайдасыз|кайдасыз|қалай жет|локация)/i.test(t);
+export const asksHours = (t: string) => /(до скольки|во сколько открыва|график|часы работы|режим работы|работаете|opening hours|open until|жұмыс істейсіз|жұмыс кесте|жұмыс уақыт|ашыласыз|ашықсыз)/i.test(t);
+export const wantsCancel = (t: string) => /(отмен|не смогу прийти|не приду|cancel|болдырма|келе алмаймын|келмеймін|өшіріңіз|алып таста|бас тарт)/i.test(t);
+export const saysYes = (t: string) =>
+  /^(да|ага|давайте|подходит|хорошо|ок|окей|отлично|супер|yes|ok|okay|sure|sounds good|perfect|иә|ия|иа|жарайды|болады|мақұл|келістік|жақсы|керемет)(?=$|[\s,.!)])/i.test(t.trim());
 export const ordinal = (t: string): number | null => {
   const s = t.toLowerCase();
-  if (/перв|first|1-?й/.test(s)) return 0;
-  if (/втор|second|2-?й/.test(s)) return 1;
-  if (/трет|third|3-?й/.test(s)) return 2;
+  if (/перв|first|1-?й|бірінші|біріншісі/.test(s)) return 0;
+  if (/втор|second|2-?й|екінші/.test(s)) return 1;
+  if (/трет|third|3-?й|үшінші/.test(s)) return 2;
   return null;
 };

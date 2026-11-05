@@ -5,20 +5,23 @@
   "description": "AI CRM for appointment-based small businesses: the AI administrator answers clients in Telegram, WhatsApp and Instagram using only data from the CRM database.",
   "workspaces": [
     "apps/api",
-    "apps/web"
+    "apps/web",
+    "apps/voronix-ai"
   ],
   "scripts": {
     "dev": "npm run dev -w apps/api & npm run dev -w apps/web",
-    "build": "npm run build -w apps/web && npm run build -w apps/api",
+    "build": "npm run build -w apps/web && npm run build -w apps/api && npm run build -w apps/voronix-ai",
     "start": "npm run start -w apps/api",
     "db:migrate": "npm run db:migrate -w apps/api",
     "db:seed": "npm run db:seed -w apps/api",
     "db:reset": "npm run db:reset -w apps/api",
-    "typecheck": "npm run typecheck -w apps/api",
-    "test": "npm run test -w apps/api && npm run test -w apps/web",
+    "typecheck": "npm run typecheck -w apps/api && npm run typecheck -w apps/voronix-ai",
+    "test": "npm run test -w apps/api && npm run test -w apps/web && npm run test -w apps/voronix-ai",
     "test:unit": "npm run test:unit -w apps/api",
     "test:integration": "npm run test:integration -w apps/api",
-    "test:load": "node tests/load/run.mjs"
+    "test:load": "node tests/load/run.mjs",
+    "dev:ai": "npm run dev -w apps/voronix-ai",
+    "train": "npm run train -w apps/voronix-ai"
   },
   "engines": {
     "node": ">=20"

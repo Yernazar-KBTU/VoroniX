@@ -123,10 +123,11 @@ describe("data quality problems from Task 7", () => {
   });
 
   it("P5: lists past visits that are still Booked or Confirmed", async () => {
+    // 07:00 is before opening, so this visit never overlaps a demo booking of the same master.
     await pool.query(
       `INSERT INTO appointments (client_id, master_id, service_code, start_at, end_at, status, source)
-       VALUES ('CL-0001', 'MS-02', 'HC-02', date_trunc('hour', LOCALTIMESTAMP) - interval '30 days',
-               date_trunc('hour', LOCALTIMESTAMP) - interval '30 days' + interval '30 minutes', 'Booked', 'Admin')`,
+       VALUES ('CL-0001', 'MS-02', 'HC-02', date_trunc('day', LOCALTIMESTAMP) - interval '30 days' + interval '7 hours',
+               date_trunc('day', LOCALTIMESTAMP) - interval '30 days' + interval '7 hours 30 minutes', 'Booked', 'Admin')`,
     );
     const { rows } = await pool.query(`SELECT status, hours_overdue FROM v_visits_to_close ORDER BY start_at LIMIT 1`);
     expect(rows[0].status).toBe("Booked");

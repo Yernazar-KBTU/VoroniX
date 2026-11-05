@@ -64,7 +64,13 @@ export function reminderText(kind: ReminderKind, r: Pick<DueRow, "start_datetime
   const start = parseDT(r.start_datetime)!;
   const time = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
   const name = r.client_name.split(" ")[0];
-  if (detectLang(r.last_client_text ?? "") === "ru") {
+  const lang = detectLang(r.last_client_text ?? "");
+  if (lang === "kk") {
+    return kind === "24h"
+      ? `${name}, еске саламыз: ертең сағат ${time}-де сізде ${r.service}, шебер ${r.master}. Жоспарыңыз өзгерсе, жазыңыз, жазылуды басқа уақытқа ауыстырамыз.`
+      : `${name}, бүгін сағат ${time}-де күтеміз: ${r.service}, шебер ${r.master}. Кездескенше!`;
+  }
+  if (lang === "ru") {
     return kind === "24h"
       ? `${name}, напоминаем: завтра в ${time} у вас ${r.service}, мастер ${r.master}. Если планы изменились, напишите, и мы перенесём запись.`
       : `${name}, ждём вас сегодня в ${time}: ${r.service}, мастер ${r.master}. До встречи!`;

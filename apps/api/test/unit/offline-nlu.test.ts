@@ -14,7 +14,7 @@ const thursday = new Date(2026, 9, 29, 15, 0);
 
 describe("language and intent", () => {
   it.each([
-    ["здравствуйте", "ru"], ["Сәлем", "ru"], ["hello there", "en"],
+    ["здравствуйте", "ru"], ["Сәлем", "kk"], ["Рахмет", "kk"], ["hello there", "en"],
   ])("detectLang(%s) = %s", (t, lang) => expect(detectLang(t)).toBe(lang));
 
   it("recognises greetings, prices, address, hours and cancel requests", () => {
@@ -106,5 +106,39 @@ describe("contacts", () => {
     expect(parseName("Гульнара Ахметова", true)).toBe("Гульнара Ахметова");
     expect(parseName("Гульнара", false)).toBeNull();
     expect(parseName("да", true)).toBeNull();
+  });
+});
+
+describe("Kazakh (week 10)", () => {
+  it("recognises Kazakh with and without Kazakh letters", () => {
+    expect(detectLang("Шаш қию қанша тұрады?")).toBe("kk");
+    expect(detectLang("канша турады")).toBe("kk");
+    expect(detectLang("Сколько стоит стрижка?")).toBe("ru");
+  });
+
+  it("understands services, days and times", () => {
+    expect(matchService("Шаш қиюға жазылғым келеді", services)?.id).toBe("HC-01");
+    expect(matchService("шашты бояу қанша", services)?.id).toBe("CO-03");
+    expect(parseDay("Ертеңге бола ма?", thursday)).toBe("2026-10-30");
+    expect(parseDay("бүгін кешке", thursday)).toBe("2026-10-29");
+    expect(parseDay("Сәрсенбі күні", thursday)).toBe("2026-11-04");
+    expect(parseDay("жұма күні", thursday)).toBe("2026-10-30");
+    expect(parseDay("сенбіде", thursday)).toBe("2026-10-31");
+    expect(parseTime("кешке")).toEqual({ from: 17 * 60 });
+    expect(parseTime("таңертең")).toEqual({ to: 12 * 60 });
+    expect(parseTime("сағат 18-де")).toEqual({ exact: "18:00" });
+    expect(parseTime("12-де бос па")).toEqual({ exact: "12:00" });
+    expect(parseTime("19-дан кейін")).toEqual({ from: 19 * 60 });
+  });
+
+  it("understands intents, agreement, choices and names", () => {
+    expect(asksPrice("Бағасы қанша?")).toBe(true);
+    expect(wantsCancel("Ертең келе алмаймын")).toBe(true);
+    expect(isComplaint("Шебер туралы шағым қалдырғым келеді")).toBe(true);
+    expect(isGreeting("Қайырлы күн!")).toBe(true);
+    expect(saysYes("Иә, жарайды")).toBe(true);
+    expect(ordinal("бірінші нұсқа")).toBe(0);
+    expect(parseName("Менің атым Әлия", false)).toBe("Әлия");
+    expect(parseName("Мен Данияр", false)).toBe("Данияр");
   });
 });

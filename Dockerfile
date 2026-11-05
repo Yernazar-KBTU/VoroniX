@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
+COPY apps/voronix-ai/package.json apps/voronix-ai/
 RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
