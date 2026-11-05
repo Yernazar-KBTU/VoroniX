@@ -13,6 +13,7 @@ import { getOrThrow, pushMessage, receiveInbound } from "../services/conversatio
 import { ConversationCreate, ConversationPatchBody, InboundBody, MessageBody } from "./schemas.js";
 import { currentTenant, withTenant } from "../tenancy/context.js";
 import { findTenant } from "../tenancy/tenants.js";
+import { safeEqual } from "../lib/safe-equal.js";
 
 export const conversationsRouter = Router();
 
@@ -88,7 +89,8 @@ async function inbound(req: Request, res: Response, requireSecret: boolean) {
   if (!messenger) throw notFound("Messenger");
   const secrets = [config.CHANNEL_WEBHOOK_SECRET, await channelSecret(messenger)].filter(Boolean);
   if (requireSecret && !secrets.length) throw new HttpError(404, `${messenger} is not connected for this business`, "not_found");
-  if (secrets.length && !secrets.includes(req.get("x-channel-secret"))) throw new HttpError(401, "Bad channel secret", "unauthorized");
+  const given = req.get("x-channel-secret");
+  if (secrets.length && !secrets.some((s) => safeEqual(given, s))) throw new HttpError(401, "Bad channel secret", "unauthorized");
   const body = InboundBody.parse(req.body);
   const { conversation, created } = await receiveInbound({ messenger, ...body });
   res.status(created ? 201 : 200).json({ conversation_id: conversation.id, client_id: conversation.client_id, ai_enabled: conversation.ai_enabled });
