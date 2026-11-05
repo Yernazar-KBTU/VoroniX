@@ -19,6 +19,7 @@ import { SqlBody } from "./schemas.js";
 import { askKnowledge } from "../ai/ask.js";
 import { organiseNotes } from "../ai/teach.js";
 import { checkVoronix } from "../ai/voronix-ai.js";
+import { dataKey } from "../ai/data-keys.js";
 
 export const insightsRouter = Router();
 
@@ -108,6 +109,13 @@ insightsRouter.post("/sql", async (req, res) => {
 });
 
 /** "Teach the AI": free-form notes in, a draft of knowledge entries and settings out. */
+/** A link to the VoroniX AI site that shows this business's AI live (its own key, replaced each time). */
+insightsRouter.get("/ai/live-link", async (_req, res) => {
+  if (!config.VORONIX_AI_PUBLIC_URL || !config.VORONIX_DATA_PUBLIC_URL) throw new HttpError(404, "VoroniX AI is not running next to this CRM", "not_found");
+  const key = await dataKey(requireTenant(), "VoroniX AI site", true);
+  res.json({ url: `${config.VORONIX_AI_PUBLIC_URL.replace(/\/+$/, "")}/live#data=${encodeURIComponent(config.VORONIX_DATA_PUBLIC_URL)}&key=${encodeURIComponent(key)}` });
+});
+
 insightsRouter.post("/ai/teach", async (req, res) => {
   const text = typeof req.body?.text === "string" ? req.body.text.trim().slice(0, 20000) : "";
   if (!text) throw new HttpError(400, "text is required", "bad_request");

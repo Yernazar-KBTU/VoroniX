@@ -20,6 +20,13 @@ const Env = z.object({
   VORONIX_AI_URL: z.string().url().optional(),
   VORONIX_AI_KEY: z.string().optional(),
   VORONIX_AI_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(2500),
+  // The VoroniX data server (github.com/kamilabalabatyr/voronix-data-server) on
+  // the same database. With it and VORONIX_AI_URL, VoroniX AI itself answers the
+  // chats (POST /v1/reply): one AI, its memory and lessons kept in this database.
+  VORONIX_DATA_URL: z.string().url().optional(),
+  // Address of the data server as a browser on this computer reaches it (for the AI site link).
+  VORONIX_DATA_PUBLIC_URL: z.string().url().optional(),
+  VORONIX_AI_PUBLIC_URL: z.string().url().optional(),
 
   // Channels. Each business connects its own Telegram bot on the Integrations
   // page. This optional secret is accepted by every business's inbound

@@ -3,7 +3,7 @@ import { logger } from "../lib/logger.js";
 import { bus } from "../realtime/bus.js";
 
 /** What VoroniX AI understood in a client message. */
-export type Intent = "greeting" | "price" | "booking" | "cancel" | "complaint" | "address" | "hours" | "confirm" | "thanks" | "other";
+export type Intent = "greeting" | "price" | "booking" | "cancel" | "complaint" | "address" | "hours" | "confirm" | "thanks" | "visits" | "other";
 
 export interface Understanding {
   intents: Set<Intent>;
@@ -45,6 +45,11 @@ function record(next: VoronixHealth) {
   const changed = next.state !== health.state || next.error !== health.error;
   health = next;
   if (changed) bus.publish({ type: "voronix", state: next.state, error: next.error });
+}
+
+/** The answering AI (POST /v1/reply) reports here: null after a good answer, the reason after a failure. */
+export function markVoronix(error: string | null) {
+  record(error ? { state: "down", error, at: new Date().toISOString() } : { state: "ok", error: null, at: new Date().toISOString() });
 }
 
 /** VoroniX AI was asked and did not answer. The chat stops and a person sees why: no fallback answers. */
