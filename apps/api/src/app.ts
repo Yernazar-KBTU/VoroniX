@@ -11,6 +11,7 @@ import { httpLogSerializers, logger } from "./lib/logger.js";
 import { sseHandler } from "./realtime/bus.js";
 import { catalogRouter } from "./routes/catalog.routes.js";
 import { conversationsRouter } from "./routes/conversations.routes.js";
+import { metaRouter } from "./routes/meta.routes.js";
 import { crmRouter } from "./routes/crm.routes.js";
 import { insightsRouter } from "./routes/insights.routes.js";
 import { importRouter } from "./routes/import.routes.js";
@@ -74,7 +75,13 @@ export function createApp() {
   if (config.NODE_ENV !== "test")
     app.use(pinoHttp({ logger, serializers: httpLogSerializers, autoLogging: { ignore: (req) => req.url === "/api/events" || req.url === "/api/health" } }));
   // Imports carry whole files, so their routes read their own, bigger bodies once sign-in is checked.
-  const json = express.json({ limit: "1mb" });
+  const json = express.json({
+    limit: "1mb",
+    // Meta signs the exact bytes of the body, which are lost after JSON parsing, so keep a copy.
+    verify: (req, _res, buf) => {
+      (req as unknown as { rawBody: Buffer }).rawBody = buf;
+    },
+  });
   app.use((req, res, next) => (req.path.startsWith("/api/import") ? next() : json(req, res, next)));
   app.set("trust proxy", 1);
   app.use(requireAuth);
@@ -86,7 +93,7 @@ export function createApp() {
     res.json({ status: voronix.state === "down" ? "degraded" : "ok", db_ms: Math.round(performance.now() - started), ai_engine: getEngine().name, voronix_ai: voronix, time: new Date().toISOString() });
   });
   app.get("/api/events", sseHandler);
-  app.use("/api", authRouter, catalogRouter, crmRouter, conversationsRouter, insightsRouter, integrationsRouter, importRouter);
+  app.use("/api", authRouter, catalogRouter, crmRouter, conversationsRouter, metaRouter, insightsRouter, integrationsRouter, importRouter);
   app.use("/api", (_req, res) => {
     res.status(404).json({ error: "not_found", message: "No such API route" });
   });
