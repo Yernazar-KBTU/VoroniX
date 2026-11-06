@@ -84,9 +84,9 @@ Everything runs in the background on one Mac, with no browser tab and no Docker:
 3. Open http://localhost:3000, create an account, then Integrations, Telegram: paste the bot token.
 4. Click the AI chip at the top of the CRM to watch VoroniX AI work live (http://localhost:4000/live).
 
-The script ([scripts/mac/install.sh](scripts/mac/install.sh)) downloads and builds the CRM, VoroniX AI and the data server from GitHub, and macOS (launchd) starts them at every login. Run the same command again to update; add `-s -- --remove` after `bash` to stop and remove them (the data stays in `~/.voronix/pgdata`). Logs: `~/Library/Logs/VoroniX`. `docker-compose.yml` does the same with Docker.
+The script ([scripts/mac/install.sh](scripts/mac/install.sh)) downloads and builds the CRM and VoroniX AI from GitHub, and macOS (launchd) starts them at every login. Run the same command again to update; add `-s -- --remove` after `bash` to stop and remove them (the data stays in `~/.voronix/pgdata`). Logs: `~/Library/Logs/VoroniX`. `docker-compose.yml` does the same with Docker.
 
-Clients' messages go from Telegram to the CRM and on to VoroniX AI. Its memory (clients, bookings, lessons, model versions) is kept by the [VoroniX data server](https://github.com/kamilabalabatyr/voronix-data-server) in the CRM's own database, and its bookings appear in the CRM calendar.
+Clients' messages go from Telegram to the CRM and on to VoroniX AI. Its memory (clients, bookings, lessons, model versions) is kept in the CRM's own database, which the CRM serves to the AI and its live page at `/ai-data` (code from the [VoroniX data server](https://github.com/kamilabalabatyr/voronix-data-server)), and its bookings appear in the CRM calendar. Business setup chooses who answers the chats: VoroniX AI or Claude (Claude needs an Anthropic key on the Integrations page).
 
 ## Quick start
 
@@ -119,7 +119,7 @@ A database from before accounts (tables directly in `public`) is not migrated in
 | `APP_URL` | Public address of the app, used in email links and the Google redirect. On Render it defaults to the service's onrender.com address (`RENDER_EXTERNAL_URL`) |
 | `ANTHROPIC_API_KEY` | Claude writes the replies for every business that has not connected its own key. Without it the built-in rule engine answers, with the same tools and data |
 | `VORONIX_AI_URL`, `VORONIX_AI_KEY` | Address (and optional key) of [VoroniX AI](apps/voronix-ai/README.md), our own intent model. The built-in agent asks it what each client message means; without it, or when it does not answer within `VORONIX_AI_TIMEOUT_MS` (2500 ms), the rules decide alone |
-| `VORONIX_DATA_URL` | Address of the VoroniX data server. With it and `VORONIX_AI_URL` set, VoroniX AI answers every chat itself, with its memory in this database (see "On one computer"). When it does not answer, the chat goes to a person and the CRM shows "VoroniX AI is down" |
+| `VORONIX_DATA_URL` | Where VoroniX AI keeps its memory. Default: this app itself at `/ai-data`, in this database. When the AI does not answer, the chat goes to a person and the CRM shows "VoroniX AI is down" |
 | `VORONIX_AI_PUBLIC_URL`, `VORONIX_DATA_PUBLIC_URL` | Addresses the browser uses to open the live AI page from the AI chip |
 | `RESEND_API_KEY`, `MAIL_FROM` | Password reset emails. `MAIL_FROM` must use a domain verified in Resend |
 | `SUPPORT_EMAIL` | “Help” on the sign-in page and “Contact” on the public pages; hidden when empty |

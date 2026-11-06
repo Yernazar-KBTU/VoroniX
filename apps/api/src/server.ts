@@ -7,11 +7,13 @@ import { bootIntegrations, stopIntegrations } from "./integrations/manager.js";
 import { getEngine, idle } from "./ai/runner.js";
 import { startReminders } from "./services/reminder.service.js";
 import { checkVoronix } from "./ai/voronix-ai.js";
+import { aiData, startAiData } from "./ai-data/index.js";
 
 async function main() {
   const applied = await migrate(pool);
   if (applied.length) logger.info({ applied }, "database migrated");
 
+  await startAiData();
   await bootIntegrations();
   const reminders = startReminders();
   // VoroniX AI is watched all the time, so a fall shows in the CRM before a client writes.
@@ -28,6 +30,7 @@ async function main() {
     reminders.stop();
     clearInterval(watchAi);
     await stopIntegrations();
+    await aiData.stop();
     await idle(10_000);
     await pool.end();
     process.exit(0);

@@ -3,6 +3,7 @@ import { pool, tx } from "../db/pool.js";
 import { notFound } from "../lib/errors.js";
 import { bus } from "../realtime/bus.js";
 import * as catalog from "../repositories/catalog.repo.js";
+import { claudeAvailable } from "../ai/runner.js";
 import { getSettings, saveSettings } from "../repositories/settings.repo.js";
 import { MasterBody, ServiceBody, ServiceCode, SettingsBody } from "./schemas.js";
 import { requireTenant } from "../tenancy/context.js";
@@ -15,7 +16,10 @@ catalogRouter.get("/settings", async (_req, res) => {
 });
 
 catalogRouter.put("/settings", async (req, res) => {
-  const saved = await saveSettings(pool, SettingsBody.parse(req.body));
+  const body = SettingsBody.parse(req.body);
+  if (body.ai_engine === "claude" && !claudeAvailable())
+    return void res.status(400).json({ error: "claude_key_missing", message: "Connect Claude with an Anthropic key on the Integrations page first." });
+  const saved = await saveSettings(pool, body);
   await renameBusiness(requireTenant(), saved.name);
   bus.changed("settings");
   res.json(saved);

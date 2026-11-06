@@ -19,6 +19,7 @@ export const SettingsBody = z.object({
   prepay_percent: z.coerce.number().int().min(0).max(100),
   prepay_min_price: z.coerce.number().int().min(0),
   autopilot: z.boolean().default(true),
+  ai_engine: z.enum(["voronix", "claude"]).optional(),
 });
 
 export const ServiceBody = z.object({

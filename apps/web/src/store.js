@@ -37,6 +37,7 @@ export async function loadAll() {
   meta.voronix = b.voronix_ai ?? meta.voronix;
   meta.business = b.business ?? meta.business;
   meta.features = b.features ?? {};
+  meta.claude_available = !!b.claude_available;
   meta.loaded = true;
 }
 

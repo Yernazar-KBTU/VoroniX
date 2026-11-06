@@ -156,6 +156,10 @@ export const business = {
   <div class="frow"><div class="f"><label for="b_address">Address</label><input id="b_address" value="${esc(b.address)}"></div><div class="f"><label for="b_hours">Opening hours</label><input id="b_hours" value="${esc(b.hours)}"></div><div class="f"><label for="b_phone">Phone</label><input id="b_phone" value="${esc(b.phone)}"></div></div>
   <div class="frow"><div class="f"><label for="b_staff">What you call staff</label><input id="b_staff" value="${esc(b.staff_label)}" placeholder="Master, Doctor, Trainer"></div><div class="f"><label for="b_svc">What you call services</label><input id="b_svc" value="${esc(b.service_label)}" placeholder="Service, Procedure, Class"></div><div class="f"><label for="b_lang">Client languages</label><input id="b_lang" value="${esc(b.languages)}"></div></div>
  </div><div class="ph" style="border-top:1px solid var(--line)"><h3>AI administrator</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:14px">
+  <div class="f"><label for="b_engine">Who answers the chats</label><select id="b_engine">
+   <option value="voronix" ${b.ai_engine !== "claude" ? "selected" : ""}>VoroniX AI (our own)</option>
+   <option value="claude" ${b.ai_engine === "claude" ? "selected" : ""} ${meta.claude_available ? "" : "disabled"}>Claude${meta.claude_available ? "" : " (connect an Anthropic key in Integrations first)"}</option>
+  </select></div>
   <div class="f"><label for="b_tone">Tone of voice</label><textarea id="b_tone">${esc(b.tone)}</textarea></div>
   <div class="f"><label for="b_catch">Brand phrase (the AI uses it in greetings and confirmations)</label><input id="b_catch" value="${esc(b.catchphrase || "")}" placeholder="e.g. Красота начинается с заботы ✨"></div>
   <div class="frow"><div class="f"><label for="b_pp">Prepayment, % of price</label><input id="b_pp" type="number" min="0" max="100" value="${esc(b.prepay_percent)}"></div><div class="f"><label for="b_ppmin">Prepayment needed from price, ${esc(businessCurrency())}</label><input id="b_ppmin" type="number" min="0" value="${esc(b.prepay_min_price)}"></div></div>
@@ -173,6 +177,7 @@ document.addEventListener("submit", (e) => {
       name: v("b_name"), type: v("b_type"), city: v("b_city"), address: v("b_address"), hours: v("b_hours"), phone: v("b_phone"),
       staff_label: v("b_staff"), service_label: v("b_svc"), languages: v("b_lang"), tone: v("b_tone"), catchphrase: v("b_catch"),
       prepay_percent: +v("b_pp") || 0, prepay_min_price: +v("b_ppmin") || 0, autopilot: document.getElementById("b_auto").checked,
+      ai_engine: v("b_engine"),
     }),
     "Saved. The AI uses the new settings from the next message.",
   ).catch(() => {});

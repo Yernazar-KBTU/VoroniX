@@ -14,7 +14,7 @@ import { listKnowledge } from "../repositories/knowledge.repo.js";
 import { listPayments } from "../repositories/payments.repo.js";
 import { getSettings } from "../repositories/settings.repo.js";
 import { renameBusiness } from "../tenancy/tenants.js";
-import { getEngine, idle } from "../ai/runner.js";
+import { claudeAvailable, engineFor, getEngine, idle } from "../ai/runner.js";
 import { SqlBody } from "./schemas.js";
 import { askKnowledge } from "../ai/ask.js";
 import { organiseNotes } from "../ai/teach.js";
@@ -40,7 +40,8 @@ insightsRouter.get("/bootstrap", async (_req, res) => {
   const t = requireTenant();
   res.json({
     settings, services, masters, master_services, clients, client_channels, appointments, payments, conversations, knowledge,
-    ai_engine: getEngine().name,
+    ai_engine: (await engineFor()).name,
+    claude_available: claudeAvailable(),
     voronix_ai: await checkVoronix(),
     business: { id: t.id, name: t.name, timezone: t.timezone, currency: t.currency },
     features: { sql_console: config.SQL_CONSOLE, demo_reset: config.ALLOW_DEMO_RESET },

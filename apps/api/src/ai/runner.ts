@@ -18,6 +18,23 @@ export function createEngine(apiKey = config.ANTHROPIC_API_KEY): AgentEngine {
   return useClaude ? new ClaudeAgent({ apiKey }) : new OfflineAgent();
 }
 
+/** Claude on the platform's key, for a business that picks Claude without its own key. */
+let platformClaude: AgentEngine | null = config.ANTHROPIC_API_KEY ? new ClaudeAgent({ apiKey: config.ANTHROPIC_API_KEY }) : null;
+
+/** Whether the current business can pick Claude (its own key or the platform's). */
+export const claudeAvailable = (): boolean => ownKey.has(currentTenant()?.id ?? "") || !!platformClaude;
+
+/**
+ * The engine that answers this business's chats, by its choice in Business setup:
+ * our own VoroniX AI (the default) or Claude.
+ */
+export async function engineFor(): Promise<AgentEngine> {
+  if (override) return override;
+  const { rows } = await pool.query<{ ai_engine: string }>(`SELECT ai_engine FROM business_settings WHERE id = 1`);
+  if (rows[0]?.ai_engine === "claude") return ownKey.get(currentTenant()?.id ?? "") ?? platformClaude ?? platform;
+  return platform;
+}
+
 /** Engine on the platform's own key, used by every business that did not connect its own Claude key. */
 let platform: AgentEngine = createEngine();
 /** Businesses that connected their own Anthropic key on the Integrations page. */
@@ -42,6 +59,7 @@ export const claudeKey = (): string | undefined => ownKeyText.get(currentTenant(
 /** Picks the platform engine again, after the environment changed. */
 export const resetEngine = () => {
   platform = createEngine();
+  platformClaude = config.ANTHROPIC_API_KEY ? new ClaudeAgent({ apiKey: config.ANTHROPIC_API_KEY }) : null;
 };
 /** Tests swap in a fake or a specific engine for every business. */
 export const setEngine = (e: AgentEngine | null) => {
@@ -73,9 +91,9 @@ export async function replyTo(convId: string): Promise<void> {
     again.add(key);
     return;
   }
-  const engine = getEngine();
   const ctl = new AbortController();
   running.set(key, ctl);
+  let engine: AgentEngine = getEngine();
   setStatus(convId, "Thinking…");
   const started = performance.now();
   let outcome: "replied" | "handoff" | "error" | "cancelled" = "replied";
@@ -83,6 +101,7 @@ export async function replyTo(convId: string): Promise<void> {
   let toolCalls: unknown[] = [];
   let usage: { input_tokens: number; output_tokens: number } | undefined;
   try {
+    engine = await engineFor();
     const conv = await getOrThrow(convId);
     const res = await engine.reply(conv, { signal: ctl.signal, progress: (s) => setStatus(convId, s) });
     toolCalls = res.toolCalls;
