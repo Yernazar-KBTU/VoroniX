@@ -593,9 +593,12 @@ async function claudeReply(convId){
     const T=toolsFor(convId,s=>{aiBusy[convId]=s;renderTyping()});
     const msgs=[];for(const t of turnsFor(conv).slice(1)){const l=msgs[msgs.length-1];if(l&&l.role===t.role)l.content+="\n"+t.content;else msgs.push({...t})}
     if(!msgs.length||msgs[0].role!=="user")msgs.unshift({role:"user",content:"[CRM note]: the client opened the chat."});
+    // One system prompt for the whole tool loop: Claude's thinking blocks are bound to it, and a
+    // booking made by a tool in step 1 would otherwise change it for step 2 and be refused.
+    const system=rulesFor(S.conversations[convId]);
     for(let step=0;step<8;step++){
       const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:CLAUDE_MODEL,max_tokens:1024,system:rulesFor(S.conversations[convId]),messages:msgs,tools:T.map(t=>({name:t.name,description:t.description,input_schema:t.inputSchema}))})});
+        body:JSON.stringify({model:CLAUDE_MODEL,max_tokens:1024,system,messages:msgs,tools:T.map(t=>({name:t.name,description:t.description,input_schema:t.inputSchema}))})});
       const data=await res.json().catch(()=>({}));
       if(!res.ok)throw new Error((data.error&&data.error.message)||("Anthropic answered "+res.status));
       const uses=(data.content||[]).filter(b=>b.type==="tool_use");
