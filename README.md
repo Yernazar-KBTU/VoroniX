@@ -115,7 +115,7 @@ A database from before accounts (tables directly in `public`) is not migrated in
 | Variable | What it is for |
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection (the only required one) |
-| `INTEGRATION_ENCRYPTION_KEY` | 32 random bytes encoded as 64 hex characters. Keep it stable and backed up separately from PostgreSQL; losing it makes saved integration credentials unreadable |
+| `INTEGRATION_ENCRYPTION_KEY` | 32 random bytes encoded as 64 hex characters (`openssl rand -hex 32`), or any random string of at least 32 characters, such as a value the host generates (it is turned into a key with SHA-256). Keep it stable and backed up separately from PostgreSQL; losing it makes saved integration credentials unreadable |
 | `APP_URL` | Public address of the app, used in email links and the Google redirect. On Render it defaults to the service's onrender.com address (`RENDER_EXTERNAL_URL`) |
 | `ANTHROPIC_API_KEY` | Claude writes the replies for every business that has not connected its own key. Without it the built-in rule engine answers, with the same tools and data |
 | `VORONIX_AI_URL`, `VORONIX_AI_KEY` | Address (and optional key) of [VoroniX AI](apps/voronix-ai/README.md), our own intent model. The built-in agent asks it what each client message means; without it, or when it does not answer within `VORONIX_AI_TIMEOUT_MS` (2500 ms), the rules decide alone |
