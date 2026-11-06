@@ -47,7 +47,9 @@ export const getEngine = (): AgentEngine => override ?? ownKey.get(currentTenant
 /** Uses this business's own Claude key, or the platform engine again when key is null. */
 export function setBusinessKey(tenantId: string, key: string | null): void {
   if (key) {
-    ownKey.set(tenantId, createEngine(key));
+    // A business that connected its own Anthropic key and picked Claude gets Claude,
+    // even when our own VoroniX AI is set up for everyone else.
+    ownKey.set(tenantId, new ClaudeAgent({ apiKey: key }));
     ownKeyText.set(tenantId, key);
   } else {
     ownKey.delete(tenantId);
