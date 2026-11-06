@@ -270,6 +270,7 @@ table.t tr.click:hover td{background:var(--panel2)}
       <span class="grow"></span>
       <span class="chip ai" id="aiChip"><span class="led off"></span>VoroniX AI is starting…</span>
       <span class="chip" id="modeChip">Connecting…</span>
+      <button class="btn sm" id="demoBtn" type="button" hidden title="Sample barbershop for testing; nothing is saved">Demo</button>
       <span class="chip" id="clock"></span>
     </header>
     <div class="phead" id="phead"></div>
@@ -306,15 +307,24 @@ const COLS=["settings","services","masters","master_services","clients","client_
 const S={};COLS.forEach(c=>S[c]={});
 let db=null,live=false,canWrite=true,loaded=new Set();
 const pending={},inflight={},deleting={};
+/* No server and no site database (GitHub Pages): every table is kept in this browser's
+   localStorage under "vx-crm:<table>", so chats (Telegram too), clients and visits stay after
+   a reload. The Demo button swaps in the demo barbershop for testing; it is never saved. */
+const LOCAL="vx-crm:";let demo=false,saveT=0;const dirty=new Set();
+function localLoad(){const o={};for(const c of COLS){try{o[c]=JSON.parse(localStorage.getItem(LOCAL+c)||"{}")||{}}catch(_){o[c]={}}}return o}
+function localSave(col){if(live||demo)return;dirty.add(col);clearTimeout(saveT);saveT=setTimeout(localFlush,100)}
+function localFlush(){clearTimeout(saveT);if(live||demo){dirty.clear();return}for(const c of dirty){try{localStorage.setItem(LOCAL+c,JSON.stringify(S[c]))}catch(e){toast("Could not save in this browser: "+(e.message||e))}}dirty.clear()}
+addEventListener("pagehide",localFlush);
+addEventListener("storage",e=>{if(live||demo||!e.key||!e.key.startsWith(LOCAL))return;const c=e.key.slice(LOCAL.length);if(!COLS.includes(c)||dirty.has(c))return;try{S[c]=JSON.parse(e.newValue||"{}")||{}}catch(_){S[c]={}}setBanner();scheduleRender()});
 function put(col,id,data){
   S[col][id]=data;scheduleRender();
-  if(!live)return Promise.resolve();
+  if(!live){localSave(col);return Promise.resolve()}
   const key=col+"/"+id;inflight[key]=(inflight[key]||0)+1;
   pending[key]=(pending[key]||Promise.resolve()).then(()=>db.collection(col).doc(id).set(S[col][id]??data)).finally(()=>{inflight[key]--}).catch(e=>{if(e&&e.code==="invalid_argument"){canWrite=false;toast("You have view-only access, so changes are not saved.")}else toast("Could not save: "+(e&&e.message||e))});
   return pending[key];
 }
 function patch(col,id,p){return put(col,id,{...(S[col][id]||{}),...p})}
-function del(col,id){delete S[col][id];scheduleRender();if(live){const key=col+"/"+id;deleting[key]=1;return db.collection(col).doc(id).delete().catch(e=>toast("Could not delete: "+(e.message||e))).finally(()=>{delete deleting[key]})}}
+function del(col,id){delete S[col][id];scheduleRender();if(!live)localSave(col);if(live){const key=col+"/"+id;deleting[key]=1;return db.collection(col).doc(id).delete().catch(e=>toast("Could not delete: "+(e.message||e))).finally(()=>{delete deleting[key]})}}
 const vals=col=>Object.entries(S[col]).map(([id,v])=>({id,...v}));
 const biz=()=>S.settings.business||{};
 function nextId(col,prefix,width,start){let max=start||0;for(const id of Object.keys(S[col])){const m=new RegExp("^"+prefix+"(\\d+)$").exec(id);if(m)max=Math.max(max,+m[1])}return prefix+String(max+1).padStart(width,"0")}
@@ -536,7 +546,7 @@ function aiChip(){const el=$("#aiChip");if(!el)return;
   else el.innerHTML='<span class="led off"></span>VoroniX AI is starting…';
 }
 function crmBusiness(){const b=biz();const h=/(\d{1,2}:\d\d)\D+(\d{1,2}:\d\d)/.exec(b.hours||"")||[0,"10:00","21:00"];
-  return {name:b.name,city:b.city,address:b.address||"",from:h[1],to:h[2],phone:b.phone,currency:"₸",
+  return {name:b.name||"",city:b.city||"",address:b.address||"",from:h[1],to:h[2],phone:b.phone,currency:"₸",
     services:vals("services").map(s=>({id:s.id,name:s.name,minutes:s.duration_min||60,price:s.price_kzt||0,active:s.is_active!==false})),
     staff:vals("masters").map(m=>({id:m.id,name:m.full_name,role:m.specialization,days:m.days||[1,2,3,4,5,6],from:m.work_start||"09:00",to:m.work_end||"20:00",services:servicesOf(m.id),active:m.is_active!==false}))}}
 const crmKnowledge=()=>vals("knowledge").map(k=>({id:k.id,title:k.title||"",text:k.content||""}));
@@ -700,7 +710,7 @@ let rq=false;function scheduleRender(){shareWithAi();if(rq)return;rq=true;reques
 /* One database with the VoroniX AI site (same site address, same browser): the CRM's
    visits and clients go to localStorage "vx-db:bookings" / "vx-db:clients", where the
    AI page reads them and sees every change at once. Rows the AI page made itself stay. */
-let shareT=0;function shareWithAi(){clearTimeout(shareT);shareT=setTimeout(()=>{try{
+let shareT=0;function shareWithAi(){clearTimeout(shareT);if(demo)return;shareT=setTimeout(()=>{try{if(demo)return;
   const now=Date.now(),put=(col,rows)=>{const k="vx-db:"+col;let cur={};try{cur=JSON.parse(localStorage.getItem(k)||"{}")}catch(_){}
     for(const [id,r] of Object.entries(cur))if(r&&r.source==="crm"&&!rows[id])delete cur[id];
     let changed=false;for(const [id,r] of Object.entries(rows)){const old=cur[id];const n={...r,at:old?old.at:now};if(!old||JSON.stringify({...old,at:0})!==JSON.stringify({...n,at:0})){cur[id]=n;changed=true}}
@@ -1122,7 +1132,7 @@ PAGES.business={head:()=>head("Business setup","Make the CRM fit your business. 
   <div class="f"><label for="b_ckey">Anthropic key for Claude ${claudeKey()?"(saved in this browser)":""}</label><input id="b_ckey" type="password" autocomplete="off" placeholder="${claudeKey()?"•••• saved, type a new one to replace":"sk-ant-…"}"></div>
   <div class="f"><label for="b_tier">AI speed</label><select id="b_tier"><option value="quick" ${b.ai_tier==="quick"?"selected":""}>Fast replies</option><option value="default" ${b.ai_tier==="default"?"selected":""}>Smarter, slower</option></select></div></div>
   <label class="switch"><input type="checkbox" id="b_auto" ${b.autopilot!==false?"checked":""}> New chats start with AI autopilot on</label>
- </div><div class="mf" style="border-top:1px solid var(--line)"><button class="btn danger" type="button" data-act="resetDemo">Reset demo data…</button><span style="flex:1"></span><button class="btn create" type="submit">Save</button></div></form>`}};
+ </div><div class="mf" style="border-top:1px solid var(--line)">${live?'<button class="btn danger" type="button" data-act="resetDemo">Reset demo data…</button>':'<button class="btn danger" type="button" data-act="wipeLocal">Delete all my data…</button>'}<span style="flex:1"></span><button class="btn create" type="submit">Save</button></div></form>`}};
 document.addEventListener("submit",e=>{if(e.target.id!=="bizForm")return;e.preventDefault();const v=id=>document.getElementById(id).value;
   put("settings","business",{...biz(),name:v("b_name"),type:v("b_type"),city:v("b_city"),address:v("b_address"),hours:v("b_hours"),phone:v("b_phone"),staff_label:v("b_staff"),service_label:v("b_svc"),languages:v("b_lang"),tone:v("b_tone"),catchphrase:v("b_catch"),prepay_percent:+v("b_pp")||0,prepay_min_price:+v("b_ppmin")||0,ai_tier:v("b_tier"),ai_engine:v("b_engine"),autopilot:document.getElementById("b_auto").checked});
   const ck=v("b_ckey").trim();if(ck)try{localStorage.setItem(CLAUDE_KEY,ck)}catch(_){}
@@ -1198,6 +1208,8 @@ document.addEventListener("click",async e=>{
   if(d.act==="newConv")return newConvModal();
   if(d.act==="resetDemo")return modal("Reset demo data?",`<p style="margin:0">This replaces every table with the demo barbershop data. Chats, clients and bookings you added will be lost.</p>`,`<span style="flex:1"></span><button class="btn" data-close>Cancel</button><button class="btn danger" data-confirmreset>Reset</button>`);
   if("confirmreset" in d){closeModal();await seedAll(true);return}
+  if(d.act==="wipeLocal")return modal("Delete all your data?",`<p style="margin:0">This deletes every chat, client, visit, service and setting saved in this browser. It cannot be undone.</p>`,`<span style="flex:1"></span><button class="btn" data-close>Cancel</button><button class="btn danger" data-act="wipeLocalYes">Delete</button>`);
+  if(d.act==="wipeLocalYes"){closeModal();for(const c of COLS){try{localStorage.removeItem(LOCAL+c)}catch(_){}S[c]={}}demo=false;modeChip();setBanner();render();toast("All data deleted");return}
   if("saveappt" in d)return saveAppt(d.saveappt||null);
   if("appt" in d)return apptModal(d.appt);
   if("bookfor" in d)return apptModal(null,{client_id:d.bookfor,start_datetime:dt(new Date(Math.ceil(Date.now()/1800000)*1800000))});
@@ -1244,7 +1256,7 @@ document.addEventListener("change",e=>{
 let seeding=false;
 async function seedAll(replace){
   const D=demoData();
-  if(!live){COLS.forEach(c=>S[c]=D[c]);render();toast("Demo data loaded");return}
+  if(!live){enterDemo();return}
   if(seeding)return;seeding=true;
   const jobs=[];if(replace)for(const c of COLS)for(const id of Object.keys(S[c]))if(!D[c][id])jobs.push(()=>db.collection(c).doc(id).delete());
   for(const c of COLS)for(const id of Object.keys(D[c]))jobs.push(()=>db.collection(c).doc(id).set(D[c][id]));
@@ -1254,28 +1266,35 @@ async function seedAll(replace){
   catch(e){toast(e.code==="invalid_argument"?"You have view-only access, so demo data cannot be loaded.":(e.message||String(e)))}
   finally{seeding=false;setBanner()}
 }
+function demoData2(){const D=demoData();try{for(const a of JSON.parse(localStorage.getItem("vx-answers")||"[]")){const n=Object.keys(D.knowledge).length+1;D.knowledge["KB-"+n]=a}}catch(_){}return D}
+function enterDemo(){localFlush();demo=true;const D=demoData2();COLS.forEach(c=>S[c]=D[c]);modeChip();setBanner();render();toast("Demo is on: test data, nothing is saved")}
+function exitDemo(){demo=false;const L=localLoad();COLS.forEach(c=>S[c]=L[c]);modeChip();setBanner();render();toast("Demo is off: your own data is back")}
+function modeChip(){const m=$("#modeChip"),b=$("#demoBtn");if(live){m.textContent="Live database";b.hidden=true;return}
+  m.textContent=demo?"Demo · not saved":"Saved in this browser";b.hidden=false;b.textContent=demo?"Exit demo":"Demo";b.classList.toggle("primary",demo)}
+document.addEventListener("click",e=>{if(e.target.closest("#demoBtn"))demo?exitDemo():enterDemo()});
 function setBanner(){
   const b=$("#banner");
-  if(!live){b.innerHTML=`<div class="banner"><span>Demo: the CRM data resets when the page reloads, but <b>VoroniX AI</b>, our own model, works right here and keeps what it learns in this browser. Write as a client in Chats. <a href="https://github.com/Yernazar-KBTU/VoroniX-AI" target="_blank" rel="noopener">How the AI works</a></span></div>`;return}
+  if(!live&&demo){b.innerHTML=`<div class="banner"><span><b>Demo for testing.</b> This is the sample barbershop. Nothing here is saved, Telegram chats included, and your own data is untouched. <button class="btn sm" data-exitdemo>Exit demo</button></span></div>`;return}
+  if(!live){b.innerHTML=Object.keys(S.services).length?"":`<div class="banner"><span><b>Your CRM is empty.</b> Fill in Business setup, then add services and staff: VoroniX AI answers clients from them. Everything is saved in this browser. <button class="btn sm" data-setupnow>Business setup</button> <button class="btn sm" data-loaddemo>Try the demo</button></span></div>`;return}
   if(seeding)return;
   if(loaded.size===COLS.length&&!Object.keys(S.services).length){b.innerHTML=`<div class="banner"><b>The database is empty.</b> Load the demo barbershop (services, staff, 30 clients, 6 weeks of bookings, sample chats) to try the CRM.${canWrite?' <button class="btn create sm" data-loaddemo>Load demo data</button>':""}</div>`;return}
   b.innerHTML="";
 }
-document.addEventListener("click",e=>{if(e.target.closest("[data-loaddemo]"))seedAll(false)});
+document.addEventListener("click",e=>{if(e.target.closest("[data-loaddemo]"))seedAll(false);if(e.target.closest("[data-exitdemo]"))exitDemo();if(e.target.closest("[data-setupnow]"))location.hash="business"});
 function tick(){const n=new Date();$("#clock").textContent=DOW[n.getDay()]+" "+hm(n)}
 setInterval(tick,30000);tick();
 (async function boot(){
   const h=location.hash.slice(1);if(PAGES[h])route=h;
   const C=window.claude;
   brainStart().then(()=>{let t="";try{t=localStorage.getItem(TG_KEY)||""}catch(_){}if(t)tgStart(t)});
-  const offline=()=>{const D=demoData();try{for(const a of JSON.parse(localStorage.getItem("vx-answers")||"[]")){const n=Object.keys(D.knowledge).length+1;D.knowledge["KB-"+n]=a}}catch(_){}COLS.forEach(c=>S[c]=D[c])};
-  if(!(C&&C.use)){offline();$("#modeChip").textContent="Offline demo";setBanner();render();return}
+  const offline=()=>{const L=localLoad();COLS.forEach(c=>S[c]=L[c]);modeChip()};
+  if(!(C&&C.use)){offline();setBanner();render();return}
   render();
   const [dbx,ux]=C&&C.use?await Promise.all([C.use("db"),C.use("user")]):[null,null];
   if(ux){try{const w=await ux.can("data.write");if(w===false)canWrite=false}catch(_){}}
-  if(dbx){db=dbx;live=true;$("#modeChip").textContent="Live database";
+  if(dbx){db=dbx;live=true;modeChip();
     for(const c of COLS){db.collection(c).onSnapshot(snap=>{const o={};snap.docs.forEach(d=>{if(!deleting[c+"/"+d.id])o[d.id]=d.data()});for(const id in S[c])if(inflight[c+"/"+id]>0)o[id]=S[c][id];S[c]=o;loaded.add(c);setBanner();scheduleRender()},err=>toast("Database error: "+err.message))}
-  }else{$("#modeChip").textContent="Offline demo";offline();setBanner();render()}
+  }else{offline();setBanner();render()}
 })();
 </script>
 
