@@ -1,11 +1,10 @@
-# VoroniX on one computer: the CRM, its database, the VoroniX data server and
-# VoroniX AI. Start everything with:  docker compose up -d --build
+# VoroniX on one computer: the CRM, its database and VoroniX AI. Start everything with:  docker compose up -d --build
 # It keeps running in the background (no browser tab needed) while the computer
 # is on, and starts again by itself after a restart of Docker.
 #
 #   CRM            http://localhost:3000   (sign up, then Integrations -> Telegram)
 #   VoroniX AI     http://localhost:4000   (click the AI chip in the CRM to watch it live)
-#   Data server    http://localhost:4100   (the AI's memory, in the CRM's database)
+#   The AI's memory is in the CRM's database, served by the CRM at /ai-data.
 #
 # Ports are open only on this computer (127.0.0.1).
 services:
@@ -32,12 +31,11 @@ services:
       INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:?Set INTEGRATION_ENCRYPTION_KEY in .env}
       APP_URL: http://localhost:3000
       ALLOW_DEMO_RESET: "true"
-      # VoroniX AI answers the chats; its memory lives in this database (data server).
+      # VoroniX AI answers the chats; its memory lives in this database (/ai-data).
       VORONIX_AI_URL: http://ai:4000
       VORONIX_AI_KEY: ${VORONIX_AI_KEY:-voronix-local}
-      VORONIX_DATA_URL: http://data:4100
+      VORONIX_DATA_URL: http://app:3000/ai-data
       VORONIX_AI_PUBLIC_URL: http://localhost:4000
-      VORONIX_DATA_PUBLIC_URL: http://localhost:4100
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
@@ -48,29 +46,14 @@ services:
       retries: 30
     ports: ["127.0.0.1:3000:3000"]
 
-  # The AI's memory (clients, bookings, lessons, model versions) in the CRM's
-  # database: github.com/kamilabalabatyr/voronix-data-server
-  data:
-    build: https://github.com/kamilabalabatyr/voronix-data-server.git#main
-    restart: unless-stopped
-    depends_on:
-      app: { condition: service_healthy }
-    environment:
-      DATABASE_URL: postgresql://crm:crm@db:5432/crm
-      CRM_SYNC: loose
-      CORS_ORIGINS: http://localhost:4000
-    volumes:
-      # VoroniX AI's newer intent "visits" (a client asks about their own bookings).
-      - ./deploy/data-server/003_visits_label.sql:/app/db/migrations/tenant/003_visits_label.sql:ro
-    ports: ["127.0.0.1:4100:4100"]
-
   # VoroniX AI: answers the clients for the CRM and shows its work at /live.
   ai:
     build: https://github.com/Yernazar-KBTU/VoroniX-AI.git#main
     restart: unless-stopped
-    depends_on: [data]
+    depends_on:
+      app: { condition: service_healthy }
     environment:
-      DATA_URL: http://data:4100
+      DATA_URL: http://app:3000/ai-data
       VORONIX_AI_KEY: ${VORONIX_AI_KEY:-voronix-local}
       TZ: ${TZ:-Asia/Almaty}
     ports: ["127.0.0.1:4000:4000"]

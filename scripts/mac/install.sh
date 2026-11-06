@@ -1,6 +1,6 @@
 #!/bin/bash
-# VoroniX on this Mac without Docker: the CRM, its own database, VoroniX AI and
-# the VoroniX data server. macOS itself (launchd) starts them at every login and
+# VoroniX on this Mac without Docker: the CRM, its own database and VoroniX AI
+# (whose memory is in the CRM's database). macOS itself (launchd) starts them at every login and
 # keeps them running in the background, no browser tab needed.
 # Needs Node.js 20+ (nodejs.org) and PostgreSQL (for example Postgres.app).
 #
@@ -9,8 +9,7 @@
 #   Stop and remove (the data stays in ~/.voronix/pgdata):
 #     curl -fsSL https://raw.githubusercontent.com/Yernazar-KBTU/VoroniX/main/scripts/mac/install.sh | bash -s -- --remove
 #
-#   CRM http://localhost:3000   VoroniX AI http://localhost:4000/live
-#   Data server http://localhost:4100   Database localhost:5433
+#   CRM http://localhost:3000   VoroniX AI http://localhost:4000/live   Database localhost:5433
 set -euo pipefail
 
 VX="${VX_HOME:-$HOME/.voronix}"
@@ -82,6 +81,7 @@ SETTINGS="$VX/settings"
 rand() { od -An -tx1 -N16 /dev/urandom | tr -d ' \n'; }
 DB_PASSWORD="${DB_PASSWORD:-$(rand)}"
 VORONIX_AI_KEY="${VORONIX_AI_KEY:-$(rand)}"
+INTEGRATION_ENCRYPTION_KEY="${INTEGRATION_ENCRYPTION_KEY:-$(rand)$(rand)}"
 
 if [ -z "${PG_BIN:-}" ] || [ ! -x "$PG_BIN/postgres" ]; then
   PG_BIN=""
@@ -94,7 +94,7 @@ if [ -z "${PG_BIN:-}" ] || [ ! -x "$PG_BIN/postgres" ]; then
   [ -n "$PG_BIN" ] || die "не найден PostgreSQL. Установите Postgres.app (https://postgresapp.com) и запустите команду снова."
 fi
 umask 077
-printf 'DB_PASSWORD=%s\nVORONIX_AI_KEY=%s\nPG_BIN=%s\n' "$DB_PASSWORD" "$VORONIX_AI_KEY" "'$PG_BIN'" >"$SETTINGS"
+printf 'DB_PASSWORD=%s\nVORONIX_AI_KEY=%s\nINTEGRATION_ENCRYPTION_KEY=%s\nPG_BIN=%s\n' "$DB_PASSWORD" "$VORONIX_AI_KEY" "$INTEGRATION_ENCRYPTION_KEY" "'$PG_BIN'" >"$SETTINGS"
 umask 022
 
 # --- Our own database (port 5433, only this computer)
@@ -130,15 +130,13 @@ fetch Yernazar-KBTU/VoroniX crm
 say "Скачиваю и собираю VoroniX AI"
 fetch Yernazar-KBTU/VoroniX-AI ai
 (cd "$APPS/ai.new" && npmi && npm run build >/dev/null && npm run build:demo >/dev/null)
-say "Скачиваю и собираю сервер данных"
-fetch kamilabalabatyr/voronix-data-server data
-(cd "$APPS/data.new" && npmi && npx tsc -p tsconfig.json --outDir dist --rootDir .)
-[ -f "$APPS/data.new/db/migrations/tenant/003_visits_label.sql" ] ||
-  cp "$APPS/crm.new/deploy/data-server/003_visits_label.sql" "$APPS/data.new/db/migrations/tenant/"
 
 say "Запускаю"
+# "data" was the separate data server of earlier versions: stopped and removed.
 for s in ai data crm; do stop "$s"; done
-for s in crm ai data; do
+rm -f "$AGENTS/dev.voronix.data.plist"
+rm -rf "$APPS/data" "$BIN/run-data.sh"
+for s in crm ai; do
   rm -rf "$APPS/$s.old"; [ -d "$APPS/$s" ] && mv "$APPS/$s" "$APPS/$s.old"
   mv "$APPS/$s.new" "$APPS/$s"; rm -rf "$APPS/$s.old"
 done
@@ -148,29 +146,20 @@ cat >"$BIN/run-crm.sh" <<EOF
 #!/bin/bash
 cd "$APPS/crm"
 export PORT=3000 DATABASE_URL="$DB" APP_URL=http://localhost:3000 ALLOW_DEMO_RESET=true \\
-  VORONIX_AI_URL=http://localhost:4000 VORONIX_AI_KEY="$VORONIX_AI_KEY" VORONIX_DATA_URL=http://localhost:4100 \\
-  VORONIX_AI_PUBLIC_URL=http://localhost:4000 VORONIX_DATA_PUBLIC_URL=http://localhost:4100
+  INTEGRATION_ENCRYPTION_KEY="$INTEGRATION_ENCRYPTION_KEY" \\
+  VORONIX_AI_URL=http://localhost:4000 VORONIX_AI_KEY="$VORONIX_AI_KEY" VORONIX_AI_PUBLIC_URL=http://localhost:4000
 exec "$NODE" apps/api/dist/server.js
-EOF
-cat >"$BIN/run-data.sh" <<EOF
-#!/bin/bash
-# The data server needs the CRM's tables: wait for the CRM first.
-until curl -fsS -o /dev/null http://localhost:3000/api/health; do sleep 2; done
-cd "$APPS/data"
-export PORT=4100 DATABASE_URL="$DB" CRM_SYNC=loose CORS_ORIGINS=http://localhost:4000
-exec "$NODE" dist/src/server.js
 EOF
 cat >"$BIN/run-ai.sh" <<EOF
 #!/bin/bash
-until curl -fsS -o /dev/null http://localhost:4100/health; do sleep 2; done
+until curl -fsS -o /dev/null http://localhost:3000/api/health; do sleep 2; done
 cd "$APPS/ai"
-export PORT=4000 DATA_URL=http://localhost:4100 VORONIX_AI_KEY="$VORONIX_AI_KEY"
+export PORT=4000 DATA_URL=http://localhost:3000/ai-data VORONIX_AI_KEY="$VORONIX_AI_KEY"
 exec "$NODE" dist/server.js
 EOF
 umask 022
-for s in crm data ai; do start "$s"; done
+for s in crm ai; do start "$s"; done
 wait_for crm http://localhost:3000/api/health 180
-wait_for data http://localhost:4100/health 120
 wait_for ai http://localhost:4000/health 120
 
 cat <<EOF

@@ -19,6 +19,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import { requireAuth } from "./auth/auth.service.js";
 import { getEngine } from "./ai/runner.js";
 import { checkVoronix } from "./ai/voronix-ai.js";
+import { AI_DATA_PATH, aiData } from "./ai-data/index.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST ?? path.resolve(here, "../../web/dist");
@@ -56,6 +57,8 @@ function serveWeb(app: express.Express) {
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
+  // VoroniX AI's memory, in this database (its own JSON, keys and CORS for the AI page).
+  app.use(AI_DATA_PATH, aiData.app);
   app.use(
     helmet({
       contentSecurityPolicy: {

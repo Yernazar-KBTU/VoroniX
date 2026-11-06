@@ -75,6 +75,9 @@ export const config = {
   ALLOW_DEMO_RESET: parsed.data.ALLOW_DEMO_RESET ? parsed.data.ALLOW_DEMO_RESET === "true" : parsed.data.NODE_ENV !== "production",
   SQL_CONSOLE: (parsed.data.SQL_CONSOLE ?? (parsed.data.NODE_ENV === "production" ? "off" : "on")) === "on",
   APP_URL: parsed.data.APP_URL.replace(/\/+$/, ""),
+  // VoroniX AI keeps its memory in this database, served by this app at /ai-data.
+  VORONIX_DATA_URL: parsed.data.VORONIX_DATA_URL ?? `http://127.0.0.1:${parsed.data.PORT}/ai-data`,
+  VORONIX_DATA_PUBLIC_URL: parsed.data.VORONIX_DATA_PUBLIC_URL ?? `${parsed.data.APP_URL.replace(/\/+$/, "")}/ai-data`,
 };
 // Every business has its own time zone (see lib/time.ts wallClock), so the
 // process clock is neutral UTC.
