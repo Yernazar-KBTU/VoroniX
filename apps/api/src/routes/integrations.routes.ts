@@ -6,6 +6,7 @@ import { bus } from "../realtime/bus.js";
 import { calendarToken, connect, disconnect, listView, test } from "../integrations/manager.js";
 import { currentTenant, requireTenant, withTenant } from "../tenancy/context.js";
 import { findTenant } from "../tenancy/tenants.js";
+import { safeEqual } from "../lib/safe-equal.js";
 
 export const integrationsRouter = Router();
 
@@ -53,7 +54,8 @@ integrationsRouter.get("/integrations/calendar.ics", async (req, res) => {
 async function calendar(req: Request, res: Response) {
   const tz = requireTenant().timezone;
   const token = await calendarToken();
-  if (!token || req.query.token !== token) throw new HttpError(404, "Calendar feed not found", "not_found");
+  const given = typeof req.query.token === "string" ? req.query.token : undefined;
+  if (!token || !safeEqual(given, token)) throw new HttpError(404, "Calendar feed not found", "not_found");
   const { rows } = await pool.query<{ id: string; start: string; end: string; service: string; master: string; client: string; status: string }>(
     `SELECT a.appointment_id AS id, to_char(a.start_at, 'YYYYMMDD"T"HH24MISS') AS start, to_char(a.end_at, 'YYYYMMDD"T"HH24MISS') AS end,
             s.name AS service, m.full_name AS master, c.display_name AS client, a.status
