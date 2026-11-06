@@ -527,7 +527,7 @@ function brainSave(st){try{localStorage.setItem(BRAIN_KEY,JSON.stringify(st))}ca
 async function brainStart(){
   if(!window.VoronixBrain){brainErr="voronix-brain.js did not load";aiChip();return}
   let saved=null;try{saved=JSON.parse(localStorage.getItem(BRAIN_KEY)||"null")}catch(_){}
-  try{brain=await VoronixBrain.create(saved);brain.onChange=brainSave}catch(e){brainErr=(e&&e.message)||String(e)}
+  try{brain=await VoronixBrain.create(saved);brain.onChange=brainSave}catch(e){brainErr=(e&&e.message)||String(e)};shareWithAi()
   aiChip();scheduleRender();
 }
 function aiChip(){const el=$("#aiChip");if(!el)return;
@@ -541,7 +541,42 @@ function crmBusiness(){const b=biz();const h=/(\d{1,2}:\d\d)\D+(\d{1,2}:\d\d)/.e
     staff:vals("masters").map(m=>({id:m.id,name:m.full_name,role:m.specialization,days:m.days||[1,2,3,4,5,6],from:m.work_start||"09:00",to:m.work_end||"20:00",services:servicesOf(m.id),active:m.is_active!==false}))}}
 const crmKnowledge=()=>vals("knowledge").map(k=>({id:k.id,title:k.title||"",text:k.content||""}));
 const PREPAY={ru:a=>`Чтобы подтвердить запись, нужна предоплата ${a}. Кнопка оплаты ниже.`,kk:a=>`Жазылуды растау үшін ${a} алдын ала төлем керек. Төлем түймесі төменде.`,en:a=>`To confirm the booking, a prepayment of ${a} is needed. The payment button is below.`};
+/* Claude, when Business setup picks it: called straight from this page with the
+   business's own Anthropic key, which is kept only in this browser (vx-claude-key). */
+const CLAUDE_KEY="vx-claude-key",CLAUDE_MODEL="claude-opus-5-5";
+const claudeKey=()=>{try{return localStorage.getItem(CLAUDE_KEY)||""}catch(_){return ""}};
+async function claudeReply(convId){
+  const conv=S.conversations[convId];if(!conv)return;
+  if(aiBusy[convId]){aiAgain[convId]=true;return}
+  const key=claudeKey();
+  if(!key){await pushMsg(convId,{from:"system",text:"Claude is chosen in Business setup, but no Anthropic key is saved in this browser. The chat waits for a person."});patch("conversations",convId,{needs_human:true});return}
+  aiBusy[convId]="Claude is thinking…";renderTyping();
+  try{
+    const T=toolsFor(convId,s=>{aiBusy[convId]=s;renderTyping()});
+    const msgs=[];for(const t of turnsFor(conv).slice(1)){const l=msgs[msgs.length-1];if(l&&l.role===t.role)l.content+="\n"+t.content;else msgs.push({...t})}
+    if(!msgs.length||msgs[0].role!=="user")msgs.unshift({role:"user",content:"[CRM note]: the client opened the chat."});
+    for(let step=0;step<8;step++){
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:CLAUDE_MODEL,max_tokens:1024,system:rulesFor(S.conversations[convId]),messages:msgs,tools:T.map(t=>({name:t.name,description:t.description,input_schema:t.inputSchema}))})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok)throw new Error((data.error&&data.error.message)||("Anthropic answered "+res.status));
+      const uses=(data.content||[]).filter(b=>b.type==="tool_use");
+      const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+      if(!uses.length){if(text)await pushMsg(convId,{from:"ai",text});break}
+      msgs.push({role:"assistant",content:data.content});
+      const results=[];
+      for(const u of uses){const t=T.find(x=>x.name===u.name);let out;try{out=t?await t.execute(u.input||{}):{error:"unknown tool"}}catch(e){out={error:(e&&e.message)||String(e)}}
+        results.push({type:"tool_result",tool_use_id:u.id,content:JSON.stringify(out??{ok:true})})}
+      msgs.push({role:"user",content:results});
+    }
+    const c=S.conversations[convId];if(c&&c.stage==="New")patch("conversations",convId,{stage:"In dialog"});
+  }catch(e){
+    await pushMsg(convId,{from:"system",text:"Claude could not answer: "+((e&&e.message)||e)+". The chat waits for a person."});patch("conversations",convId,{needs_human:true});
+  }finally{delete aiBusy[convId];renderTyping();scheduleRender();
+    if(aiAgain[convId]){delete aiAgain[convId];const c=S.conversations[convId];if(c&&c.ai_enabled)aiReply(convId)}}
+}
 async function aiReply(convId){
+  if(biz().ai_engine==="claude")return claudeReply(convId);
   if(!brain){
     if(brainErr){await pushMsg(convId,{from:"system",text:"VoroniX AI is down: "+brainErr+". The chat waits for a person."});patch("conversations",convId,{needs_human:true})}
     else toast("VoroniX AI is still starting. Try again in a second.");
@@ -661,7 +696,21 @@ document.addEventListener("click",e=>{
 try{if(localStorage.getItem("crm-wide"))$("#app").classList.add("wide")}catch(_){}
 
 /* ---------- rendering ---------- */
-let rq=false;function scheduleRender(){if(rq)return;rq=true;requestAnimationFrame(()=>{rq=false;render()})}
+let rq=false;function scheduleRender(){shareWithAi();if(rq)return;rq=true;requestAnimationFrame(()=>{rq=false;render()})}
+/* One database with the VoroniX AI site (same site address, same browser): the CRM's
+   visits and clients go to localStorage "vx-db:bookings" / "vx-db:clients", where the
+   AI page reads them and sees every change at once. Rows the AI page made itself stay. */
+let shareT=0;function shareWithAi(){clearTimeout(shareT);shareT=setTimeout(()=>{try{
+  const now=Date.now(),put=(col,rows)=>{const k="vx-db:"+col;let cur={};try{cur=JSON.parse(localStorage.getItem(k)||"{}")}catch(_){}
+    for(const [id,r] of Object.entries(cur))if(r&&r.source==="crm"&&!rows[id])delete cur[id];
+    let changed=false;for(const [id,r] of Object.entries(rows)){const old=cur[id];const n={...r,at:old?old.at:now};if(!old||JSON.stringify({...old,at:0})!==JSON.stringify({...n,at:0})){cur[id]=n;changed=true}}
+    if(changed||Object.keys(cur).length!==Object.keys(rows).length)localStorage.setItem(k,JSON.stringify(cur))};
+  const B={},C={},count={};
+  for(const a of vals("appointments")){const s=svc(a.service_code)||{},m=mst(a.master_id)||{},c=a.client_id&&cli(a.client_id);if(a.client_id)count[a.client_id]=(count[a.client_id]||0)+(a.status==="Cancelled"?0:1);
+    B[a.id]={id:a.id,client:a.client_id||"",clientName:c?c.display_name:"",service:s.name||a.service_code,staff:m.full_name||a.master_id,start:String(a.start_datetime).replace(" ","T").slice(0,16),minutes:s.duration_min||60,price:s.price_kzt||0,status:a.status==="Cancelled"?"cancelled":"booked",source:"crm"}}
+  for(const c of vals("clients")){const t=Date.parse(c.created_at||"")||now;C[c.id]={id:c.id,name:c.display_name,channel:"crm",handle:c.phone||"",lang:"ru",first:t,last:0,messages:0,intents:{},services:{},staff:{},times:{morning:0,day:0,evening:0},bookings:count[c.id]||0,cancels:0,complaints:0,thanks:0,mood:0,history:[],dialog:{stage:"idle"},source:"crm"}}
+  put("bookings",B);put("clients",C);
+}catch(e){console.error("Could not share the CRM with VoroniX AI",e)}},400)}
 function render(){
   const b=biz();$("#bizName").textContent=b.name||"VoroniX";
   renderRail();
@@ -1069,11 +1118,15 @@ PAGES.business={head:()=>head("Business setup","Make the CRM fit your business. 
   <div class="f"><label for="b_tone">Tone of voice</label><textarea id="b_tone">${esc(b.tone)}</textarea></div>
   <div class="f"><label for="b_catch">Brand phrase (the AI uses it in greetings and confirmations)</label><input id="b_catch" value="${esc(b.catchphrase||"")}" placeholder="e.g. Красота начинается с заботы ✨"></div>
   <div class="frow"><div class="f"><label for="b_pp">Prepayment, % of price</label><input id="b_pp" type="number" min="0" max="100" value="${esc(b.prepay_percent)}"></div><div class="f"><label for="b_ppmin">Prepayment needed from price, ₸</label><input id="b_ppmin" type="number" min="0" value="${esc(b.prepay_min_price)}"></div>
+  <div class="f"><label for="b_engine">Who answers the chats</label><select id="b_engine"><option value="voronix" ${b.ai_engine!=="claude"?"selected":""}>VoroniX AI (our own)</option><option value="claude" ${b.ai_engine==="claude"?"selected":""}>Claude (needs an Anthropic key)</option></select></div>
+  <div class="f"><label for="b_ckey">Anthropic key for Claude ${claudeKey()?"(saved in this browser)":""}</label><input id="b_ckey" type="password" autocomplete="off" placeholder="${claudeKey()?"•••• saved, type a new one to replace":"sk-ant-…"}"></div>
   <div class="f"><label for="b_tier">AI speed</label><select id="b_tier"><option value="quick" ${b.ai_tier==="quick"?"selected":""}>Fast replies</option><option value="default" ${b.ai_tier==="default"?"selected":""}>Smarter, slower</option></select></div></div>
   <label class="switch"><input type="checkbox" id="b_auto" ${b.autopilot!==false?"checked":""}> New chats start with AI autopilot on</label>
  </div><div class="mf" style="border-top:1px solid var(--line)"><button class="btn danger" type="button" data-act="resetDemo">Reset demo data…</button><span style="flex:1"></span><button class="btn create" type="submit">Save</button></div></form>`}};
 document.addEventListener("submit",e=>{if(e.target.id!=="bizForm")return;e.preventDefault();const v=id=>document.getElementById(id).value;
-  put("settings","business",{...biz(),name:v("b_name"),type:v("b_type"),city:v("b_city"),address:v("b_address"),hours:v("b_hours"),phone:v("b_phone"),staff_label:v("b_staff"),service_label:v("b_svc"),languages:v("b_lang"),tone:v("b_tone"),catchphrase:v("b_catch"),prepay_percent:+v("b_pp")||0,prepay_min_price:+v("b_ppmin")||0,ai_tier:v("b_tier"),autopilot:document.getElementById("b_auto").checked});toast("Saved. The AI uses the new settings from the next message.")});
+  put("settings","business",{...biz(),name:v("b_name"),type:v("b_type"),city:v("b_city"),address:v("b_address"),hours:v("b_hours"),phone:v("b_phone"),staff_label:v("b_staff"),service_label:v("b_svc"),languages:v("b_lang"),tone:v("b_tone"),catchphrase:v("b_catch"),prepay_percent:+v("b_pp")||0,prepay_min_price:+v("b_ppmin")||0,ai_tier:v("b_tier"),ai_engine:v("b_engine"),autopilot:document.getElementById("b_auto").checked});
+  const ck=v("b_ckey").trim();if(ck)try{localStorage.setItem(CLAUDE_KEY,ck)}catch(_){}
+  if(v("b_engine")==="claude"&&!claudeKey())toast("Claude is chosen, but there is no Anthropic key yet: chats will wait for a person.");toast("Saved. The AI uses the new settings from the next message.")});
 
 /* ---------- modals ---------- */
 function modal(title,body,foot,wide){$("#modal").innerHTML=`<div class="scrim" data-scrim><div class="modal ${wide?"wide":""}" role="dialog" aria-label="${esc(title)}"><div class="ph"><h3>${esc(title)}</h3><span class="grow"></span><button class="x" data-close aria-label="Close">×</button></div><div class="mb">${body}</div>${foot?`<div class="mf">${foot}</div>`:""}</div></div>`;const f=$("#modal input:not([type=hidden]),#modal select,#modal textarea");f&&f.focus()}
