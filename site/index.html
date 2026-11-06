@@ -669,21 +669,45 @@ async function tgStart(token){
     if(navigator.locks&&navigator.locks.request){
       const held=await navigator.locks.query().then(q=>q.held.some(l=>l.name==="vx-telegram")).catch(()=>false);
       if(held)tgSave("connected",`@${me.username} is answered by another open tab of this page. This tab takes over when that one closes.`);
-      navigator.locks.request("vx-telegram",async()=>{if(run!==tg.run||!tg.on)return;tgSave("connected",`@${me.username} is answering with VoroniX AI. It works while this page is open; close it and the bot stops.`);await tgLoop(run)});
-    }else{tgSave("connected",`@${me.username} is answering with VoroniX AI. It works while this page is open; close it and the bot stops.`);tgLoop(run)}
+      navigator.locks.request("vx-telegram",async()=>{if(run!==tg.run||!tg.on)return;tgSave("connected",`@${me.username} is answering with VoroniX AI. It works while this page is open, in any tab or window; close it and the bot stops.`);await tgLoop(run)});
+    }else{tgSave("connected",`@${me.username} is answering with VoroniX AI. It works while this page is open, in any tab or window; close it and the bot stops.`);tgLoop(run)}
   }catch(e){tg.on=false;tg.err=e.message||String(e);
     tgSave("error",/Unauthorized|Not Found/i.test(tg.err)?"Telegram does not accept this token. Copy it again from @BotFather.":/fetch|network|load/i.test(tg.err)?"This browser could not reach api.telegram.org: "+tg.err:"Telegram: "+tg.err)}
 }
-function tgStop(){tg.on=false;tg.run++;if(tg.ctl)tg.ctl.abort();tg.ctl=null}
+/* The waiting for new messages runs in a background thread of the page (a Web Worker): browsers slow
+   a hidden tab's own code down, a worker much less. Answers are still made here, as before. */
+const TG_WORKER=`let on=false,ctl=null;
+onmessage=async e=>{const d=e.data;
+  if(d.cmd==="stop"){on=false;if(ctl)ctl.abort();return}
+  if(d.cmd!=="start")return;on=true;let offset=d.offset||0;
+  while(on){ctl=new AbortController();
+    try{const r=await fetch("https://api.telegram.org/bot"+d.token+"/getUpdates",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({offset,timeout:25,allowed_updates:["message"]}),signal:ctl.signal});
+      const j=await r.json().catch(()=>({ok:false,description:"Telegram answered "+r.status}));if(!j.ok)throw new Error(j.description||"Telegram error");
+      if(j.result.length)offset=j.result[j.result.length-1].update_id+1;postMessage({type:"updates",updates:j.result,offset})}
+    catch(err){if(!on)return;postMessage({type:"error",error:String(err&&err.message||err)});await new Promise(r=>setTimeout(r,4000))}}};`;
+function tgStop(){tg.on=false;tg.run++;if(tg.ctl)tg.ctl.abort();tg.ctl=null;if(tg.worker){tg.worker.postMessage({cmd:"stop"});tg.worker.terminate();tg.worker=null}if(tg.done){tg.done();tg.done=null}}
+function tgOk(){if(tg.err){tg.err="";tgSave("connected",`@${tg.bot} is answering with VoroniX AI. It works while this page is open, in any tab or window; close it and the bot stops.`)}}
+function tgFail(msg,run){if(!tg.on||run!==tg.run)return;tg.err=msg;
+  if(/Conflict/i.test(msg))tgSave("error","Another program is reading this bot's messages (another open tab or the VoroniX server). Keep one.");
+  else tgSave("error","Telegram connection lost, trying again: "+msg)}
 async function tgLoop(run){
+  let w=null;try{w=typeof Worker!=="undefined"?new Worker(URL.createObjectURL(new Blob([TG_WORKER],{type:"text/javascript"}))):null}catch(_){w=null}
+  if(w){tg.worker=w;let queue=Promise.resolve();
+    w.onmessage=e=>{const d=e.data;if(run!==tg.run)return;
+      if(d.type==="error")return tgFail(d.error,run);
+      tg.offset=d.offset;tgOk();
+      for(const u of d.updates)queue=queue.then(()=>tgIncoming(u.message)).catch(err=>toast("Telegram message failed: "+err.message))};
+    w.onerror=()=>{w.terminate();if(tg.worker===w)tg.worker=null;if(tg.done){const d=tg.done;tg.done=null;d()}if(tg.on&&run===tg.run)tgLoopMain(run)};
+    w.postMessage({cmd:"start",token:tg.token,offset:tg.offset});
+    return new Promise(res=>{tg.done=res})} // the Web Lock is held until the bot stops
+  return tgLoopMain(run);
+}
+async function tgLoopMain(run){
   while(tg.on&&run===tg.run){
     try{const ups=await tgApi("getUpdates",{offset:tg.offset,timeout:25,allowed_updates:["message"]});
       for(const u of ups){tg.offset=u.update_id+1;await tgIncoming(u.message).catch(e=>toast("Telegram message failed: "+e.message))}
-      if(tg.err){tg.err="";tgSave("connected",`@${tg.bot} is answering with VoroniX AI. It works while this page is open; close it and the bot stops.`)}
-    }catch(e){if(!tg.on||run!==tg.run)return;tg.err=e.message||String(e);
-      if(/Conflict/i.test(tg.err))tgSave("error","Another program is reading this bot's messages (another open tab or the VoroniX server). Keep one.");
-      else tgSave("error","Telegram connection lost, trying again: "+tg.err);
-      await new Promise(r=>setTimeout(r,4000))}
+      tgOk();
+    }catch(e){if(!tg.on||run!==tg.run)return;tgFail(e.message||String(e),run);await new Promise(r=>setTimeout(r,4000))}
   }
 }
 async function tgIncoming(m){
