@@ -928,16 +928,67 @@ document.addEventListener("click",e=>{const c=e.target.closest("[data-kbcat]");i
 let kbCtl=null,teachDraft=null;
 /* Notes from the owner -> knowledge entries and settings, by VoroniX AI's own rules (no outside service). */
 function sortNotes(txt){
-  const parts=txt.split(/\n\s*\n|(?<=[.!?])\s+(?=[A-ZА-ЯЁӘҒҚҢӨҰҮҺІ«"])/).map(x=>x.trim()).filter(x=>x.length>3);
   const settings={},entries=[];
   const cat=t=>/скидк|акци|%|бесплат|подар|discount|promo|free|жеңілдік/i.test(t)?"Promotions":/цен|стоит|₸|тенге|kzt|price|cost|баға/i.test(t)?"Prices":/опозд|отмен|перенос|правил|предоплат|late|cancel|rule|prepay|ереже/i.test(t)?"Rules":/телефон|адрес|instagram|whatsapp|телеграм|phone|address|мекенжай/i.test(t)?"Contacts":"FAQ";
-  for(const t of parts){
-    const slogan=/(слоган|slogan|девиз|ұран)[^«"“]*[«"“]([^»"”]+)[»"”]/i.exec(t);if(slogan){settings.catchphrase=slogan[2].trim();continue}
-    const hours=/(работаем|часы работы|open|hours|жұмыс уақыты)[^\d]*(\d{1,2}[:.]\d\d)\s*[–—-]\s*(\d{1,2}[:.]\d\d)/i.exec(t);if(hours){settings.hours=`Daily ${hours[2].replace(".",":")}–${hours[3].replace(".",":")}`;continue}
-    const words=t.replace(/[^\p{L}\p{N}%₸ ]/gu," ").split(/\s+/).filter(Boolean);
-    entries.push({title:words.slice(0,6).join(" ").slice(0,60),category:cat(t),content:t});
+  const blocks=txt.replace(/\r/g,"").split(/\n\s*\n/).map(b=>b.trim()).filter(Boolean);
+  const isHead=l=>l.length<=60&&!/[:.!?]$/.test(l)&&!/[:]/.test(l)&&!/\d{1,2}[:.]\d\d/.test(l);
+  const sectioned=blocks.filter(b=>b.includes("\n")&&isHead(b.split("\n")[0])).length>=2;
+  if(sectioned){
+    blocks.forEach((b,i)=>{const L=b.split("\n").map(x=>x.trim()).filter(Boolean);
+      if(i===0&&L.length===1&&isHead(L[0])){settings.name=L[0].replace(/[«»"“”]/g,"").trim();return}
+      const title=isHead(L[0])&&L.length>1?L.shift():L[0].replace(/[^\p{L}\p{N}%₸ ]/gu," ").split(/\s+/).filter(Boolean).slice(0,6).join(" ");
+      const content=L.join("\n");const c1=cat(title);entries.push({title:title.slice(0,60),category:c1!=="FAQ"?c1:cat(content),content});
+      if(/^(тон|tone|стиль общения)/i.test(title))settings.tone=content.replace(/\n/g," ").replace(/Языки?:.*$/i,"").trim();
+      if(/^(часы работы|график работы|режим работы|opening hours|hours|жұмыс уақыты)/i.test(title))settings.hours=L.join("; ");
+    });
+  }else{
+    const parts=txt.split(/\n\s*\n|(?<=[.!?])\s+(?=[A-ZА-ЯЁӘҒҚҢӨҰҮҺІ«"])/).map(x=>x.trim()).filter(x=>x.length>3);
+    for(const t of parts){
+      const hours=/(работаем|часы работы|open|hours|жұмыс уақыты)[^\d]*(\d{1,2}[:.]\d\d)\s*[–—-]\s*(\d{1,2}[:.]\d\d)/i.exec(t);if(hours){settings.hours=`Daily ${hours[2].replace(".",":")}–${hours[3].replace(".",":")}`;continue}
+      const words=t.replace(/[^\p{L}\p{N}%₸ ]/gu," ").split(/\s+/).filter(Boolean);
+      entries.push({title:words.slice(0,6).join(" ").slice(0,60),category:cat(t),content:t});
+    }
   }
-  return {entries,settings};
+  const slogan=/(слоган|slogan|девиз|ұран)[^«"“\n]*[«"“]([^»"”]+)[»"”]/i.exec(txt);if(slogan)settings.catchphrase=slogan[2].trim();
+  const line=re=>{const m=re.exec(txt);return m?m[1].trim().replace(/[.;]$/,""):""};
+  const addr=line(/^\s*(?:адрес|address|мекенжай)\s*:\s*(.+)$/im);if(addr)settings.address=addr;
+  const phone=line(/^\s*(?:телефон[^:\n]*|phone[^:\n]*|тел\.?)\s*:\s*(.+)$/im);if(phone)settings.phone=phone;
+  const langs=line(/^\s*(?:языки|languages|тілдер)\s*:\s*(.+)$/im)||line(/(?:^|\s)(?:языки|languages)\s*:\s*([^\n]+)/i);if(langs)settings.languages=langs;
+  const pp=/предоплат\S*\s+(\d{1,2})\s*%|prepay\S*\s+(\d{1,2})\s*%/i.exec(txt),ppmin=/(?:от|from|over)\s*([\d\s]{3,9})\s*(?:₸|тг|тенге|kzt)[^\n]{0,40}предоплат|предоплат[^\n]{0,40}(?:от|from)\s*([\d\s]{3,9})\s*(?:₸|тг)/i.exec(txt);
+  if(pp)settings.prepay_percent=String(+(pp[1]||pp[2]));if(ppmin)settings.prepay_min_price=String(+(ppmin[1]||ppmin[2]).replace(/\s/g,""));
+  const {services,staff}=parseRoster(txt);
+  return {entries,settings,services,staff};
+}
+/* Price lists and staff schedules written as plain lines:
+   "Маникюр классический: 5 000 ₸, 60 минут"
+   "Айгерим Сейткали, мастер маникюра: вторник, среда, 10:00 до 19:00. Делает маникюр, педикюр." */
+const WD=[[0,/^(воскресень|вс$|sun|жексенб)/],[1,/^(понедельн|пн$|mon|дүйсенб)/],[2,/^(вторн|вт$|tue|сейсенб)/],[3,/^(сред|ср$|wed|сәрсенб)/],[4,/^(четверг|чт$|thu|бейсенб)/],[5,/^(пятниц|пт$|fri|жұма)/],[6,/^(суббот|сб$|sat|сенб)/]];
+const wdOf=w=>{w=w.toLowerCase();for(const [d,re] of WD)if(re.test(w))return d;return -1};
+function daysIn(t){
+  if(/ежедневно|каждый день|без выходных|daily|every day|күн сайын/i.test(t))return [0,1,2,3,4,5,6];
+  const out=new Set(),toks=t.toLowerCase().match(/[\p{L}]+|[–—-]/gu)||[];
+  for(let i=0;i<toks.length;i++){const d=wdOf(toks[i]);if(d<0)continue;
+    if(toks[i+1]&&/^[–—-]$/.test(toks[i+1])&&toks[i+2]&&wdOf(toks[i+2])>=0){let e=wdOf(toks[i+2]);for(let k=d;;k=(k+1)%7){out.add(k);if(k===e)break}i+=2}else out.add(d)}
+  return [...out].sort()}
+const STOP=new Set(["и","с","в","на","до","от","для","по","and","with","the","of"]);
+const stems=t=>(t.toLowerCase().match(/[\p{L}]+/gu)||[]).filter(w=>!STOP.has(w)&&w.length>1).map(w=>w.slice(0,4));
+function parseRoster(txt){
+  const services=[],staff=[],L=txt.replace(/\r/g,"").split("\n").map(x=>x.trim()).filter(Boolean);
+  const range=/(\d{1,2})[:.](\d\d)\s*(?:до|–|—|-|to)\s*(\d{1,2})[:.](\d\d)/i;
+  for(const l of L){
+    const sv=/^(.{2,80}?)\s*[:–—]\s*(от\s+|from\s+)?(\d[\d\s]{0,8}\d|\d)\s*(₸|тг|тенге|kzt|\$|usd|руб)?\s*[,;]?\s*(?:(\d{1,3})\s*(мин|min|минут)\w*|(\d(?:[.,]\d)?)\s*(ч|час|hours?|h)\b)?/i.exec(l);
+    if(sv&&(sv[4]||sv[5]||sv[7])&&!range.test(l)){const price=+sv[3].replace(/\s/g,"");if(price>=100){services.push({name:sv[1].replace(/^[-•*\d.)\s]+/,"").trim(),price,minutes:sv[5]?+sv[5]:sv[7]?Math.round(parseFloat(sv[7].replace(",","."))*60):60,from:!!sv[2]});continue}}
+    const st=/^([\p{Lu}][\p{L}'-]+(?:\s+[\p{Lu}][\p{L}'.-]*)?)\s*,\s*([^:]{2,60}):\s*(.+)$/u.exec(l);
+    if(st){const rest=st[3],days=daysIn(rest),r=range.exec(rest);if(days.length&&r){
+      const does=(/(?:делает|выполняет|услуги|does|services)\s*:?\s*(.+)$/i.exec(rest)||[])[1]||"";
+      staff.push({name:st[1].trim(),role:st[2].trim(),days,from:r[1].padStart(2,"0")+":"+r[2],to:r[3].padStart(2,"0")+":"+r[4],does});continue}}
+    const dz=/^(?:делает|выполняет|does)\s*:?\s*(.+)$/i.exec(l);if(dz&&staff.length&&!staff[staff.length-1].does)staff[staff.length-1].does=dz[1];
+  }
+  // Which services each person does: every listed item ("маникюр", "наращивание ногтей") must fit
+  // inside the service name and share its first or last word.
+  for(const p of staff){const items=p.does.split(/,|;|\s+и\s+|\s+and\s+/i).map(stems).filter(x=>x.length);
+    p.services=services.filter(s=>{const S=stems(s.name);return items.some(it=>it.every(w=>S.includes(w))&&(it.includes(S[0])||it[it.length-1]===S[S.length-1]))}).map(s=>s.name)}
+  return {services,staff};
 }
 function brainPanel(){
   if(!brain)return `<section class="panel"><div class="ph"><h3>VoroniX AI</h3></div><div class="pad muted small">${brainErr?"VoroniX AI is DOWN: "+esc(brainErr):"Starting: the model trains in this page (about a second)…"}</div></section>`;
@@ -958,17 +1009,28 @@ document.addEventListener("click",async e=>{
     const k=brain.answer(id,ans);if(k){const kid=nextId("knowledge","KB-",1),kv={title:k.title,category:"Answers",content:`${k.title}\n${k.text}`,updated_at:nowISO()};put("knowledge",kid,kv);if(!live)try{const A=JSON.parse(localStorage.getItem("vx-answers")||"[]");A.push(kv);localStorage.setItem("vx-answers",JSON.stringify(A.slice(-100)))}catch(_){}toast("Saved: VoroniX AI answers this from now on")}aiChip();render();return}
   const dr=e.target.closest("[data-qdrop]");if(dr){brain.dismiss(dr.dataset.qdrop);aiChip();render()}
 });
-const TEACH_KEYS={name:"Business name",type:"Type of business",address:"Address",hours:"Opening hours",phone:"Phone",tone:"Tone of voice",catchphrase:"Brand phrase",languages:"Client languages"};
+const TEACH_KEYS={name:"Business name",type:"Type of business",address:"Address",hours:"Opening hours",phone:"Phone",tone:"Tone of voice",catchphrase:"Brand phrase",languages:"Client languages",prepay_percent:"Prepayment, %",prepay_min_price:"Prepayment from price"};
+const DAYN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 function teachView(){const o=$("#teachOut");if(!o)return;if(!teachDraft){o.innerHTML="";return}
-  const E=teachDraft.entries||[],St=Object.entries(teachDraft.settings||{}).filter(([k,v])=>TEACH_KEYS[k]&&v);
-  o.innerHTML=`<div class="answer" style="display:flex;flex-direction:column;gap:8px">${E.map((e,i)=>`<label class="switch" style="align-items:flex-start"><input type="checkbox" class="teachE" value="${i}" checked><span><b>${esc(e.title)}</b> ${pill(e.category||"General","ai")}<br><span class="small">${esc(e.content)}</span></span></label>`).join("")}${St.map(([k,v])=>`<label class="switch" style="align-items:flex-start"><input type="checkbox" class="teachS" value="${k}" checked><span><b>Business setup · ${esc(TEACH_KEYS[k])}</b><br><span class="small">${esc(v)}</span></span></label>`).join("")}${E.length||St.length?`<div style="display:flex;gap:8px"><button class="btn" id="teachCancel" type="button">Discard</button><span class="grow"></span><button class="btn create" id="teachSave" type="button">Save ${E.length+St.length} to the database</button></div>`:'<span class="muted">Nothing to save was found in this text.</span>'}</div>`}
+  const E=teachDraft.entries||[],St=Object.entries(teachDraft.settings||{}).filter(([k,v])=>TEACH_KEYS[k]&&v),SV=teachDraft.services||[],SF=teachDraft.staff||[];
+  const total=E.length+St.length+SV.length+SF.length;
+  o.innerHTML=`<div class="answer" style="display:flex;flex-direction:column;gap:8px">${SV.length?`<h4 style="margin:0">Services (${SV.length})</h4>`:""}${SV.map((x,i)=>`<label class="switch" style="align-items:flex-start"><input type="checkbox" class="teachSv" value="${i}" checked><span><b>${esc(x.name)}</b> ${pill("Service","ai")}<br><span class="small">${x.from?"from ":""}${money(x.price)} · ${x.minutes} min</span></span></label>`).join("")}${SF.length?`<h4 style="margin:0">Staff (${SF.length})</h4>`:""}${SF.map((x,i)=>`<label class="switch" style="align-items:flex-start"><input type="checkbox" class="teachSf" value="${i}" checked><span><b>${esc(x.name)}</b> ${pill("Staff","ai")} <span class="small muted">${esc(x.role)}</span><br><span class="small">${x.days.map(d=>DAYN[d]).join(", ")} · ${x.from}–${x.to}${x.services.length?" · "+esc(x.services.join(", ")):' · <span class="pill warn">no services matched</span>'}</span></span></label>`).join("")}${E.length||St.length?`<h4 style="margin:0">Knowledge and Business setup</h4>`:""}${E.map((e,i)=>`<label class="switch" style="align-items:flex-start"><input type="checkbox" class="teachE" value="${i}" checked><span><b>${esc(e.title)}</b> ${pill(e.category||"General","ai")}<br><span class="small">${esc(e.content)}</span></span></label>`).join("")}${St.map(([k,v])=>`<label class="switch" style="align-items:flex-start"><input type="checkbox" class="teachS" value="${k}" checked><span><b>Business setup · ${esc(TEACH_KEYS[k])}</b><br><span class="small">${esc(v)}</span></span></label>`).join("")}${total?`<div style="display:flex;gap:8px"><button class="btn" id="teachCancel" type="button">Discard</button><span class="grow"></span><button class="btn create" id="teachSave" type="button">Save ${total} to the database</button></div>`:'<span class="muted">Nothing to save was found in this text.</span>'}</div>`}
 document.addEventListener("click",async e=>{
   if(e.target.id==="teachCancel"){teachDraft=null;teachView();return}
   if(e.target.id==="teachSave"){if(!teachDraft)return;let n=0;
     const pickE=[...document.querySelectorAll(".teachE:checked")].map(x=>teachDraft.entries[+x.value]);
     for(const en of pickE){if(!en||!en.title||!en.content)continue;put("knowledge",nextId("knowledge","KB-",1),{title:String(en.title).slice(0,120),category:String(en.category||"General").slice(0,40),content:String(en.content).slice(0,60000),updated_at:nowISO()});n++}
     const pickS=[...document.querySelectorAll(".teachS:checked")].map(x=>x.value);
-    if(pickS.length){const upd={};for(const k of pickS)upd[k]=String(teachDraft.settings[k]).slice(0,2000);put("settings","business",{...biz(),...upd});n+=pickS.length}
+    if(pickS.length){const upd={};for(const k of pickS){const v=String(teachDraft.settings[k]).slice(0,2000);upd[k]=/^prepay_/.test(k)?+v||0:v}put("settings","business",{...biz(),...upd});n+=pickS.length}
+    const code={},same=(a,b)=>String(a||"").trim().toLowerCase()===String(b||"").trim().toLowerCase();
+    for(const x of [...document.querySelectorAll(".teachSv:checked")].map(i=>teachDraft.services[+i.value])){
+      const id=Object.keys(S.services).find(k=>same(S.services[k].name,x.name))||nextId("services","SV-",2);
+      put("services",id,{...(S.services[id]||{category:"General"}),name:x.name,price_kzt:x.price,duration_min:x.minutes,is_active:true});code[x.name.toLowerCase()]=id;n++}
+    for(const k of Object.keys(S.services))code[String(S.services[k].name).toLowerCase()]=code[String(S.services[k].name).toLowerCase()]||k;
+    for(const x of [...document.querySelectorAll(".teachSf:checked")].map(i=>teachDraft.staff[+i.value])){
+      const id=Object.keys(S.masters).find(k=>same(S.masters[k].full_name,x.name))||nextId("masters","MS-",2);
+      put("masters",id,{...(S.masters[id]||{}),full_name:x.name,specialization:x.role,work_start:x.from,work_end:x.to,days:x.days,is_active:true});
+      for(const nm of x.services){const c=code[nm.toLowerCase()];if(c&&!S.master_services[id+"__"+c])put("master_services",id+"__"+c,{master_id:id,service_code:c,skill_level:"Senior",since_date:ymd(new Date())})}n++}
     teachDraft=null;const t=$("#teachT");if(t)t.value="";toast(`Saved ${n}. The AI uses it from the next message.`);render();return}
   if(e.target.id!=="teachGo")return;
   const txt=($("#teachT")?.value||"").trim();const o=$("#teachOut");if(!txt)return toast("Paste some text about your business first");
