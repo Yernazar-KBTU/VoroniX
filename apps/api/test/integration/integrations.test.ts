@@ -10,7 +10,7 @@ import { OfflineAgent } from "../../src/ai/offline-agent.js";
 import { pool } from "../../src/db/pool.js";
 import { bootIntegrations, deps, stopIntegrations } from "../../src/integrations/manager.js";
 import { decryptIntegrationSecret, isEncryptedIntegrationSecret } from "../../src/integrations/encryption.js";
-import { getIntegration } from "../../src/repositories/integrations.repo.js";
+import { getIntegration, rotateIntegrationSecrets, saveIntegration } from "../../src/repositories/integrations.repo.js";
 import { freshDb, quietWednesday, until } from "./helpers.js";
 
 const api = request(createApp());
@@ -59,6 +59,41 @@ describe("catalogue", () => {
     const { rows } = await pool.query("SELECT secret FROM integrations WHERE provider = 'telegram'");
     expect(isEncryptedIntegrationSecret(rows[0].secret)).toBe(true);
     expect(decryptIntegrationSecret(rows[0].secret)).toBe("legacy-plain-secret");
+    await pool.query("DELETE FROM integrations WHERE provider = 'telegram'");
+  });
+
+  it("rotates secrets to the active key without exposing their plaintext", async () => {
+    const previous = {
+      key: process.env.INTEGRATION_ENCRYPTION_KEY,
+      keys: process.env.INTEGRATION_ENCRYPTION_KEYS,
+      active: process.env.INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID,
+    };
+    const oldKey = randomBytes(32).toString("hex");
+    const nextKey = randomBytes(32).toString("hex");
+    try {
+      process.env.INTEGRATION_ENCRYPTION_KEY = oldKey;
+      delete process.env.INTEGRATION_ENCRYPTION_KEYS;
+      delete process.env.INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID;
+      await saveIntegration(pool, { provider: "whatsapp", enabled: false, settings: {}, secret: "rotation-test-secret", status: "off", status_detail: "" });
+
+      process.env.INTEGRATION_ENCRYPTION_KEYS = JSON.stringify({ default: oldKey, next: nextKey });
+      delete process.env.INTEGRATION_ENCRYPTION_KEY;
+      process.env.INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID = "next";
+      const result = await rotateIntegrationSecrets(pool);
+      const { rows } = await pool.query("SELECT secret FROM integrations WHERE provider = 'whatsapp'");
+
+      expect(result.rotated).toBe(1);
+      expect(rows[0].secret.startsWith("v2.next.")).toBe(true);
+      expect(decryptIntegrationSecret(rows[0].secret)).toBe("rotation-test-secret");
+    } finally {
+      await pool.query("DELETE FROM integrations WHERE provider = 'whatsapp'");
+      if (previous.key === undefined) delete process.env.INTEGRATION_ENCRYPTION_KEY;
+      else process.env.INTEGRATION_ENCRYPTION_KEY = previous.key;
+      if (previous.keys === undefined) delete process.env.INTEGRATION_ENCRYPTION_KEYS;
+      else process.env.INTEGRATION_ENCRYPTION_KEYS = previous.keys;
+      if (previous.active === undefined) delete process.env.INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID;
+      else process.env.INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID = previous.active;
+    }
   });
 });
 

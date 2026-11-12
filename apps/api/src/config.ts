@@ -1,5 +1,13 @@
-import "dotenv/config";
+import { config as loadDotEnv } from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { integrationEncryptionConfigFrom } from "./integrations/encryption.js";
+
+// Resolve from this file so workspace scripts launched in apps/api still load
+// the repository-root .env rather than looking for apps/api/.env.
+const here = path.dirname(fileURLToPath(import.meta.url));
+loadDotEnv({ path: path.resolve(here, "../../../.env") });
 
 const Env = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -7,6 +15,8 @@ const Env = z.object({
   DATABASE_URL: z.string().default("postgresql://crm:crm@localhost:5432/crm"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   INTEGRATION_ENCRYPTION_KEY: z.string().refine((v) => /^[0-9a-fA-F]{64}$/.test(v) || v.trim().length >= 32, "must be 64 hexadecimal characters or a random string of at least 32 characters").optional(),
+  INTEGRATION_ENCRYPTION_KEYS: z.string().optional(),
+  INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).optional(),
 
   // AI. Without a key the deterministic offline agent answers instead of Claude.
   ANTHROPIC_API_KEY: z.string().optional(),
@@ -67,6 +77,12 @@ env.APP_URL ??= env.RENDER_EXTERNAL_URL;
 const parsed = Env.safeParse(env);
 if (!parsed.success) {
   console.error("Invalid environment:", parsed.error.flatten().fieldErrors);
+  process.exit(1);
+}
+try {
+  integrationEncryptionConfigFrom(parsed.data);
+} catch (err) {
+  console.error("Invalid integration encryption configuration:", (err as Error).message);
   process.exit(1);
 }
 

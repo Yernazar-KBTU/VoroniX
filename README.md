@@ -116,6 +116,7 @@ A database from before accounts (tables directly in `public`) is not migrated in
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection (the only required one) |
 | `INTEGRATION_ENCRYPTION_KEY` | 32 random bytes encoded as 64 hex characters (`openssl rand -hex 32`), or any random string of at least 32 characters, such as a value the host generates (it is turned into a key with SHA-256). Keep it stable and backed up separately from PostgreSQL; losing it makes saved integration credentials unreadable |
+| `INTEGRATION_ENCRYPTION_KEYS`, `INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID` | Optional keyring used for encryption-key rotation. Keep old and new keys configured until the rotation command completes |
 | `APP_URL` | Public address of the app, used in email links and the Google redirect. On Render it defaults to the service's onrender.com address (`RENDER_EXTERNAL_URL`) |
 | `ANTHROPIC_API_KEY` | Claude writes the replies for every business that has not connected its own key. Without it the built-in rule engine answers, with the same tools and data |
 | `VORONIX_AI_URL`, `VORONIX_AI_KEY` | Address (and optional key) of [VoroniX AI](apps/voronix-ai/README.md), our own intent model. The built-in agent asks it what each client message means; without it, or when it does not answer within `VORONIX_AI_TIMEOUT_MS` (2500 ms), the rules decide alone |
@@ -129,6 +130,10 @@ A database from before accounts (tables directly in `public`) is not migrated in
 | `CHANNEL_WEBHOOK_SECRET` | Optional secret that every business's inbound webhook accepts, for a gateway the platform runs itself |
 
 Empty values (`SUPPORT_EMAIL=`) count as not set.
+
+### Rotating integration encryption keys
+
+First deploy a version that supports the keyring while keeping the existing single-key setting unchanged; it continues writing `v1` records until the keyring is enabled. Then generate a new key, configure a JSON keyring containing the old key under `default` and the new key under a fresh ID, and set `INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID` to that new ID. Restart the app so new secrets use the new key, then run `npm run keys:rotate --workspace @crm/api` (or `docker compose exec app node apps/api/dist/integrations/rotate-encryption-key.js`). The command processes every business schema, reports counts only, and can safely be rerun if interrupted. Keep both keys until it exits successfully and you have verified the integrations; then remove the old key and the legacy `INTEGRATION_ENCRYPTION_KEY` setting. Do not roll back to an application version that cannot read `v2` secrets after rotation has started.
 
 ## VoroniX AI (our own model)
 

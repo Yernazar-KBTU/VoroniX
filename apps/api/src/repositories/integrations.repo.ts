@@ -1,5 +1,5 @@
 import type { Db } from "../db/pool.js";
-import { decryptIntegrationSecret, encryptIntegrationSecret, isEncryptedIntegrationSecret } from "../integrations/encryption.js";
+import { activeIntegrationKeyId, decryptIntegrationSecret, encryptIntegrationSecret, integrationSecretKeyId, isEncryptedIntegrationSecret } from "../integrations/encryption.js";
 
 export interface IntegrationRow {
   provider: string;
@@ -37,6 +37,38 @@ export async function saveIntegration(
     [row.provider, row.enabled, JSON.stringify(row.settings), row.secret === null ? null : encryptIntegrationSecret(row.secret), row.status, row.status_detail],
   );
   return { ...rows[0], secret: row.secret };
+}
+
+export interface IntegrationSecretRotationResult {
+  scanned: number;
+  rotated: number;
+  unchanged: number;
+  changedDuringRotation: number;
+}
+
+/** Re-encrypts old-format or old-key secrets in the current tenant schema; safe to rerun. */
+export async function rotateIntegrationSecrets(db: Db): Promise<IntegrationSecretRotationResult> {
+  const rows = (await db.query<{ provider: string; secret: string | null }>(`SELECT provider, secret FROM integrations WHERE secret IS NOT NULL ORDER BY provider`)).rows;
+  const activeKeyId = activeIntegrationKeyId();
+  const result: IntegrationSecretRotationResult = { scanned: rows.length, rotated: 0, unchanged: 0, changedDuringRotation: 0 };
+
+  for (const row of rows) {
+    const oldKeyId = integrationSecretKeyId(row.secret!);
+    if (oldKeyId === activeKeyId && isEncryptedIntegrationSecret(row.secret!)) {
+      result.unchanged++;
+      continue;
+    }
+
+    const plaintext = oldKeyId ? decryptIntegrationSecret(row.secret!) : row.secret!;
+    const encrypted = encryptIntegrationSecret(plaintext);
+    const updated = await db.query(
+      `UPDATE integrations SET secret = $2, updated_at = now() WHERE provider = $1 AND secret = $3`,
+      [row.provider, encrypted, row.secret],
+    );
+    if (updated.rowCount) result.rotated++;
+    else result.changedDuringRotation++;
+  }
+  return result;
 }
 
 /** Decrypts stored credentials and upgrades legacy plaintext rows on first read. */

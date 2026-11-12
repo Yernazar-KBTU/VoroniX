@@ -28,7 +28,9 @@ services:
       db: { condition: service_healthy }
     environment:
       DATABASE_URL: postgresql://crm:crm@db:5432/crm
-      INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:?Set INTEGRATION_ENCRYPTION_KEY in .env}
+      INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:-}
+      INTEGRATION_ENCRYPTION_KEYS: ${INTEGRATION_ENCRYPTION_KEYS:-}
+      INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID: ${INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID:-}
       APP_URL: http://localhost:3000
       ALLOW_DEMO_RESET: "true"
       # VoroniX AI answers the chats; its memory lives in this database (/ai-data).

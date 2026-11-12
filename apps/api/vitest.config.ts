@@ -19,6 +19,8 @@ export default defineConfig({
       AUTH_REQUIRED: "false",
       DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://crm:crm@localhost:5432/crm_test",
       INTEGRATION_ENCRYPTION_KEY: randomBytes(32).toString("hex"),
+      INTEGRATION_ENCRYPTION_KEYS: "",
+      INTEGRATION_ENCRYPTION_ACTIVE_KEY_ID: "",
     },
   },
 });
