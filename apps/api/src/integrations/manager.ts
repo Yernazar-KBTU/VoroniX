@@ -11,6 +11,7 @@ import { startTelegram } from "../channels/telegram.js";
 import { requireTenant } from "../tenancy/context.js";
 import { forEachTenant } from "../tenancy/tenants.js";
 import { PROVIDERS, type Provider } from "./catalog.js";
+import { startWhatsApp, whatsappConfigFromEnv } from "../channels/whatsapp.js";
 
 /**
  * Connections to outside services, per business: every business keeps its
@@ -53,6 +54,8 @@ export const deps = {
 
 /** Running Telegram bots, one per business that connected one. */
 const telegrams = new Map<string, { stop: () => Promise<void> }>();
+/** Sender of WhatsApp replies, started once for the whole server when the Meta variables are set. */
+let whatsapp: { stop: () => Promise<void> } | null = null;
 
 /** Starts, replaces or stops the bot of the current business. */
 async function setTelegram(token: string | null) {
@@ -203,11 +206,15 @@ export async function bootIntegrations(): Promise<void> {
     (t, err) => logger.error({ err, business: t.id }, "could not start integrations"),
   );
   bus.on("event", forwardDomainEvent);
+  const wa = whatsappConfigFromEnv();
+  if (wa && !whatsapp) whatsapp = startWhatsApp(wa);
 }
 
 export async function stopIntegrations(): Promise<void> {
   bus.off("event", forwardDomainEvent);
   await Promise.all([...telegrams.values()].map((b) => b.stop().catch(() => {})));
+  await whatsapp?.stop();
+  whatsapp = null;
   telegrams.clear();
 }
 
