@@ -1,0 +1,13 @@
+{
+  "name": "@voronix/meta-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WhatsApp Cloud API and Instagram DM bridge for VoroniX",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/lib.test.mjs"
+  },
+  "license": "MIT"
+}
