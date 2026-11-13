@@ -26,7 +26,7 @@ export interface BusinessSettings {
   prepay_min_price: number;
   autopilot: boolean;
   /** Who answers the chats: our own VoroniX AI or Claude. */
-  ai_engine?: "voronix" | "claude";
+  ai_engine?: "voronix" | "claude" | "voronixai";
 }
 
 export interface Service {

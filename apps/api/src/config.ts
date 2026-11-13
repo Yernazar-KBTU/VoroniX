@@ -38,6 +38,11 @@ const Env = z.object({
   // Address of the data server as a browser on this computer reaches it (for the AI site link).
   VORONIX_DATA_PUBLIC_URL: z.string().url().optional(),
   VORONIX_AI_PUBLIC_URL: z.string().url().optional(),
+  // VoroniX.ai (github.com/Yernazar-KBTU/VoroniX.ai): the third AI a business can pick
+  // in Business setup. Its own server; the key is its VORONIX_CRM_KEY.
+  VORONIXAI_URL: z.string().url().optional(),
+  VORONIXAI_KEY: z.string().optional(),
+  VORONIXAI_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(300_000).default(120_000),
 
   // Channels. Each business connects its own Telegram bot on the Integrations
   // page. This optional secret is accepted by every business's inbound

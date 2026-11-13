@@ -38,6 +38,7 @@ export async function loadAll() {
   meta.business = b.business ?? meta.business;
   meta.features = b.features ?? {};
   meta.claude_available = !!b.claude_available;
+  meta.voronixai_available = !!b.voronixai_available;
   meta.loaded = true;
 }
 
