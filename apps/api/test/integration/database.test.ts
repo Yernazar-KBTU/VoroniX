@@ -29,10 +29,10 @@ describe("schema", () => {
     const core = await pool.query("SELECT version FROM public.schema_migrations ORDER BY version");
     expect(core.rows.map((r) => r.version)).toEqual(["001_accounts.sql"]);
     const own = await pool.query("SELECT version FROM tenant_migrations ORDER BY version");
-    expect(own.rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql", "004_integrations.sql", "005_data_quality.sql", "006_reminders.sql", "007_ai_engine.sql"]);
+    expect(own.rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql", "004_integrations.sql", "005_data_quality.sql", "006_reminders.sql", "007_ai_engine.sql", "008_security_audit.sql"]);
   });
 
-  it("has the 15 CRM tables and 3 reporting views in the business schema, and 4 shared tables in public", async () => {
+  it("has the 16 CRM tables and 3 reporting views in the business schema, and 4 shared tables in public", async () => {
     const tables = (schema: string) =>
       pool.query(
         `SELECT table_name, table_type FROM information_schema.tables
@@ -41,7 +41,7 @@ describe("schema", () => {
       );
     const own = (await tables(demo.schema)).rows;
     expect(own.filter((r) => r.table_type === "BASE TABLE").map((r) => r.table_name)).toEqual([
-      "ai_runs", "appointment_reminders", "appointments", "business_settings", "client_channels", "clients", "conversations", "integrations", "knowledge_entries",
+      "ai_runs", "appointment_reminders", "appointments", "audit_log", "business_settings", "client_channels", "clients", "conversations", "integrations", "knowledge_entries",
       "master_accounts", "master_services", "masters", "messages", "payments", "services",
     ]);
     expect(own.filter((r) => r.table_type === "VIEW").map((r) => r.table_name)).toEqual(["v_daily_revenue", "v_no_show_by_service", "v_visits_to_close"]);
