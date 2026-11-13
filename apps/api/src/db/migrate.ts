@@ -71,7 +71,7 @@ async function grantConsole(c: pg.PoolClient, schema: string): Promise<void> {
   if (!(await c.query(`SELECT 1 FROM pg_roles WHERE rolname = 'crm_readonly'`)).rowCount) return;
   await c.query(`GRANT USAGE ON SCHEMA "${schema}" TO crm_readonly;
     GRANT SELECT ON ALL TABLES IN SCHEMA "${schema}" TO crm_readonly;
-    REVOKE ALL ON "${schema}".integrations, "${schema}".master_accounts, "${schema}".tenant_migrations FROM crm_readonly;`);
+    REVOKE ALL ON "${schema}".integrations, "${schema}".master_accounts, "${schema}".tenant_migrations, "${schema}".audit_log FROM crm_readonly;`);
 }
 
 async function migrateCore(db: pg.Pool, log: (m: string) => void): Promise<string[]> {
