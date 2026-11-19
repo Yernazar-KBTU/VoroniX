@@ -2,7 +2,9 @@
 import http from 'node:http';
 import {
   verifySignature, parseWebhook, buildInboundPayload, extractReply, chunkText, makeDedupe,
+  composeInboundText,
 } from './lib.mjs';
+import { makeMediaClient } from './media.mjs';
 
 const env = process.env;
 const PORT = Number(env.PORT || 4000);
@@ -11,7 +13,22 @@ const APP_SECRET = env.META_APP_SECRET || '';
 const VERIFY_TOKEN = env.META_VERIFY_TOKEN || '';
 const GRAPH = `https://graph.facebook.com/${env.GRAPH_VERSION || 'v21.0'}`;
 const IG_GRAPH = `${env.INSTAGRAM_GRAPH_BASE || 'https://graph.facebook.com'}/${env.GRAPH_VERSION || 'v21.0'}`;
-const FALLBACK_NON_TEXT = env.FALLBACK_NON_TEXT || 'Пока я понимаю только текстовые сообщения. Напишите, пожалуйста, текстом.';
+const log = (...a) => console.log(new Date().toISOString(), ...a);
+
+// Voice / photo / video -> text. Enabled only when MEDIA_AI_KEY is set (any OpenAI-compatible API).
+const media = makeMediaClient({
+  apiKey: env.MEDIA_AI_KEY,
+  baseUrl: env.MEDIA_AI_BASE_URL || undefined,
+  transcribeModel: env.TRANSCRIBE_MODEL || undefined,
+  visionModel: env.VISION_MODEL || undefined,
+  maxBytes: env.MAX_MEDIA_MB ? Number(env.MAX_MEDIA_MB) * 1024 * 1024 : undefined,
+  graph: GRAPH,
+  log,
+});
+const FALLBACK_NON_TEXT = env.FALLBACK_NON_TEXT || (media.enabled
+  ? 'Я понимаю текст, голосовые сообщения, фото и видео. Этот тип сообщения пока не поддерживается.'
+  : 'Пока я понимаю только текстовые сообщения. Напишите, пожалуйста, текстом.');
+const FALLBACK_MEDIA = env.FALLBACK_MEDIA || 'Не получилось открыть файл. Напишите, пожалуйста, текстом.';
 const FALLBACK_ERROR = env.FALLBACK_ERROR || 'Сейчас не получается ответить. Администратор свяжется с вами.';
 
 // {"whatsapp:<phone_number_id>": {"business":"<id>","secret":"<x-channel-secret>","token":"<Meta token>"},
@@ -20,7 +37,6 @@ let accounts = {};
 try { accounts = JSON.parse(env.BUSINESS_MAP || '{}'); } catch { console.error('BUSINESS_MAP is not valid JSON'); }
 
 const isDuplicate = makeDedupe();
-const log = (...a) => console.log(new Date().toISOString(), ...a);
 
 async function sendToMeta(msg, acc, text) {
   const isWa = msg.channel === 'whatsapp';
@@ -57,6 +73,11 @@ async function handleMessage(msg) {
   if (!acc) return log('no business for', msg.channel, msg.accountId);
   if (isDuplicate(msg.messageId)) return;
   try {
+    if (msg.media?.length && media.enabled) {
+      const parts = await media.understand(msg.media, acc);
+      if (parts.every((p) => p.failed) && !msg.text) return await sendToMeta(msg, acc, FALLBACK_MEDIA);
+      msg = { ...msg, text: composeInboundText(msg.text, parts) };
+    }
     if (!msg.text) return await sendToMeta(msg, acc, FALLBACK_NON_TEXT);
     const replies = await askVoronix(msg, acc);
     // Empty list is fine: VoroniX may deliver the answer itself (e.g. a human takes the chat).

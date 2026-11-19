@@ -9,8 +9,10 @@ Client in WhatsApp / Instagram -> Meta -> /webhook (this bridge) -> VoroniX AI (
 Client <- Meta <- bridge <- AI answer
 ```
 
+Voice notes, photos and videos are turned into text by the bridge (see "Voice, photos, video"), so VoroniX still receives plain text.
+
 Safety: every request is checked with `X-Hub-Signature-256`; Meta retries are deduplicated;
-non-text messages get a polite fallback; one bridge serves many businesses via `BUSINESS_MAP`.
+unsupported message types (stickers, documents, location) get a polite fallback; one bridge serves many businesses via `BUSINESS_MAP`.
 
 ## Run
 
@@ -18,12 +20,27 @@ non-text messages get a polite fallback; one bridge serves many businesses via `
 cd apps/meta-bridge
 cp .env.example .env        # fill in the values
 node --env-file=.env src/server.mjs
-npm test                    # 7 unit tests
+npm test                    # unit tests
 ```
 
 Docker: `docker build -t voronix-meta-bridge apps/meta-bridge`.
 Render: add a second Web Service with root directory `apps/meta-bridge`, start command `node src/server.mjs`,
 and the variables from `.env.example`. Meta needs a public **https** address.
+
+## Voice, photos, video
+
+Set `MEDIA_AI_KEY` (and optionally `MEDIA_AI_BASE_URL`, `TRANSCRIBE_MODEL`, `VISION_MODEL`) to turn this on.
+Any OpenAI-compatible API works. Without the key the bridge stays text-only.
+
+| Client sends | Bridge does | VoroniX receives |
+|---|---|---|
+| Voice note | downloads it, speech-to-text | `[Голосовое сообщение клиента]: <text>` |
+| Photo | downloads it, vision model describes it | `[Клиент прислал фото. На фото: <description>]` + caption |
+| Video | speech-to-text of the sound, plus up to 3 frames described (needs `ffmpeg`) | `[Клиент прислал видео; речь в видео: ...; в кадре: ...]` |
+
+Limits: `MAX_MEDIA_MB` (default 20; WhatsApp video max is 16 MB), up to 3 files per message.
+The Docker image includes `ffmpeg`; on a plain Node runtime video is understood by its sound only.
+If a file cannot be processed, the client gets a polite fallback and the AI never sees an error.
 
 ## Connect WhatsApp
 

@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { verifySignature, parseWebhook, extractReply, chunkText, makeDedupe } from '../src/lib.mjs';
+import {
+  verifySignature, parseWebhook, extractReply, chunkText, makeDedupe, composeInboundText, extForMime,
+} from '../src/lib.mjs';
 
 test('signature: valid and invalid', () => {
   const raw = Buffer.from('{"a":1}');
@@ -53,4 +55,48 @@ test('dedupe', () => {
   const d = makeDedupe();
   assert.equal(d('a'), false);
   assert.equal(d('a'), true);
+});
+
+test('parses WhatsApp voice, photo with caption and video', () => {
+  const mk = (m) => ({ object: 'whatsapp_business_account', entry: [{ changes: [{ value: {
+    metadata: { phone_number_id: '1' }, messages: [{ from: '2', id: 'x', ...m }] } }] }] });
+  const voice = parseWebhook(mk({ type: 'audio', audio: { id: 'A1', mime_type: 'audio/ogg; codecs=opus', voice: true } }))[0];
+  assert.deepEqual(voice.media, [{ kind: 'audio', id: 'A1', mime: 'audio/ogg; codecs=opus' }]);
+  const photo = parseWebhook(mk({ type: 'image', image: { id: 'I1', mime_type: 'image/jpeg', caption: 'Смотрите' } }))[0];
+  assert.equal(photo.text, 'Смотрите');
+  assert.equal(photo.media[0].kind, 'image');
+  assert.equal(parseWebhook(mk({ type: 'video', video: { id: 'V1', mime_type: 'video/mp4' } }))[0].media[0].kind, 'video');
+  assert.equal(parseWebhook(mk({ type: 'sticker', sticker: { id: 'S1' } }))[0].media, undefined);
+});
+
+test('parses Instagram attachments (image, audio, video; ignores shares)', () => {
+  const body = { object: 'instagram', entry: [{ id: '9', messaging: [{ sender: { id: 'u' }, recipient: { id: '9' }, message: { mid: 'm', attachments: [
+    { type: 'image', payload: { url: 'https://cdn/x.jpg' } },
+    { type: 'audio', payload: { url: 'https://cdn/a.mp4' } },
+    { type: 'share', payload: { url: 'https://instagram.com/p/1' } },
+  ] } }] }] };
+  const [m] = parseWebhook(body);
+  assert.equal(m.text, '');
+  assert.deepEqual(m.media, [{ kind: 'image', url: 'https://cdn/x.jpg' }, { kind: 'audio', url: 'https://cdn/a.mp4' }]);
+});
+
+test('composeInboundText builds one text for VoroniX', () => {
+  const t = composeInboundText('Сколько стоит ремонт?', [
+    { kind: 'audio', transcript: 'Здравствуйте, хочу записаться' },
+    { kind: 'image', description: 'Разбитый экран телефона' },
+    { kind: 'video', transcript: '', description: 'Стиральная машина течёт' },
+    { kind: 'image', failed: true },
+  ]);
+  assert.equal(t.split('\n').length, 5);
+  assert.match(t, /Голосовое сообщение клиента\]: Здравствуйте/);
+  assert.match(t, /На фото: Разбитый экран/);
+  assert.match(t, /в кадре: Стиральная машина/);
+  assert.match(t, /не удалось/);
+  assert.ok(t.endsWith('Сколько стоит ремонт?'));
+  assert.equal(composeInboundText('', []), '');
+});
+
+test('extForMime', () => {
+  assert.equal(extForMime('audio/ogg; codecs=opus', 'audio'), 'ogg');
+  assert.equal(extForMime(null, 'video'), 'mp4');
 });
