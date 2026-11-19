@@ -60,6 +60,12 @@ const Env = z.object({
   APP_URL: z.string().url().default("http://localhost:3000"),
   // Email (password reset links). Without a key, mails are only logged.
   RESEND_API_KEY: z.string().optional(),
+  // SMTP is required for self-service account verification.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_SECURE: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
   MAIL_FROM: z.string().default("VoroniX <no-reply@example.com>"),
   // Shown as "Help" on the sign-in page and in the app. Hidden when empty.
   SUPPORT_EMAIL: z.string().email().optional(),
@@ -96,6 +102,7 @@ export const config = {
   ALLOW_DEMO_RESET: parsed.data.ALLOW_DEMO_RESET ? parsed.data.ALLOW_DEMO_RESET === "true" : parsed.data.NODE_ENV !== "production",
   SQL_CONSOLE: (parsed.data.SQL_CONSOLE ?? (parsed.data.NODE_ENV === "production" ? "off" : "on")) === "on",
   APP_URL: parsed.data.APP_URL.replace(/\/+$/, ""),
+  SMTP_ENABLED: !!(parsed.data.SMTP_HOST && parsed.data.SMTP_USER && parsed.data.SMTP_PASSWORD),
   // VoroniX AI keeps its memory in this database, served by this app at /ai-data.
   VORONIX_DATA_URL: parsed.data.VORONIX_DATA_URL ?? `http://127.0.0.1:${parsed.data.PORT}/ai-data`,
   VORONIX_DATA_PUBLIC_URL: parsed.data.VORONIX_DATA_PUBLIC_URL ?? `${parsed.data.APP_URL.replace(/\/+$/, "")}/ai-data`,
