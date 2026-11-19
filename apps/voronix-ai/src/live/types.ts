@@ -112,6 +112,8 @@ export interface Dialog {
   started?: Said;
   /** The last question the AI answered, learned when the client says thank you. */
   answered?: Said;
+  /** How many messages in a row the AI did not understand. After the second one the chat goes to a person. */
+  unclear?: number;
 }
 
 /** Everything the AI remembers about one client. */

@@ -64,7 +64,8 @@ const T = {
   thanks: { ru: "Пожалуйста! Будем рады вас видеть.", kk: "Оқасы жоқ! Сізді күтеміз.", en: "You're welcome! See you soon." },
   complaint: { ru: "Мне очень жаль, что так вышло. Ваше сообщение передано менеджеру, он свяжется с вами в ближайшее время.", kk: "Осындай жағдай болғанына өте өкінемін. Хабарыңыз менеджерге жіберілді, ол жақын арада хабарласады.", en: "I'm really sorry about this. Your message is with our manager, who will contact you shortly." },
   ok: { ru: "Хорошо!", kk: "Жақсы!", en: "Great!" },
-  unknown: { ru: "Хороший вопрос. Уточню у администратора и сразу вам напишу.", kk: "Жақсы сұрақ. Әкімшіден нақтылап, сізге бірден жазамын.", en: "Good question. Let me check with the manager and get back to you." },
+  unknown: { ru: "Не совсем понял ваше сообщение. Я могу записать вас, подсказать цены, адрес и часы работы. Если у вас другой вопрос, я передал его администратору.", kk: "Хабарламаңызды толық түсінбедім. Жазып қоя аламын, бағасын, мекенжайын және жұмыс уақытын айта аламын. Басқа сұрағыңыз болса, әкімшіге жібердім.", en: "I didn't quite understand your message. I can book you in and tell you prices, the address and opening hours. If you have another question, I've passed it to the manager." },
+  handoffUnclear: { ru: "С этим вопросом я пока не могу помочь. Передал диалог администратору, он ответит вам лично.", kk: "Бұл сұрақ бойынша әзірге көмектесе алмаймын. Диалогты әкімшіге бердім, ол сізге жеке жауап береді.", en: "I can't help with this one yet. I've passed the chat to the manager, who will answer you personally." },
 };
 
 const chan = (m: ClientMemory) => (m.channel === "crm" ? {} : { channel: m.channel });
@@ -183,7 +184,7 @@ export function respond(ctx: AgentContext, client: ClientMemory, text: string, a
     if (d.answered) out.learn.push({ ...d.answered, why: "The client thanked for the answer, so the AI had understood the question" });
     out.actions.push({ type: "answer", text: "Said you're welcome" });
     d.answered = undefined;
-  } else if (labels.has("confirm")) {
+  } else if (labels.has("confirm") && d.stage !== "idle") {
     say(T.ok);
     out.actions.push({ type: "answer", text: "Acknowledged" });
   } else if (!labels.has("greeting") || labels.size > 1 || text.length > 25) {
@@ -196,9 +197,14 @@ export function respond(ctx: AgentContext, client: ClientMemory, text: string, a
     } else if (hit) {
       parts.push(inLang(hit.chunk, lang));
       out.actions.push({ type: "knowledge", text: `Answered from «${hit.entry.title}»` });
+    } else if ((d.unclear ?? 0) >= 1) {
+      say(T.handoffUnclear);
+      out.actions.push({ type: "handoff", text: "Did not understand twice in a row, handed over to the manager" });
+      out.queue.push({ kind: "unanswered", text, lang, guess: [...labels], score: top.score, client: mem.id, clientName: mem.name, ...chan(mem) });
     } else {
       say(T.unknown);
-      out.actions.push({ type: "unknown", text: "No answer in the knowledge yet, asked a person" });
+      d.unclear = 1;
+      out.actions.push({ type: "unknown", text: "Did not understand, asked a person" });
       out.queue.push({ kind: "unanswered", text, lang, guess: [...labels], score: top.score, client: mem.id, clientName: mem.name, ...chan(mem) });
     }
   } else {
@@ -207,6 +213,7 @@ export function respond(ctx: AgentContext, client: ClientMemory, text: string, a
   }
 
   if (out.unsure && !out.queue.length) out.queue.push({ kind: "unsure", text, lang, guess: [...labels], score: top.score, client: mem.id, clientName: mem.name, ...chan(mem) });
+  if (!out.actions.some((a) => a.type === "unknown")) d.unclear = 0;
   out.reply = parts.join(" ").replace(/\.\.(?!\.)/g, ".");
   mem = remember(mem, { at, from: "client", text, labels: [...labels] }, lang);
   mem = remember(mem, { at: at + 1, from: "ai", text: out.reply });
