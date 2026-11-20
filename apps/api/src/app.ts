@@ -7,6 +7,7 @@ import { pinoHttp } from "pino-http";
 import { config } from "./config.js";
 import { pool } from "./db/pool.js";
 import { errorHandler } from "./lib/errors.js";
+import { trackActions } from "./lib/voronixai-events.js";
 import { httpLogSerializers, logger } from "./lib/logger.js";
 import { sseHandler } from "./realtime/bus.js";
 import { catalogRouter } from "./routes/catalog.routes.js";
@@ -87,6 +88,8 @@ export function createApp() {
   app.use((req, res, next) => (req.path.startsWith("/api/import") ? next() : json(req, res, next)));
   app.set("trust proxy", 1);
   app.use(requireAuth);
+  // Every change is reported to VoroniX.ai when it is connected, so its console shows all actions, not only chats.
+  app.use("/api", trackActions);
   // Role checks for whole areas: integrations, SQL console and import are not for every role.
   app.use("/api/integrations", requirePermission("integrations:manage"));
   app.use("/api/sql", requirePermission("sql:console"));
