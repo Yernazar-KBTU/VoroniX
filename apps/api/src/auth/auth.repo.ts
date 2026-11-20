@@ -10,12 +10,13 @@ export interface User {
   business_id: string;
   email: string;
   full_name: string;
-  role: "owner" | "admin" | "staff";
+  role: "owner" | "admin" | "accountant" | "master" | "staff";
+  master_id?: string | null;
 }
 export type UserWithSecrets = User & { password_hash: string | null; google_sub: string | null; email_verified_at: Date | null };
 
 const BIZ = `b.business_id AS id, b.name, b.country, b.timezone, b.currency`;
-const USER = `u.user_id AS id, u.business_id, u.email, u.full_name, u.role`;
+const USER = `u.user_id AS id, u.business_id, u.email, u.full_name, u.role, u.master_id`;
 
 export async function getBusiness(db: Db, id: string): Promise<Business | null> {
   return (await db.query<Business>(`SELECT ${BIZ} FROM public.businesses b WHERE b.business_id = $1`, [id])).rows[0] ?? null;

@@ -18,6 +18,8 @@ import { importRouter } from "./routes/import.routes.js";
 import { integrationsRouter } from "./routes/integrations.routes.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { requireAuth } from "./auth/auth.service.js";
+import { requirePermission } from "./auth/rbac.js";
+import { paymentWebhookRouter } from "./routes/payment-webhook.routes.js";
 import { getEngine } from "./ai/runner.js";
 import { checkVoronix } from "./ai/voronix-ai.js";
 import { AI_DATA_PATH, aiData } from "./ai-data/index.js";
@@ -85,6 +87,10 @@ export function createApp() {
   app.use((req, res, next) => (req.path.startsWith("/api/import") ? next() : json(req, res, next)));
   app.set("trust proxy", 1);
   app.use(requireAuth);
+  // Role checks for whole areas: integrations, SQL console and import are not for every role.
+  app.use("/api/integrations", requirePermission("integrations:manage"));
+  app.use("/api/sql", requirePermission("sql:console"));
+  app.use("/api/import", requirePermission("import:manage"));
 
   app.get("/api/health", async (_req, res) => {
     const started = performance.now();

@@ -188,7 +188,7 @@ export async function seedDemo(db: pg.Pool = pool, today = wallClock()): Promise
   ];
 
   await tx(async (c) => {
-    await c.query(`TRUNCATE ai_runs, messages, conversations, payments, appointments, master_accounts, master_services, masters,
+    await c.query(`TRUNCATE ai_runs, messages, conversations, payment_events, payment_requests, payment_refunds, payments, appointments, master_accounts, master_services, masters,
       client_channels, clients, services, knowledge_entries, business_settings RESTART IDENTITY CASCADE`);
     await c.query(
       `INSERT INTO business_settings (id, name, business_type, city, address, hours, phone, tone, languages, prepay_percent, prepay_min_price_kzt, autopilot, catchphrase)

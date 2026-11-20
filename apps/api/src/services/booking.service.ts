@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import type { PoolClient as PgClient } from "pg";
+import { HttpError } from "../lib/errors.js";
 import { pool, tx, type Db } from "../db/pool.js";
 import { prepaymentFor, money } from "../domain/pricing.js";
 import { freeSlots, isSlotFree, nextDates, type FreeSlotsResult } from "../domain/scheduling.js";
@@ -150,17 +153,59 @@ export async function createPaymentLink(appointmentId: string, kind: Payment["ki
   return p;
 }
 
+
+/** Fingerprint of what a request asked for: the same key with another body must not reuse the old answer. */
+function requestHash(parts: Record<string, unknown>): string {
+  return createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+}
+
+/** The answer saved for this Idempotency-Key, or null when the key is new. */
+async function replayOf(c: PgClient, key: string, operation: "pay" | "refund", paymentId: string, hash: string): Promise<Payment | null> {
+  const { rows } = await c.query<{ operation: string; payment_id: string; request_hash: string; response: Payment }>(
+    `SELECT operation, payment_id, request_hash, response FROM payment_requests WHERE idempotency_key = $1`,
+    [key],
+  );
+  const seen = rows[0];
+  if (!seen) return null;
+  if (seen.operation !== operation || seen.payment_id !== paymentId || seen.request_hash !== hash) {
+    throw new HttpError(422, "This Idempotency-Key was already used for a different request.", "idempotency_conflict");
+  }
+  return seen.response;
+}
+
+async function rememberRequest(c: PgClient, key: string, operation: "pay" | "refund", paymentId: string, hash: string, response: Payment): Promise<void> {
+  await c.query(
+    `INSERT INTO payment_requests (idempotency_key, operation, payment_id, request_hash, response) VALUES ($1, $2, $3, $4, $5::jsonb)`,
+    [key, operation, paymentId, hash, JSON.stringify(response)],
+  );
+}
+
 /**
  * The client paid. One transaction: payment -> Paid, visit -> Confirmed,
  * the chat's deal -> Paid, and a note in the chat. Returns the chats to notify.
+ * With an idempotency key a repeated request returns the first answer and changes nothing.
  */
-export async function markPaid(paymentId: string, method = defaultPayMethod(), db = pool): Promise<{ payment: Payment; conversations: string[] }> {
+export async function markPaid(
+  paymentId: string,
+  method = defaultPayMethod(),
+  db = pool,
+  idempotencyKey?: string,
+): Promise<{ payment: Payment; conversations: string[] }> {
   let fresh = false;
   const result = await tx(async (c) => {
+    // FOR UPDATE: parallel requests for the same payment wait here, one after another.
     const p = await pays.getPayment(c, paymentId, true);
     if (!p) throw notFound("Payment");
-    if (p.status === "Paid") return { payment: p, conversations: [] as string[] };
+    const hash = requestHash({ op: "pay", paymentId, method });
+    if (idempotencyKey) {
+      const earlier = await replayOf(c, idempotencyKey, "pay", paymentId, hash);
+      if (earlier) return { payment: earlier, conversations: [] as string[] };
+    }
     if (p.status === "Refunded") throw conflict("This payment was refunded.");
+    if (p.status === "Paid") {
+      if (idempotencyKey) await rememberRequest(c, idempotencyKey, "pay", paymentId, hash, p);
+      return { payment: p, conversations: [] as string[] };
+    }
     const paid = (await pays.setPaymentStatus(c, paymentId, "Paid", method))!;
     fresh = true;
     await c.query(`UPDATE appointments SET status = 'Confirmed' WHERE appointment_id = $1 AND status = 'Booked'`, [p.appointment_id]);
@@ -169,6 +214,7 @@ export async function markPaid(paymentId: string, method = defaultPayMethod(), d
       [p.appointment_id],
     );
     for (const r of rows) await convs.addMessage(c, r.id, { from: "system", text: `Payment received: ${money(paid.amount_kzt)} (${method}). Booking confirmed.` });
+    if (idempotencyKey) await rememberRequest(c, idempotencyKey, "pay", paymentId, hash, paid);
     return { payment: paid, conversations: rows.map((r) => r.id) };
   }, db);
   bus.changed("payments", "appointments", "conversations");
@@ -176,11 +222,50 @@ export async function markPaid(paymentId: string, method = defaultPayMethod(), d
   return result;
 }
 
-export async function refund(paymentId: string, db = pool): Promise<Payment> {
-  const p = await pays.setPaymentStatus(db, paymentId, "Refunded");
-  if (!p) throw notFound("Payment");
+export interface RefundInput {
+  amount_kzt?: number; // without it the whole remaining amount is refunded
+  reason?: string;
+  by?: string; // id of the user who refunds
+  idempotencyKey?: string;
+}
+
+/**
+ * Refund. A Paid payment gets a row in payment_refunds (partial refunds allowed, never more than
+ * was paid, the database locks the payment row). A Pending payment was never paid, so it is
+ * simply cancelled, as before.
+ */
+export async function refund(paymentId: string, input: RefundInput = {}, db = pool): Promise<Payment> {
+  const result = await tx(async (c) => {
+    const p = await pays.getPayment(c, paymentId, true);
+    if (!p) throw notFound("Payment");
+    const hash = requestHash({ op: "refund", paymentId, amount: input.amount_kzt ?? null, reason: input.reason ?? null });
+    if (input.idempotencyKey) {
+      const earlier = await replayOf(c, input.idempotencyKey, "refund", paymentId, hash);
+      if (earlier) return earlier;
+    }
+    let out: Payment;
+    if (p.status === "Pending") {
+      out = (await pays.setPaymentStatus(c, paymentId, "Refunded"))!;
+    } else {
+      const { rows } = await c.query<{ done: number }>(
+        `SELECT COALESCE(SUM(amount_kzt), 0)::int AS done FROM payment_refunds WHERE payment_id = $1`,
+        [paymentId],
+      );
+      const left = Number(p.amount_kzt) - (rows[0]?.done ?? 0);
+      if (p.status === "Refunded" || left <= 0) throw conflict("This payment is already fully refunded.");
+      const amount = input.amount_kzt ?? left;
+      if (amount > left) throw conflict(`Only ${left} can still be refunded for this payment.`);
+      await c.query(
+        `INSERT INTO payment_refunds (payment_id, amount_kzt, reason, refunded_by) VALUES ($1, $2, $3, $4)`,
+        [paymentId, amount, input.reason ?? "Refund", input.by ?? "system"],
+      );
+      out = (await pays.getPayment(c, paymentId, false))!; // the database closed it as Refunded if the sum is complete
+    }
+    if (input.idempotencyKey) await rememberRequest(c, input.idempotencyKey, "refund", paymentId, hash, out);
+    return out;
+  }, db);
   bus.changed("payments");
-  return p;
+  return result;
 }
 
 /** Full payment taken at the desk. */
