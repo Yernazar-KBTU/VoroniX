@@ -34,6 +34,12 @@ services:
           envVarKey: VORONIX_AI_KEY
       - key: INTEGRATION_ENCRYPTION_KEY
         generateValue: true
+      # Third AI, VoroniX.ai (its own Render service from github.com/Yernazar-KBTU/VoroniX.ai):
+      # its https address and the VORONIX_CRM_KEY that Render generated for it.
+      - key: VORONIXAI_URL
+        sync: false
+      - key: VORONIXAI_KEY
+        sync: false
 
   - type: web
     name: voronix-ai

@@ -4,6 +4,7 @@ import { notFound } from "../lib/errors.js";
 import { bus } from "../realtime/bus.js";
 import * as catalog from "../repositories/catalog.repo.js";
 import { claudeAvailable } from "../ai/runner.js";
+import { voronixAiAvailable } from "../ai/voronixai-agent.js";
 import { getSettings, saveSettings } from "../repositories/settings.repo.js";
 import { MasterBody, ServiceBody, ServiceCode, SettingsBody } from "./schemas.js";
 import { requireTenant } from "../tenancy/context.js";
@@ -19,6 +20,8 @@ catalogRouter.put("/settings", async (req, res) => {
   const body = SettingsBody.parse(req.body);
   if (body.ai_engine === "claude" && !claudeAvailable())
     return void res.status(400).json({ error: "claude_key_missing", message: "Connect Claude with an Anthropic key on the Integrations page first." });
+  if (body.ai_engine === "voronixai" && !voronixAiAvailable())
+    return void res.status(400).json({ error: "voronixai_missing", message: "VoroniX.ai is not connected: set VORONIXAI_URL and VORONIXAI_KEY on the server." });
   const saved = await saveSettings(pool, body);
   await renameBusiness(requireTenant(), saved.name);
   bus.changed("settings");

@@ -27,7 +27,7 @@ CREATE TABLE users (
   -- NULL for people who only sign in with Google.
   password_hash     TEXT,
   google_sub        VARCHAR(255) UNIQUE,
-  -- Set when the person proved they own the address: a reset link or Google.
+  -- Set when the person proved they own the address: signup, reset, or Google.
   email_verified_at TIMESTAMPTZ,
   role              VARCHAR(10)  NOT NULL DEFAULT 'owner' CHECK (role IN ('owner', 'admin', 'staff')),
   created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
