@@ -1,6 +1,29 @@
 // Public pages (landing, Terms, Privacy): the phone menu, the contact
-// address from the server, and a shortcut for people who are signed in.
+// address from the server, a shortcut for people who are signed in, and on the
+// landing page the starfield and the scroll effects.
 import "./site.css";
+import { initPick } from "./pick.js";
+import { initScene } from "./scene.js";
+import { startSky } from "./sky.js";
+
+// Content stays visible without scripts; the scroll fade-ins only switch on once this runs.
+document.documentElement.classList.add("js");
+
+// Landing page: the rocket-launch intro plays once per visit. It is dropped for repeat visits, anchors,
+// reduced motion and the Skip button; the page itself is already complete underneath.
+const root = document.documentElement;
+if (root.classList.contains("has-intro")) {
+  const end = () => root.classList.remove("has-intro");
+  let seen = false;
+  try { seen = sessionStorage.getItem("vx-intro") === "1"; } catch { /* storage blocked: play it */ }
+  if (seen || matchMedia("(prefers-reduced-motion: reduce)").matches || location.hash.length > 1) end();
+  else {
+    try { sessionStorage.setItem("vx-intro", "1"); } catch { /* may play again next time */ }
+    document.querySelector(".intro-skip")?.addEventListener("click", end);
+    document.getElementById("intro")?.addEventListener("animationend", (e) => { if (e.animationName === "vxEnd") end(); });
+    setTimeout(end, 7500);
+  }
+}
 
 const $$ = (s) => document.querySelectorAll(s);
 
@@ -23,6 +46,12 @@ $$(".nav-links a").forEach((a) => a.addEventListener("click", () => setMenu(fals
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") setMenu(false);
 });
+
+if (document.body.classList.contains("landing")) {
+  startSky(document.getElementById("sky"));
+  initScene();
+  initPick();
+}
 
 $$("[data-year]").forEach((el) => (el.textContent = String(new Date().getFullYear())));
 
@@ -54,7 +83,7 @@ fetch("/api/auth/me")
     if (!r.ok) return;
     $$("[data-start]").forEach((a) => {
       a.href = "/app";
-      a.textContent = "Open VoroniX";
+      (a.querySelector("[data-label]") ?? a).textContent = "Open VoroniX";
     });
     $$("[data-signin]").forEach((a) => (a.hidden = true));
   })
