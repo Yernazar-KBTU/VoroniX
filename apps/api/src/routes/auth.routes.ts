@@ -43,8 +43,13 @@ authRouter.get("/auth/config", (_req, res) => {
 });
 
 authRouter.post("/auth/register", async (req, res) => {
-  const out = await auth.register(res, RegisterBody.parse(req.body), req.get("user-agent") ?? "");
-  res.status(201).json(out);
+  await auth.register(RegisterBody.parse(req.body), req.ip ?? "");
+  res.status(202).json({ ok: true });
+});
+
+authRouter.post("/auth/register/verify", async (req, res) => {
+  const body = TokenBody.parse(req.body);
+  res.status(201).json(await auth.verifySignup(res, body.token, req.get("user-agent") ?? ""));
 });
 
 authRouter.post("/auth/login", async (req, res) => {

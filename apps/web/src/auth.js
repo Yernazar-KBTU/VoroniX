@@ -14,6 +14,9 @@ const ERRORS = {
   google_cancelled: "Google sign-in was cancelled.",
   google_unverified: "This Google account has no verified email address.",
   google_off: "Google sign-in is not available yet. Use your email instead.",
+  email_unavailable: "Email verification is temporarily unavailable. Please try again later.",
+  email_send_failed: "We could not send the verification email. Check your address and try again.",
+  verification_link_invalid: "This verification link has expired or was already used. Please sign up again.",
 };
 
 function guessTimezone() {
@@ -132,6 +135,15 @@ const FORMS = {
   <button class="auth-go" type="button" data-mode-btn="login">Back to sign in</button>
 </div>`,
 
+  verify_sent: (_cfg, email) => `<div class="auth-card" id="authForm">
+  <div class="auth-badge" aria-hidden="true">✉️</div>
+  <h2>Verify your email</h2>
+  <p class="sub">We sent a verification link to <b>${esc(email)}</b>. Open it to create your workspace. The link expires in 24 hours.</p>
+  <button class="auth-go" type="button" data-mode-btn="login">Back to sign in</button>
+</div>`,
+
+  verifying: () => `<div class="auth-card" id="authForm"><div class="auth-badge" aria-hidden="true">✉️</div><h2>Verifying your email…</h2><p class="sub">Please wait while we create your workspace.</p></div>`,
+
   reset: () => `<form class="auth-card" id="authForm" data-mode="reset" novalidate>
   <h2>Set a new password</h2>
   <p class="sub">Choose a password you do not use anywhere else. Other devices will be signed out.</p>
@@ -164,6 +176,7 @@ function strength(pw) {
 function fromHash() {
   const h = location.hash.slice(1);
   if (h.startsWith("reset=")) return { mode: "reset", token: h.slice(6) };
+  if (h.startsWith("verify=")) return { mode: "verifying", token: h.slice(7) };
   if (h === "signup") return { mode: "register" };
   if (h === "forgot") return { mode: "forgot" };
   const err = /error=(\w+)/.exec(h)?.[1];
@@ -205,7 +218,7 @@ export function showAuth() {
     };
 
     // Draw at once, then add what the server offers (Google, help address) when it answers.
-    draw(start.mode === "reset" ? "reset" : start.mode);
+    draw(start.mode === "reset" ? "reset" : start.mode === "verifying" ? "verifying" : start.mode);
     if (start.error) showError(start.error);
     api
       .get("/auth/config")
@@ -227,6 +240,14 @@ export function showAuth() {
         .post("/auth/reset/check", { token })
         .then((r) => !r.valid && draw("expired"))
         .catch(() => {});
+    if (start.mode === "verifying")
+      api.post("/auth/register/verify", { token: start.token })
+        .then((out) => done(out))
+        .catch((ex) => {
+          history.replaceState(null, "", "#signup");
+          draw("register");
+          showError(ex.status ? ex.message : "Cannot reach the server. Check your connection and try again.");
+        });
 
     const timer = setInterval(() => {
       const el = root.querySelector("#authStory");
@@ -303,11 +324,13 @@ export function showAuth() {
       const btn = form.querySelector(".auth-go");
       const label = btn.textContent;
       btn.disabled = true;
-      btn.textContent = { login: "Signing in…", register: "Creating your workspace…", forgot: "Sending…", reset: "Saving…" }[mode];
+      btn.textContent = { login: "Signing in…", register: "Sending verification…", forgot: "Sending…", reset: "Saving…" }[mode];
       try {
         if (mode === "login") done(await api.post("/auth/login", { email: v("a_email"), password: pw, remember: root.querySelector("#a_remember").checked }));
-        else if (mode === "register")
-          done(await api.post("/auth/register", { business_name: v("a_biz"), business_type: v("a_type"), full_name: v("a_name"), email: v("a_email"), password: pw, timezone: v("a_tz"), currency: v("a_cur") }));
+        else if (mode === "register") {
+          await api.post("/auth/register", { business_name: v("a_biz"), business_type: v("a_type"), full_name: v("a_name"), email: v("a_email"), password: pw, timezone: v("a_tz"), currency: v("a_cur") });
+          draw("verify_sent", v("a_email"));
+        }
         else if (mode === "forgot") {
           await api.post("/auth/forgot", { email: v("a_email") });
           history.replaceState(null, "", "#signin");
