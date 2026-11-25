@@ -5,6 +5,7 @@ import { bus } from "../realtime/bus.js";
 import * as clients from "../repositories/clients.repo.js";
 import * as convs from "../repositories/conversations.repo.js";
 import { getSettings } from "../repositories/settings.repo.js";
+import { shouldMoveToSpam } from "./spam.js";
 
 /** Adds a message to a chat and tells listeners (web UI, messenger adapters). */
 export async function pushMessage(convId: string, m: { from: ChatMessage["from"]; text: string; payment_id?: string | null }, db: Db = pool): Promise<ChatMessage> {
@@ -46,6 +47,10 @@ export async function receiveInbound(input: { messenger: Messenger; external_use
   await pushMessage(id, { from: "client", text: input.text }, db);
   const conv = await getOrThrow(id, db);
   if (conv.stage === "New" && conv.messages.length > 1) await convs.patchConversation(db, id, { stage: "In dialog" });
+  if (shouldMoveToSpam(conv)) {
+    await convs.patchConversation(db, id, { stage: "Spam", ai_enabled: false });
+    await pushMessage(id, { from: "system", text: "Moved to the Spam stage: nonsense or spam messages in a row. AI autopilot is off; change the stage to bring the chat back." }, db);
+  }
   return { conversation: await getOrThrow(id, db), created };
 }
 
