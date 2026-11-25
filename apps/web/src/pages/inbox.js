@@ -9,19 +9,22 @@ export const inbox = {
   head: () => head("Chats", "Telegram, WhatsApp and Instagram in one place. The AI answers from your database.", `<button class="btn create" data-act="newConv">+ New chat</button>`),
   body() {
     const ALL = vals("conversations").sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
-    // The tab follows the open chat: when a chat leaves Spam, the tab switches with it.
+    // The tab follows the open chat: when its stage changes, the tab switches with it.
     const open = ui.curConv && S.conversations[ui.curConv];
-    if (open) ui.inboxTab = open.stage === "Spam" ? "spam" : "inbox";
-    const spamCount = ALL.filter((x) => x.stage === "Spam").length;
-    const C = ALL.filter((x) => (ui.inboxTab === "spam") === (x.stage === "Spam"));
-    const tabs = `<div class="seg" style="margin:8px"><button data-inboxtab="inbox" class="${ui.inboxTab === "spam" ? "" : "on"}">Inbox</button><button data-inboxtab="spam" class="${ui.inboxTab === "spam" ? "on" : ""}">Spam${spamCount ? ` (${spamCount})` : ""}</button></div>`;
+    if (open) {
+      const st = open.stage || "New";
+      if (!(ui.inboxTab === "all" ? st !== "Spam" : st === ui.inboxTab)) ui.inboxTab = st;
+    }
+    const countOf = (s) => ALL.filter((x) => (x.stage || "New") === s).length;
+    const C = ALL.filter((x) => (ui.inboxTab === "all" ? x.stage !== "Spam" : (x.stage || "New") === ui.inboxTab));
+    const tabs = `<div style="display:flex;flex-wrap:wrap;gap:6px;padding:10px">${[["all", "All", ALL.filter((x) => x.stage !== "Spam").length], ...STAGES.map(([s]) => [s, s, countOf(s)])].map(([v, label, n]) => `<button class="btn sm ${ui.inboxTab === v ? "primary" : ""}" data-inboxtab="${v}">${esc(label)}${n ? ` (${n})` : ""}</button>`).join("")}</div>`;
     if (!ui.curConv || !S.conversations[ui.curConv]) ui.curConv = innerWidth > 760 && C[0] ? C[0].id : null;
     const c = ui.curConv ? { id: ui.curConv, ...S.conversations[ui.curConv] } : null;
     const list =
       C.map((x) => {
         const last = (x.messages || []).slice(-1)[0];
         return `<div class="conv ${x.id === ui.curConv ? "on" : ""}" data-conv="${x.id}">${msIcon(x.messenger)}<div class="grow"><div class="nm"><span class="ell">${esc(x.contact)}</span>${x.needs_human ? '<span class="pill human">Human</span>' : ""}</div><div class="last ell">${esc(last ? (last.from === "pay" ? "Payment link" : last.text) : "")}</div><div style="display:flex;gap:6px;margin-top:4px">${pill(x.stage || "New", "ai")}</div></div><span class="muted small">${fmtAt(x.updated_at)}</span></div>`;
-      }).join("") || (ui.inboxTab === "spam" ? `<div class="empty"><b>No spam chats</b>Chats with nonsense or advertising appear here.</div>` : `<div class="empty"><b>No chats yet</b>Press “New chat” to simulate a client writing from a messenger.</div>`);
+      }).join("") || (ui.inboxTab !== "all" ? `<div class="empty"><b>No chats in “${esc(ui.inboxTab)}”</b>A chat appears here when its deal stage changes.</div>` : `<div class="empty"><b>No chats yet</b>Press “New chat” to simulate a client writing from a messenger.</div>`);
     let chat = `<div class="chat"><div class="empty" style="margin:auto"><b>Pick a chat</b>Or start a new one and write as the client to see the AI work.</div></div>`;
     let info = "";
     if (c) {

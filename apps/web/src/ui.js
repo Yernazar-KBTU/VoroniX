@@ -9,7 +9,7 @@ export const ui = {
   route: "dashboard",
   curConv: null,
   composeAs: "client",
-  inboxTab: "inbox",
+  inboxTab: "all",
   gq: "",
 };
 
