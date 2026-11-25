@@ -3,7 +3,7 @@ import { S, act, cli, convClientAppts, mst, svc, vals } from "../store.js";
 import { ui } from "../ui.js";
 import { $, addDays, businessCurrency, esc, fmtAt, head, money, msIcon, nowLocal, parseDT, pill } from "../util.js";
 
-export const STAGES = [["New", "#3fa9f5"], ["In dialog", "#7b4dff"], ["Booked", "#f2a516"], ["Paid", "#4fae33"], ["Visited", "#2fb8a7"], ["Lost", "#9aa1b8"]];
+export const STAGES = [["New", "#3fa9f5"], ["In dialog", "#7b4dff"], ["Booked", "#f2a516"], ["Paid", "#4fae33"], ["Visited", "#2fb8a7"], ["Lost", "#9aa1b8"], ["Spam", "#d9534f"]];
 
 export const inbox = {
   head: () => head("Chats", "Telegram, WhatsApp and Instagram in one place. The AI answers from your database.", `<button class="btn create" data-act="newConv">+ New chat</button>`),
