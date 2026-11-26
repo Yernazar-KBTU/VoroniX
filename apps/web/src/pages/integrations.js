@@ -1,22 +1,22 @@
 import { api } from "../api.js";
 import { meta } from "../store.js";
 import { render } from "../ui.js";
-import { $, esc, fmtAt, head, toast } from "../util.js";
+import { $, GLYPH, esc, fmtAt, head, toast } from "../util.js";
 
 // Integrations: one card per outside service, a side panel to connect it.
 // The list comes from GET /api/integrations; tokens the owner types are
 // sent once and only their last four characters ever come back.
 
 const LOGO = {
-  telegram: ["#2aa3e0", '<path d="M21 4 3 11l6 2 2 6 3-4 5 4z" fill="#fff"/>'],
-  whatsapp: ["#25b860", '<path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3z" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M9 8c0 4 3 7 7 7l1-2-2-1-1 1c-1-.5-2-1.5-2.5-2.5l1-1-1-2z" fill="#fff"/>'],
-  instagram: ["#d6338a", '<rect x="5" y="5" width="14" height="14" rx="4" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="16.3" cy="7.7" r="1" fill="#fff"/>'],
-  claude: ["#d97757", '<path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>'],
-  kaspi: ["#f14635", '<rect x="5" y="7" width="14" height="10" rx="2" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M5 11h14" stroke="#fff" stroke-width="1.8"/>'],
-  google_calendar: ["#4285f4", '<rect x="4" y="5" width="16" height="15" rx="2" fill="#fff"/><path d="M4 9h16" stroke="#4285f4" stroke-width="2"/><text x="12" y="18" text-anchor="middle" font-size="7" font-weight="700" fill="#4285f4" font-family="Arial">31</text>'],
-  webhook: ["#6a5cff", '<circle cx="7" cy="16" r="2.4" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="17" cy="16" r="2.4" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="7" r="2.4" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M11 9.2 8 14M13 9.2l3 4.8M9.4 16h5.2" stroke="#fff" stroke-width="1.8"/>'],
+  telegram: ["#229ed9", GLYPH.Telegram],
+  whatsapp: ["#1fa855", GLYPH.WhatsApp],
+  instagram: ["#c13584", GLYPH.Instagram],
+  claude: ["#c96442", '<path d="M12 4v16M4 12h16M6.3 6.3l11.4 11.4M17.7 6.3 6.3 17.7"/>'],
+  kaspi: ["#e3342f", '<rect x="3.5" y="6" width="17" height="12" rx="2.5"/><path d="M3.5 10h17M7 14.5h4"/>'],
+  google_calendar: ["#3b78e7", '<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M8.5 3.5v3M15.5 3.5v3M8.5 13h2M13.5 13h2M8.5 16.5h2"/>'],
+  webhook: ["#5b5bd6", '<circle cx="6.5" cy="16.5" r="2.5"/><circle cx="17.5" cy="16.5" r="2.5"/><circle cx="12" cy="6.5" r="2.5"/><path d="m10.8 8.7-3 5.4M13.2 8.7l3 5.4M9 16.5h6"/>'],
 };
-const logo = (id) => `<span class="ilogo" style="background:${LOGO[id][0]}"><svg viewBox="0 0 24 24">${LOGO[id][1]}</svg></span>`;
+const logo = (id) => `<span class="ilogo" style="color:${LOGO[id][0]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LOGO[id][1]}</svg></span>`;
 const STATUS = { connected: ["Connected", "Paid"], error: ["Error", "No-show"], off: ["Not connected", "Cancelled"] };
 const statusPill = (s) => `<span class="pill ${STATUS[s][1]}">${STATUS[s][0]}</span>`;
 

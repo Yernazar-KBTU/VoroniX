@@ -22,8 +22,8 @@ export const clients = {
     });
     if (ui.gq) L = L.filter((c) => `${c.display_name} ${c.phone} ${c.id}`.toLowerCase().includes(ui.gq));
     L.sort((a, b) => b.spent - a.spent);
-    return `<div class="panel tw">${ui.gq ? `<div class="ph"><span>Search: <b>${esc(ui.gq)}</b> · ${L.length} found</span></div>` : ""}<table class="t"><thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Messengers</th><th>Visits</th><th>No-shows</th><th>Last visit</th><th style="text-align:right">Spent</th></tr></thead><tbody>
-  ${L.map((c) => `<tr class="click" data-client="${c.id}"><td class="code">${c.id}</td><td><b>${esc(c.display_name)}</b></td><td>${esc(c.phone || "")}</td><td>${c.ch.map((x) => msIcon(x.messenger)).join(" ")}</td><td>${c.visits}</td><td>${c.ns ? `<span class="pill No-show">${c.ns}</span>` : "0"}</td><td>${esc(c.last.slice(0, 10) || "Never")}</td><td style="text-align:right">${money(c.spent)}</td></tr>`).join("") || `<tr><td colspan="8"><div class="empty"><b>No clients found</b>Clients are created by the AI from chats, or with “Add client”.</div></td></tr>`}</tbody></table></div>`;
+    return `<div class="panel tw">${ui.gq ? `<div class="ph"><span>Search: <b>${esc(ui.gq)}</b> · ${L.length} found</span></div>` : ""}<table class="t"><thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Messengers</th><th class="num">Visits</th><th class="num">No-shows</th><th>Last visit</th><th style="text-align:right">Spent</th></tr></thead><tbody>
+  ${L.map((c) => `<tr class="click" data-client="${c.id}"><td class="code">${c.id}</td><td><b>${esc(c.display_name)}</b></td><td>${esc(c.phone || "")}</td><td>${c.ch.map((x) => msIcon(x.messenger)).join(" ")}</td><td class="num">${c.visits}</td><td class="num${c.ns ? " bad" : ""}">${c.ns}</td><td>${esc(c.last.slice(0, 10) || "Never")}</td><td style="text-align:right">${money(c.spent)}</td></tr>`).join("") || `<tr><td colspan="8"><div class="empty"><b>No clients found</b>Clients are created by the AI from chats, or with “Add client”.</div></td></tr>`}</tbody></table></div>`;
   },
 };
 
