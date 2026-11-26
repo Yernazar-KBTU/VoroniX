@@ -1,4 +1,5 @@
 // Formatting and small DOM helpers shared by every page.
+import { t } from "./i18n.js";
 
 export const $ = (s) => document.querySelector(s);
 export const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -62,7 +63,7 @@ export const fmtAt = (iso) => {
 let toastTimer;
 export function toast(text) {
   const el = $("#toast");
-  el.textContent = text;
+  el.textContent = t(text);
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (el.hidden = true), 3200);

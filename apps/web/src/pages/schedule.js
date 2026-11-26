@@ -3,8 +3,9 @@
 import { api } from "../api.js";
 import { S, act, active, cli, svc, vals } from "../store.js";
 import { render } from "../ui.js";
-import { $, DOW, addDays, esc, head, money, msIcon, nowLocal, pad, parseDT, toMin, ymd } from "../util.js";
+import { $, addDays, esc, head, money, msIcon, nowLocal, pad, parseDT, toMin, ymd } from "../util.js";
 import { STAGES } from "./inbox.js";
+import { getLanguage, t } from "../i18n.js";
 
 export const pipeline = {
   head: () => head("Sales funnel", "Every chat is a deal. The AI moves cards when it books and when the client pays. Drag to move by hand.", `<button class="btn create" data-act="newConv">+ New chat</button>`),
@@ -84,7 +85,11 @@ export const calendar = {
       const mm = now.getHours() * 60 + now.getMinutes();
       if (mm >= start && mm <= end) nl = `<div class="nowline" style="top:${HH + ((mm - start) / 30) * RH}px"></div>`;
     }
-    return `<div class="panel tw"><div style="position:relative;min-width:${56 + M.length * 150}px">${html}${evs}${nl}</div></div><p class="muted small" style="color:var(--chrome-dim)">${DOW[day.getDay()]} ${calDay} · ${A.filter(active).length} bookings. Click an empty cell to book, click a booking to change it.</p>`;
+    const locale = getLanguage() === "kk" ? "kk-KZ" : getLanguage();
+    const dateLabel = new Intl.DateTimeFormat(locale, { weekday: "long", year: "numeric", month: "long", day: "numeric" }).format(day);
+    const bookingCount = A.filter(active).length;
+    const countLabel = getLanguage() === "ru" ? `${bookingCount} ${t("bookings")}` : getLanguage() === "kk" ? `${bookingCount} ${t("bookings")}` : `${bookingCount} bookings`;
+    return `<div class="panel tw"><div style="position:relative;min-width:${56 + M.length * 150}px">${html}${evs}${nl}</div></div><p class="muted small" style="color:var(--chrome-dim)">${dateLabel} · ${countLabel}. ${t("Click an empty cell to book, click a booking to change it.")}</p>`;
   },
   after() {
     const p = $("#calPick");

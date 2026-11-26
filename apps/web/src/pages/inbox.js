@@ -2,6 +2,7 @@ import { api } from "../api.js";
 import { S, act, cli, convClientAppts, mst, svc, vals } from "../store.js";
 import { ui } from "../ui.js";
 import { $, addDays, businessCurrency, esc, fmtAt, head, money, msIcon, nowLocal, parseDT, pill } from "../util.js";
+import { t } from "../i18n.js";
 
 export const STAGES = [["New", "#3fa9f5"], ["In dialog", "#7b4dff"], ["Booked", "#f2a516"], ["Paid", "#4fae33"], ["Visited", "#2fb8a7"], ["Lost", "#9aa1b8"]];
 
@@ -33,7 +34,7 @@ export const inbox = {
       <label class="switch" title="When on, the AI answers every client message"><input type="checkbox" data-aitoggle="${c.id}" ${c.ai_enabled ? "checked" : ""}> AI autopilot</label>
       <button class="btn ai sm" data-aireply="${c.id}">Ask AI to reply</button></div>
       <div class="msgs" id="msgs">${msgs}<div id="typing"></div></div>
-      <div class="composer"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="seg"><button data-as="client" class="${ui.composeAs === "client" ? "on" : ""}">Write as client</button><button data-as="admin" class="${ui.composeAs === "admin" ? "on" : ""}">Write as administrator</button></div><span class="muted small">${ui.composeAs === "client" ? "Simulates a message from " + esc(c.messenger) : "Your reply goes to the client"}</span></div>
+      <div class="composer"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="seg"><button data-as="client" class="${ui.composeAs === "client" ? "on" : ""}">Write as client</button><button data-as="admin" class="${ui.composeAs === "admin" ? "on" : ""}">Write as administrator</button></div><span class="muted small">${ui.composeAs === "client" ? t("Simulates a message from") + " " + esc(c.messenger) : t("Your reply goes to the client")}</span></div>
       <form class="row" id="sendForm"><textarea id="composeText" rows="1" aria-label="Message" placeholder="${ui.composeAs === "client" ? (businessCurrency() === "KZT" ? "e.g. здравствуйте можно завтра после 6 подстричься?" : "e.g. Hi, can I book for tomorrow after 6?") : "Type a reply"}"></textarea><button class="btn primary" type="submit">Send</button></form></div></div>`;
       const cc = c.client_id ? cli(c.client_id) : null;
       const ap = convClientAppts(c).filter((a) => parseDT(a.start_datetime) >= addDays(nowLocal(), -1));

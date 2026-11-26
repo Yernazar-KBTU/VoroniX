@@ -3,6 +3,7 @@
 import { S, biz, cli, mastersFor, mst, prepayFor, revenueOf, servicesOf, svc, vals, active } from "../store.js";
 import { render, ui } from "../ui.js";
 import { DOW, esc, head, money, msIcon, nowLocal, pill, ymd } from "../util.js";
+import { t } from "../i18n.js";
 
 export const clients = {
   head: () => head("Clients", "", `<button class="btn ghost" data-act="import">Import</button><button class="btn create" data-act="newClient">+ Add client</button>`),
@@ -36,7 +37,7 @@ export const services = {
 };
 
 export const staff = {
-  head: () => head((biz().staff_label || "Master") + "s", "", `<button class="btn ghost" data-act="import">Import</button><button class="btn create" data-act="newMaster">+ Add ${esc((biz().staff_label || "master").toLowerCase())}</button>`),
+  head: () => head((biz().staff_label || "Master") + "s", "", `<button class="btn ghost" data-act="import">Import</button><button class="btn create" data-act="newMaster">+ ${t("Add")} ${esc(biz().staff_label ? biz().staff_label.toLowerCase() : t("master").toLowerCase())}</button>`),
   body() {
     const today = ymd(nowLocal());
     return `<div class="panel tw"><table class="t"><thead><tr><th>ID</th><th>Name</th><th>Specialization</th><th>Services</th><th>Working days</th><th>Hours</th><th class="num">Today</th></tr></thead><tbody>${vals("masters")
@@ -55,7 +56,7 @@ export const payments = {
     let P = vals("payments").sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
     if (payFilter !== "All") P = P.filter((p) => p.status === payFilter);
     const tot = P.filter((p) => p.status === "Paid").reduce((s, p) => s + p.amount_kzt, 0);
-    return `<div class="panel tw"><div class="ph"><h3>${P.length} payments</h3><span class="grow"></span><span>Paid total: <b>${money(tot)}</b></span></div><table class="t"><thead><tr><th>ID</th><th>Created</th><th>Client</th><th>Service</th><th>Type</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th><th></th></tr></thead><tbody>${
+    return `<div class="panel tw"><div class="ph"><h3>${P.length} ${t("payments")}</h3><span class="grow"></span><span>${t("Paid total:")} <b>${money(tot)}</b></span></div><table class="t"><thead><tr><th>ID</th><th>Created</th><th>Client</th><th>Service</th><th>Type</th><th>Method</th><th style="text-align:right">Amount</th><th>Status</th><th></th></tr></thead><tbody>${
       P.slice(0, 300)
         .map((p) => {
           const a = S.appointments[p.appointment_id] || {};

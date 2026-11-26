@@ -26,6 +26,9 @@ body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;bac
   radial-gradient(70vw 46vh at 50% 118%,rgba(60,48,190,.06),transparent 70%)}
 main,.foot{position:relative;z-index:1}
 [hidden]{display:none!important}
+.language-control{display:inline-flex;align-items:center;gap:5px;color:var(--dim);font-size:12px;white-space:nowrap}
+.language-control select{border:1px solid var(--line2);border-radius:8px;background:rgba(255,255,255,.06);color:var(--ink);padding:5px 7px;cursor:pointer}
+.language-control option{color:#172033;background:#fff}
 a{color:inherit}
 svg{display:block}
 h1,h2,h3{text-wrap:balance}

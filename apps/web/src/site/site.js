@@ -5,9 +5,16 @@ import "./site.css";
 import { initPick } from "./pick.js";
 import { initScene } from "./scene.js";
 import { startSky } from "./sky.js";
+import { initLanguageControl, languageControl, localize, t } from "../i18n.js";
 
 // Content stays visible without scripts; the scroll fade-ins only switch on once this runs.
 document.documentElement.classList.add("js");
+const languageHost = document.querySelector(".nav-cta");
+if (languageHost) {
+  languageHost.insertAdjacentHTML("afterbegin", languageControl());
+  initLanguageControl(languageHost);
+}
+localize(document);
 
 // Landing page: the rocket-launch intro plays once per visit. It is dropped for repeat visits, anchors,
 // reduced motion and the Skip button; the page itself is already complete underneath.
@@ -83,7 +90,7 @@ fetch("/api/auth/me")
     if (!r.ok) return;
     $$("[data-start]").forEach((a) => {
       a.href = "/app";
-      (a.querySelector("[data-label]") ?? a).textContent = "Open VoroniX";
+      (a.querySelector("[data-label]") ?? a).textContent = t("Open VoroniX");
     });
     $$("[data-signin]").forEach((a) => (a.hidden = true));
   })

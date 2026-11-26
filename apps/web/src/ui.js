@@ -2,7 +2,8 @@
 
 import { PAGES } from "./pages/index.js";
 import { S, aiBusy, biz, meta, vals } from "./store.js";
-import { $, DOW, businessZone, esc, hm, nowLocal } from "./util.js";
+import { $, businessZone, esc, hm, nowLocal } from "./util.js";
+import { getLanguage, localize, t } from "./i18n.js";
 
 /** UI state that survives re-renders. */
 export const ui = {
@@ -55,12 +56,12 @@ function renderRail() {
   const needs = vals("conversations").filter((c) => c.needs_human || (c.messages || []).slice(-1)[0]?.from === "client").length;
   $("#rail").innerHTML = NAV.map(
     ([group, items]) =>
-      `<div class="grp">${group}</div>` +
+      `<div class="grp">${t(group)}</div>` +
       items
         .filter(([k]) => canSee(k))
         .map(([k, l]) => {
           const on = ui.route === k;
-          return `<button type="button" data-go="${k}" class="${on ? "on" : ""}" title="${l}" aria-label="${l}"${on ? ' aria-current="page"' : ""}>${icon(k)}<span class="lbl">${l}</span>${k === "inbox" && needs ? `<span class="badge" aria-label="${needs} waiting">${needs}</span>` : ""}</button>`;
+          return `<button type="button" data-go="${k}" class="${on ? "on" : ""}" title="${t(l)}" aria-label="${t(l)}"${on ? ' aria-current="page"' : ""}>${icon(k)}<span class="lbl">${t(l)}</span>${k === "inbox" && needs ? `<span class="badge" aria-label="${needs} waiting">${needs}</span>` : ""}</button>`;
         })
         .join(""),
   ).join("");
@@ -91,8 +92,8 @@ export function render() {
   if (!canSee(ui.route)) ui.route = "dashboard";
   const b = biz();
   $("#bizName").textContent = b.name || meta.business?.name || "VoroniX";
-  $("#bizMeta").textContent = [b.type, b.city].filter(Boolean).join(" · ") || "Workspace";
-  document.title = `${LABEL[ui.route] || "VoroniX"} · ${b.name || "VoroniX"}`;
+  $("#bizMeta").textContent = [b.type, b.city].filter(Boolean).join(" · ") || t("Workspace");
+  document.title = `${t(LABEL[ui.route] || "VoroniX")} · ${b.name || "VoroniX"}`;
   renderRail();
   const view = $("#view");
   // Keep typed text, focus and chat scroll position across re-renders.
@@ -106,6 +107,7 @@ export function render() {
   const p = PAGES[ui.route] || PAGES.dashboard;
   $("#phead").innerHTML = p.head();
   view.innerHTML = p.body();
+  localize($("#phead"));
   for (const [id, k] of Object.entries(keep)) {
     const el = document.getElementById(id);
     if (!el || el.dataset.fresh) continue;
@@ -123,14 +125,15 @@ export function render() {
   if (m2) m2.scrollTop = atBottom ? m2.scrollHeight : prevTop;
   p.after?.();
   renderTyping();
+  localize(view);
 }
 
 export function renderTyping() {
   const el = $("#typing");
   if (!el) return;
-  const t = ui.curConv && aiBusy[ui.curConv];
-  el.innerHTML = t ? `<div class="typing"><span class="dots"><span></span><span></span><span></span></span>${esc(t)}<button class="btn sm" data-stopai="${ui.curConv}">Stop</button></div>` : "";
-  if (t) {
+  const typingText = ui.curConv && aiBusy[ui.curConv];
+  el.innerHTML = typingText ? `<div class="typing"><span class="dots"><span></span><span></span><span></span></span>${esc(typingText)}<button class="btn sm" data-stopai="${ui.curConv}">${t("Stop")}</button></div>` : "";
+  if (typingText) {
     const m = $("#msgs");
     if (m) m.scrollTop = m.scrollHeight;
   }
@@ -138,6 +141,7 @@ export function renderTyping() {
 
 export function modal(title, body, foot, wide) {
   $("#modal").innerHTML = `<div class="scrim" data-scrim><div class="modal ${wide ? "wide" : ""}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="ph"><h3>${esc(title)}</h3><span class="grow"></span><button class="x" data-close aria-label="Close">×</button></div><div class="mb">${body}</div>${foot ? `<div class="mf">${foot}</div>` : ""}</div></div>`;
+  localize($("#modal"));
   const f = $("#modal input:not([type=hidden]),#modal select,#modal textarea");
   f?.focus();
 }
@@ -180,8 +184,14 @@ export function initChrome() {
   // The business's own clock, not the browser's: visits are booked in its time zone.
   const tick = () => {
     const n = nowLocal();
-    $("#clock").textContent = `${DOW[n.getDay()]} ${hm(n)}`;
-    $("#clock").title = `Time at the business (${businessZone()})`;
+    const locale = getLanguage() === "kk" ? "kk-KZ" : getLanguage();
+    const localizedDays = {
+      ru: ["вс", "пн", "вт", "ср", "чт", "пт", "сб"],
+      kk: ["жс", "дс", "сс", "ср", "бс", "жм", "сн"],
+    };
+    const weekday = localizedDays[getLanguage()]?.[n.getDay()] || new Intl.DateTimeFormat(locale, { weekday: "short" }).format(n);
+    $("#clock").textContent = `${weekday} ${hm(n)}`;
+    $("#clock").title = `${t("Time at the business")} (${businessZone()})`;
   };
   setInterval(tick, 20000);
   tick();

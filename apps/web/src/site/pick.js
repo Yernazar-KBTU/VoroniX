@@ -1,6 +1,7 @@
 // "Who it is for": the tabs swap a sample chat and the booking it creates.
 // The first tab is already written in the HTML, so the page reads fine without this script.
 // All conversations are illustrations, not real clients.
+import { t } from "../i18n.js";
 const SAMPLES = {
   barber: {
     biz: "Fade Lab",
@@ -79,7 +80,7 @@ const SAMPLES = {
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
-  if (text != null) node.textContent = text;
+  if (text != null) node.textContent = t(text);
   return node;
 }
 
@@ -102,13 +103,13 @@ export function initPick() {
       t.tabIndex = on ? 0 : -1;
     }
     panel.setAttribute("aria-labelledby", tab.id);
-    biz.textContent = sample.biz;
-    chan.textContent = sample.chan;
+    biz.textContent = t(sample.biz);
+    chan.textContent = t(sample.chan);
     chat.replaceChildren(
       ...sample.chat.map(([who, text]) => {
         const bubble = el("div", `bub ${who}`);
         if (who === "out") bubble.append(el("i", "", "AI"));
-        bubble.append(text);
+        bubble.append(t(text));
         return bubble;
       }),
     );

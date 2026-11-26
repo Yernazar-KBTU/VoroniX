@@ -2,6 +2,7 @@ import { api } from "../api.js";
 import { meta } from "../store.js";
 import { render } from "../ui.js";
 import { $, GLYPH, esc, fmtAt, head, toast } from "../util.js";
+import { t } from "../i18n.js";
 
 // Integrations: one card per outside service, a side panel to connect it.
 // The list comes from GET /api/integrations; tokens the owner types are
@@ -40,8 +41,8 @@ function details(p) {
   const fields = p.fields
     .map((f) => {
       const val = f.secret ? "" : (p.settings[f.key] ?? "");
-      const ph = f.secret && p.secret_hint ? `Saved ${p.secret_hint}. Paste a new one to replace it` : (f.placeholder ?? "");
-      return `<div class="f"><label for="if_${f.key}">${esc(f.label)}${f.required ? "" : ' <span class="muted">(optional)</span>'}</label><input class="inp" id="if_${f.key}" data-fresh="1" ${f.secret ? 'type="password" autocomplete="off"' : ""} value="${esc(val)}" placeholder="${esc(ph)}"></div>`;
+      const ph = f.secret && p.secret_hint ? `${t("Saved")} ${p.secret_hint}. ${t("Paste a new one to replace it")}` : (f.placeholder ?? "");
+      return `<div class="f"><label for="if_${f.key}">${esc(t(f.label))}${f.required ? "" : ` <span class="muted">(${t("optional")})</span>`}</label><input class="inp" id="if_${f.key}" data-fresh="1" ${f.secret ? 'type="password" autocomplete="off"' : ""} value="${esc(val)}" placeholder="${esc(t(ph))}"></div>`;
     })
     .join("");
   let extra = "";
@@ -50,10 +51,10 @@ function details(p) {
   if (p.id === "google_calendar" && conn) extra = copyRow("Calendar address", addr(`/integrations/${meta.business?.id}/calendar.ics?token=${p.shared_secret}`));
   if (p.id === "webhook" && conn) extra = copyRow("Header x-voronix-secret", p.shared_secret);
   if (p.id === "telegram" && conn) extra = `<p class="small muted" style="margin:0">Replies from the AI and from administrators in Chats go back to the client in Telegram.</p>`;
-  return `<section class="panel ipanel"><div class="ph">${logo(p.id)}<div style="min-width:0"><h3>${esc(p.name)}</h3><span class="muted small">${esc(p.group)}</span></div><span class="grow"></span>${statusPill(p.status)}</div>
+  return `<section class="panel ipanel"><div class="ph">${logo(p.id)}<div style="min-width:0"><h3>${esc(p.name)}</h3><span class="muted small">${esc(t(p.group))}</span></div><span class="grow"></span>${statusPill(p.status)}</div>
   <div class="pad" style="display:flex;flex-direction:column;gap:12px">
-   <p style="margin:0">${esc(p.description)}</p>
-   ${p.status_detail ? `<div class="answer ${p.status === "error" ? "bad" : ""}">${esc(p.status_detail)}${fmtAt(p.checked_at) ? `<span class="muted small"> · checked ${fmtAt(p.checked_at)}</span>` : ""}</div>` : ""}
+   <p style="margin:0">${esc(t(p.description))}</p>
+   ${p.status_detail ? `<div class="answer ${p.status === "error" ? "bad" : ""}">${esc(t(p.status_detail))}${fmtAt(p.checked_at) ? `<span class="muted small"> · ${t("checked")} ${fmtAt(p.checked_at)}</span>` : ""}</div>` : ""}
    ${p.from_env ? `<p class="small muted" style="margin:0">Included in VoroniX. You can connect your own Anthropic key instead if you want the AI usage billed to you.</p>` : ""}
    <form id="intForm" data-int="${p.id}" style="display:flex;flex-direction:column;gap:10px">${fields}
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn create" type="submit" ${st.busy ? "disabled" : ""}>${st.busy ? "Checking…" : conn ? "Save and check" : "Connect"}</button>
@@ -61,7 +62,7 @@ function details(p) {
    </form>
    ${extra}
    <h4 class="muted small" style="margin:4px 0 0">How to connect</h4>
-   <ol class="small muted" style="margin:0;padding-left:18px">${p.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
+   <ol class="small muted" style="margin:0;padding-left:18px">${p.steps.map((s) => `<li>${esc(t(s))}</li>`).join("")}</ol>
   </div></section>`;
 }
 
@@ -80,10 +81,10 @@ export const integrations = {
   <section class="panel"><div class="ph"><h3>Services</h3><span class="grow"></span><span class="muted small">${on} of ${st.list.length} connected</span></div>
    <div class="pad" style="display:flex;flex-direction:column;gap:16px">${groups
      .map(
-       (g) => `<div><h4 class="muted small" style="margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em">${esc(g)}</h4><div class="igrid">${st.list
+       (g) => `<div><h4 class="muted small" style="margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em">${esc(t(g))}</h4><div class="igrid">${st.list
          .filter((p) => p.group === g)
          .map(
-           (p) => `<button class="icard ${p.id === st.sel ? "on" : ""}" data-intsel="${p.id}">${logo(p.id)}<span class="ibody"><b>${esc(p.name)}</b><span class="muted small">${esc(p.description)}</span></span>${statusPill(p.status)}</button>`,
+           (p) => `<button class="icard ${p.id === st.sel ? "on" : ""}" data-intsel="${p.id}">${logo(p.id)}<span class="ibody"><b>${esc(p.name)}</b><span class="muted small">${esc(t(p.description))}</span></span>${statusPill(p.status)}</button>`,
          )
          .join("")}</div></div>`,
      )
@@ -117,7 +118,7 @@ async function run(fn) {
   try {
     const v = await fn();
     st.list = st.list.map((p) => (p.id === v.id ? v : p));
-    toast(v.status === "connected" ? `${v.name}: connected` : v.status === "off" ? `${v.name}: disconnected` : `${v.name}: ${v.status_detail}`);
+    toast(v.status === "connected" ? `${v.name}: ${t("connected")}` : v.status === "off" ? `${v.name}: ${t("Not connected")}` : `${v.name}: ${t(v.status_detail)}`);
   } catch (e) {
     toast(e.message);
   } finally {

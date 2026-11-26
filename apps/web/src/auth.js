@@ -6,6 +6,7 @@ import "./auth.css";
 import { api } from "./api.js";
 import { logo } from "./logo.js";
 import { esc } from "./util.js";
+import { initLanguageControl, languageControl, localize, t } from "./i18n.js";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "SGD", "HKD", "JPY", "KRW", "CNY", "TWD", "INR", "IDR", "THB", "PHP", "VND", "MYR", "AED", "KZT"];
 const TYPES = ["Barbershop", "Beauty salon", "Nail studio", "Spa and massage", "Clinic or dental office", "Fitness or yoga studio", "Tutoring or classes", "Other appointment business"];
@@ -66,7 +67,7 @@ const STORIES = [
 ];
 const story = (i) => {
   const s = STORIES[i % STORIES.length];
-  return `<p class="sub">A client wrote at ${s.at}.</p><div class="auth-chat">${s.msgs.map(([k, t]) => `<div class="${k}">${esc(t)}</div>`).join("")}</div>`;
+  return `<p class="sub">${t("A client wrote at")} ${s.at}.</p><div class="auth-chat">${s.msgs.map(([k, message]) => `<div class="${k}">${esc(t(message))}</div>`).join("")}</div>`;
 };
 const GLASS = `<aside class="auth-glass" aria-label="Example conversation">
   <h3>While you were busy</h3>
@@ -200,9 +201,11 @@ export function showAuth() {
 
     const draw = (mode, extra) => {
       const help = cfg.support_email ? `<a href="mailto:${esc(cfg.support_email)}">Help</a>` : "";
-      root.innerHTML = `${ART}<header class="auth-top"><a href="/" class="auth-home" aria-label="VoroniX home">${logo(38)}</a>${help}</header>
+      root.innerHTML = `${ART}<header class="auth-top"><a href="/" class="auth-home" aria-label="VoroniX home">${logo(38)}</a>${languageControl()}${help}</header>
         <main class="auth-main">${HERO}<div class="auth-pair">${FORMS[mode](cfg, extra)}${GLASS}</div></main>
         <footer class="auth-foot"><span>© ${new Date().getFullYear()} VoroniX</span><a href="/terms">Terms</a><a href="/privacy">Privacy</a>${help}</footer>`;
+      localize(root);
+      initLanguageControl(root);
       root.querySelector("[autofocus]")?.focus();
       storyIdx = 0;
     };
@@ -213,7 +216,7 @@ export function showAuth() {
     const showError = (msg) => {
       const err = root.querySelector("#authErr");
       if (!err) return;
-      err.textContent = msg;
+      err.textContent = t(msg);
       err.classList.add("on");
     };
 

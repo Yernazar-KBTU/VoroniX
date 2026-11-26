@@ -4,7 +4,8 @@
 import { api } from "../api.js";
 import { S, active, apptEnd, biz, cli, meta, mst, revenueOf, svc, vals } from "../store.js";
 import { render } from "../ui.js";
-import { DOW, addDays, businessCurrency, count, esc, head, money, msIcon, nowLocal, parseDT, pill, ymd } from "../util.js";
+import { addDays, businessCurrency, count, esc, head, money, msIcon, nowLocal, parseDT, pill, ymd } from "../util.js";
+import { getLanguage, t } from "../i18n.js";
 
 const KI = {
   today: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><path d="m9 14.5 2 2 4-4"/>',
@@ -64,14 +65,22 @@ function gettingStarted() {
   const n = list.filter((s) => s.done).length;
   if (n === list.length) return "";
   const first = (meta.user?.full_name || "").trim().split(/\s+/)[0];
-  const title = n === 0 ? `Welcome${first ? ", " + esc(first) : ""}! Let's set up ${esc(biz().name || "your business")}` : `Finish setting up ${esc(biz().name || "your business")}`;
+  const businessName = esc(biz().name || t("your business"));
+  const progress = getLanguage() === "ru"
+    ? `${n} из ${list.length} выполнено. ${t("The AI answers clients using only what you add here.")}`
+    : getLanguage() === "kk"
+      ? `${list.length}-ның ${n}-і орындалды. ${t("The AI answers clients using only what you add here.")}`
+      : `${n} of ${list.length} done. ${t("The AI answers clients using only what you add here.")}`;
+  const title = n === 0
+    ? `${t("Welcome")}${first ? ", " + esc(first) : ""}! ${t("Let's set up")} ${businessName}`
+    : `${t("Finish setting up")} ${businessName}`;
   // The demo is a barbershop in Almaty with prices in tenge, so it only makes sense for a tenge business.
   const demo = meta.features?.demo_reset && businessCurrency() === "KZT";
   return `<section class="onb" aria-label="Getting started">
   <button class="x" type="button" data-onbhide aria-label="Hide getting started">×</button>
   <h2>${title}</h2>
-  <p class="lead">${n} of ${list.length} done. The AI answers clients using only what you add here.</p>
-  <div class="bar" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="${list.length}" aria-valuenow="${n}"><i style="width:${Math.round((100 * n) / list.length)}%"></i></div>
+  <p class="lead">${progress}</p>
+  <div class="bar" role="progressbar" aria-label="${t("Setup progress")}" aria-valuemin="0" aria-valuemax="${list.length}" aria-valuenow="${n}"><i style="width:${Math.round((100 * n) / list.length)}%"></i></div>
   <div class="onb-steps">${list
     .map((s, i) => `<button type="button" class="onb-step ${s.done ? "done" : ""}" ${s.go ? `data-go="${s.go}"` : `data-act="${s.act}"`}><span class="n">${s.done ? "✓" : i + 1}</span><span><b>${s.t}</b><span>${s.d}</span></span></button>`)
     .join("")}</div>
@@ -96,13 +105,17 @@ function greeting() {
   const h = nowLocal().getHours();
   const part = h >= 5 && h < 12 ? "Good morning" : h >= 12 && h < 18 ? "Good afternoon" : "Good evening";
   const first = (meta.user?.full_name || "").trim().split(/\s+/)[0];
-  return first ? `${part}, ${first}` : part;
+  return first ? `${t(part)}, ${first}` : t(part);
 }
 
 export const dashboard = {
   head() {
     const n = nowLocal();
-    return head(greeting(), `${DAYS[n.getDay()]}, ${MONTHS[n.getMonth()]} ${n.getDate()} at ${esc(biz().name || "your business")}`, `<button class="btn create" data-act="newAppt">+ New booking</button>`);
+    const locale = getLanguage() === "kk" ? "kk-KZ" : getLanguage();
+    const date = new Intl.DateTimeFormat(locale, { weekday: "long", month: "long", day: "numeric" }).format(n);
+    const businessName = esc(biz().name || t("your business"));
+    const subtitle = getLanguage() === "en" ? `${date} at ${businessName}` : `${date}, ${businessName}`;
+    return head(greeting(), subtitle, `<button class="btn create" data-act="newAppt">+ ${t("New booking")}</button>`);
   },
   body() {
     const now = nowLocal();
@@ -137,7 +150,7 @@ export const dashboard = {
     <div class="kpi r">${ki("noshow")}<span class="k">No-shows, 30 days</span><span class="v">${nsr}%</span><span class="s">${noShows} missed of ${count(last30.length, "visit")}</span></div>
   </div>
   <div class="grid g2">
-    <section class="panel"><div class="ph"><h3>Today · ${DOW[now.getDay()]} ${today}</h3><span class="grow"></span><button class="btn sm" data-go="calendar">Open calendar</button></div>
+    <section class="panel"><div class="ph"><h3>${t("Today")} · ${new Intl.DateTimeFormat(getLanguage() === "kk" ? "kk-KZ" : getLanguage(), { weekday: "short" }).format(now)} ${today}</h3><span class="grow"></span><button class="btn sm" data-go="calendar">Open calendar</button></div>
       <div class="list">${
         tod.length
           ? tod.map((a) => `<div class="li click" data-appt="${a.id}" style="cursor:pointer"><span class="time">${a.start_datetime.slice(11)}</span><div class="grow"><div class="ell"><b>${esc(cli(a.client_id)?.display_name || a.client_id)}</b> · ${esc(svc(a.service_code)?.name || a.service_code)}</div><div class="muted small">${esc(mst(a.master_id)?.full_name || "")} · via ${esc(a.source || "")}</div></div>${pill(a.status)}</div>`).join("")

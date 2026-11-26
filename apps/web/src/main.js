@@ -10,6 +10,7 @@ import { logoMark } from "./logo.js";
 import { aiBusy, loadAll, meta, reload } from "./store.js";
 import { canSee, initChrome, render, renderTyping, scheduleRender, ui } from "./ui.js";
 import { $, esc, setBusinessPlace } from "./util.js";
+import { initLanguageControl, localize, t } from "./i18n.js";
 
 const SIGN_OUT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></svg>';
 
@@ -21,13 +22,13 @@ function setStatus() {
   const down = !claude && v.state === "down";
   $("#aiState .led").classList.toggle("off", !claude && v.state !== "ok");
   $("#aiState").classList.toggle("down", down);
-  $("#aiText").textContent = claude ? "AI replies: Claude" : v.state === "ok" ? "AI: VoroniX AI works" : down ? "VoroniX AI is DOWN" : "AI: basic rules (VoroniX AI not connected)";
+  $("#aiText").textContent = t(claude ? "AI replies: Claude" : v.state === "ok" ? "AI: VoroniX AI works" : down ? "VoroniX AI is DOWN" : "AI: basic rules (VoroniX AI not connected)");
   $("#aiState").title = claude
-    ? "Claude writes the replies to your clients."
+    ? t("Claude writes the replies to your clients.")
     : down
       ? `VoroniX AI does not answer: ${v.error}. Clients get no automatic replies; their chats wait for a person.`
       : v.state === "ok"
-        ? "VoroniX AI, our own model, understands every client message."
+        ? t("VoroniX AI, our own model, understands every client message.")
         : "Set VORONIX_AI_URL on the server to connect VoroniX AI.";
   const live = meta.aiEngine === "voronix-ai";
   $("#aiState").classList.toggle("link", live);
@@ -55,7 +56,7 @@ function setAccount(me) {
   setBusinessPlace(me.business?.timezone, me.business?.currency);
   $("#sideLogo").innerHTML = logoMark(34);
   const name = (me.user.full_name || me.user.email).trim();
-  $("#acct").innerHTML = `<span class="avatar" aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</span><span class="who"><b>${esc(name)}</b><small>${esc(me.user.email)}</small></span><button class="out" type="button" id="signOut" title="Sign out" aria-label="Sign out">${SIGN_OUT}</button>`;
+  $("#acct").innerHTML = `<span class="avatar" aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</span><span class="who"><b>${esc(name)}</b><small>${esc(me.user.email)}</small></span><button class="out" type="button" id="signOut" title="${t("Sign out")}" aria-label="${t("Sign out")}">${SIGN_OUT}</button>`;
   $("#signOut").addEventListener("click", async () => {
     await api.post("/auth/logout").catch(() => {});
     history.replaceState(null, "", "/app#signin");
@@ -77,6 +78,8 @@ async function signedIn() {
 let dropped = false;
 
 async function boot() {
+  initLanguageControl();
+  localize(document.querySelector(".top"));
   let me;
   try {
     me = await signedIn();
