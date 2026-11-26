@@ -62,6 +62,17 @@ function renderRail() {
         })
         .join(""),
   ).join("");
+  // Bitrix-style top bar: the pages of the current section as tabs.
+  const group = NAV.find(([, items]) => items.some(([k]) => k === ui.route)) || NAV[0];
+  $("#stabs").innerHTML = group[1]
+    .filter(([k]) => canSee(k))
+    .map(([k, l]) => `<button type="button" data-go="${k}" class="${ui.route === k ? "on" : ""}"${ui.route === k ? ' aria-current="page"' : ""}>${l}${k === "inbox" && needs ? `<span class="badge">${needs}</span>` : ""}</button>`)
+    .join("");
+  // Quick access on the right: the places an owner jumps to all day.
+  const quick = [["inbox", "Chats"], ["calendar", "Calendar"], ["clients", "Clients"], null, ["knowledge", "AI knowledge base"], ["business", "Business setup"]];
+  $("#qrail").innerHTML = quick
+    .map((q) => (q ? `<button type="button" data-go="${q[0]}" class="${ui.route === q[0] ? "on" : ""}" title="${q[1]}" aria-label="${q[1]}">${icon(q[0])}${q[0] === "inbox" && needs ? `<span class="badge">${needs}</span>` : ""}</button>` : "<hr>"))
+    .join("");
 }
 
 let queued = false;
