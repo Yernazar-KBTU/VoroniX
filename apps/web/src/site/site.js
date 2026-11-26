@@ -5,7 +5,6 @@ import "./site.css";
 import { initPick } from "./pick.js";
 import { initScene } from "./scene.js";
 import { startSky } from "./sky.js";
-import { initVideoHero } from "./vhero.js";
 import { initLanguageControl, languageControl, localize, t } from "../i18n.js";
 
 // Content stays visible without scripts; the scroll fade-ins only switch on once this runs.
@@ -59,7 +58,6 @@ if (document.body.classList.contains("landing")) {
   startSky(document.getElementById("sky"));
   initScene();
   initPick();
-  initVideoHero();
 }
 
 $$("[data-year]").forEach((el) => (el.textContent = String(new Date().getFullYear())));
