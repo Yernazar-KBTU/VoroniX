@@ -7,12 +7,12 @@ import { render } from "../ui.js";
 import { DOW, addDays, businessCurrency, count, esc, head, money, msIcon, nowLocal, parseDT, pill, ymd } from "../util.js";
 
 const KI = {
-  today: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h3"/>',
-  revenue: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
-  ai: '<path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/>',
-  noshow: '<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 8l4 4M21 8l-4 4"/>',
+  today: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><path d="m9 14.5 2 2 4-4"/>',
+  revenue: '<path d="M4 18V6M4 18h16"/><path d="m7.5 14 3.5-3.5 3 3L19 8.5"/>',
+  ai: '<path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l.9-4.4A8 8 0 1 1 20 12z"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/>',
+  noshow: '<circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6M15 9l-6 6"/>',
 };
-const ki = (n) => `<span class="ki"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${KI[n]}</svg></span>`;
+const ki = (n) => `<span class="ki"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${KI[n]}</svg></span>`;
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -144,9 +144,9 @@ export const dashboard = {
           : `<div class="empty"><b>No visits today</b>Bookings the AI makes in chats appear here.</div>`
       }</div></section>
     <section class="panel"><div class="ph"><h3>Needs attention</h3></div><div class="list">
-      ${human.map((c) => `<div class="li"><span class="pill human">Human</span><div class="grow ell">${msIcon(c.messenger)} ${esc(c.contact)} · ${esc((c.messages || []).slice(-1)[0]?.text || "")}</div><button class="btn sm" data-openconv="${c.id}">Open</button></div>`).join("")}
-      ${unpaid.map((p) => { const a = S.appointments[p.appointment_id]; return `<div class="li"><span class="pill Pending">Unpaid</span><div class="grow ell">${money(p.amount_kzt)} · ${esc(a ? cli(a.client_id)?.display_name : "")} · ${esc(a ? a.start_datetime : "")}</div></div>`; }).join("")}
-      ${stale.slice(0, 6).map((a) => `<div class="li"><span class="pill warn">Not closed</span><div class="grow"><div class="ell">${esc(cli(a.client_id)?.display_name || "")} · ${esc(svc(a.service_code)?.name || "")}</div><div class="muted small">${a.start_datetime} · still “${a.status}”</div></div><button class="btn sm" data-setst="${a.id}|Completed">Completed</button><button class="btn sm danger" data-setst="${a.id}|No-show">No-show</button></div>`).join("")}
+      ${human.length ? `<div class="lgrp">Waiting for a person</div>` : ""}${human.map((c) => `<div class="li">${msIcon(c.messenger)}<div class="grow"><div class="ell"><b>${esc(c.contact)}</b></div><div class="muted small ell">${esc((c.messages || []).slice(-1)[0]?.text || "")}</div></div><button class="btn sm" data-openconv="${c.id}">Open</button></div>`).join("")}
+      ${unpaid.length ? `<div class="lgrp">Unpaid prepayments</div>` : ""}${unpaid.map((p) => { const a = S.appointments[p.appointment_id]; return `<div class="li"><div class="grow"><div class="ell"><b>${esc(a ? cli(a.client_id)?.display_name || "" : "")}</b></div><div class="muted small ell">${esc(a ? a.start_datetime : "")}</div></div><b class="nowrap">${money(p.amount_kzt)}</b></div>`; }).join("")}
+      ${stale.length ? `<div class="lgrp">Visits to close</div>` : ""}${stale.slice(0, 6).map((a) => `<div class="li"><div class="grow"><div class="ell"><b>${esc(cli(a.client_id)?.display_name || "")}</b> · ${esc(svc(a.service_code)?.name || "")}</div><div class="muted small ell">${a.start_datetime.slice(0, 10) === ymd(nowLocal()) ? "Today " + a.start_datetime.slice(11) : a.start_datetime} · ${esc(a.status)}</div></div><button class="btn sm" data-setst="${a.id}|Completed">Completed</button><button class="btn sm danger" data-setst="${a.id}|No-show">No-show</button></div>`).join("")}
       ${!human.length && !unpaid.length && !stale.length ? `<div class="empty"><b>All clear</b>Chats waiting for a person, unpaid links and visits that were not closed show up here.</div>` : ""}
     </div></section>
   </div>

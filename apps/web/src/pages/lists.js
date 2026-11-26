@@ -23,7 +23,7 @@ export const clients = {
     if (ui.gq) L = L.filter((c) => `${c.display_name} ${c.phone} ${c.id}`.toLowerCase().includes(ui.gq));
     L.sort((a, b) => b.spent - a.spent);
     return `<div class="panel tw">${ui.gq ? `<div class="ph"><span>Search: <b>${esc(ui.gq)}</b> · ${L.length} found</span></div>` : ""}<table class="t"><thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Messengers</th><th class="num">Visits</th><th class="num">No-shows</th><th>Last visit</th><th style="text-align:right">Spent</th></tr></thead><tbody>
-  ${L.map((c) => `<tr class="click" data-client="${c.id}"><td class="code">${c.id}</td><td><b>${esc(c.display_name)}</b></td><td>${esc(c.phone || "")}</td><td>${c.ch.map((x) => msIcon(x.messenger)).join(" ")}</td><td class="num">${c.visits}</td><td class="num${c.ns ? " bad" : ""}">${c.ns}</td><td>${esc(c.last.slice(0, 10) || "Never")}</td><td style="text-align:right">${money(c.spent)}</td></tr>`).join("") || `<tr><td colspan="8"><div class="empty"><b>No clients found</b>Clients are created by the AI from chats, or with “Add client”.</div></td></tr>`}</tbody></table></div>`;
+  ${L.map((c) => `<tr class="click" data-client="${c.id}"><td class="code">${c.id}</td><td><b>${esc(c.display_name)}</b></td><td>${esc(c.phone || "")}</td><td>${c.ch.map((x) => msIcon(x.messenger)).join(" ")}</td><td class="num">${c.visits}</td><td class="num"><span class="cnt${c.ns ? " bad" : ""}">${c.ns}</span></td><td>${esc(c.last.slice(0, 10) || "Never")}</td><td style="text-align:right">${money(c.spent)}</td></tr>`).join("") || `<tr><td colspan="8"><div class="empty"><b>No clients found</b>Clients are created by the AI from chats, or with “Add client”.</div></td></tr>`}</tbody></table></div>`;
   },
 };
 
@@ -39,10 +39,10 @@ export const staff = {
   head: () => head((biz().staff_label || "Master") + "s", "", `<button class="btn ghost" data-act="import">Import</button><button class="btn create" data-act="newMaster">+ Add ${esc((biz().staff_label || "master").toLowerCase())}</button>`),
   body() {
     const today = ymd(nowLocal());
-    return `<div class="panel tw"><table class="t"><thead><tr><th>ID</th><th>Name</th><th>Specialization</th><th>Services (master_services)</th><th>Working days</th><th>Hours</th><th>Today</th></tr></thead><tbody>${vals("masters")
+    return `<div class="panel tw"><table class="t"><thead><tr><th>ID</th><th>Name</th><th>Specialization</th><th>Services</th><th>Working days</th><th>Hours</th><th class="num">Today</th></tr></thead><tbody>${vals("masters")
       .map((m) => {
         const n = vals("appointments").filter((a) => a.master_id === m.id && a.start_datetime.startsWith(today) && active(a)).length;
-        return `<tr class="click" data-master="${m.id}"><td class="code">${m.id}</td><td><b>${esc(m.full_name)}</b>${m.is_active === false ? " " + pill("Inactive", "Cancelled") : ""}</td><td>${esc(m.specialization)}</td><td>${servicesOf(m.id).map((c) => `<span class="pill">${esc(svc(c)?.name || c)}</span>`).join(" ")}</td><td>${(m.days || []).map((d) => DOW[d]).join(" ")}</td><td>${m.work_start}–${m.work_end}</td><td>${n} visits</td></tr>`;
+        return `<tr class="click" data-master="${m.id}"><td class="code">${m.id}</td><td><b>${esc(m.full_name)}</b>${m.is_active === false ? " " + pill("Inactive", "Cancelled") : ""}</td><td>${esc(m.specialization)}</td><td class="tags">${servicesOf(m.id).map((c) => `<span class="pill">${esc(svc(c)?.name || c)}</span>`).join(" ")}</td><td>${(m.days || []).map((d) => DOW[d]).join(" ")}</td><td>${m.work_start}–${m.work_end}</td><td class="num">${n}</td></tr>`;
       })
       .join("")}</tbody></table></div>`;
   },
