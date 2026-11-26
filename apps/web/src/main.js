@@ -2,6 +2,7 @@
 // the server over SSE.
 
 import "./styles.css";
+import "./theme-ocean.css";
 import "./modals.js";
 import { api, subscribe } from "./api.js";
 import { showAuth } from "./auth.js";

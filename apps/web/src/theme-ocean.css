@@ -1,0 +1,73 @@
+/* Ocean theme: the Bitrix24-style workspace layout with VoroniX's own colours.
+   A drawn ocean wallpaper behind everything, a glass menu on the left, the
+   section's pages as tabs in the top bar, white work surfaces and a quick
+   access rail on the right. Loaded after styles.css and only overrides it. */
+:root{
+  --accent:#0f8fb4;--accent-soft:#e1f3f9;--accent-line:#b9e2ef;
+  --brand:linear-gradient(120deg,#1e7bff 0%,#13b5d6 55%,#2fe0c1 100%);
+  --ai:#0f8fb4;--ai-soft:#e1f3f9;--ai-fg:#0b6f8c;
+  --side:rgba(4,18,38,.55);--side-line:rgba(255,255,255,.12);--side-fg:#d3e9f3;--side-dim:#8db8cb;
+  --sans:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --wall:#06162f url("/bg-ocean.jpg") center/cover fixed;
+  --chrome:#ffffff;--chrome-dim:#b9dcea;--glass:rgba(255,255,255,.12);--glass-line:rgba(255,255,255,.22);--on-wall:#ffffff;--on-wall-dim:#b9dcea;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--accent:#3cc3e6;--accent-soft:#0f3346;--accent-line:#1d5670;--ai:#3cc3e6;--ai-soft:#0f3346;--ai-fg:#9fe3f5}}
+:root[data-theme="dark"]{--accent:#3cc3e6;--accent-soft:#0f3346;--accent-line:#1d5670;--ai:#3cc3e6;--ai-soft:#0f3346;--ai-fg:#9fe3f5}
+
+body{background:var(--wall)}
+.app{grid-template-columns:244px minmax(0,1fr) 64px}
+
+/* left menu: glass over the wallpaper */
+.side{background:var(--side);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);border-right:1px solid var(--side-line)}
+.rail .grp{display:none}
+.rail{gap:1px}
+.rail button{height:36px;font-weight:600;font-size:13.5px}
+.rail button:hover{background:rgba(255,255,255,.1)}
+.rail button.on{background:rgba(255,255,255,.95);color:#06304f}
+.rail button.on::before{display:none}
+.rail .badge{background:#ff6a5c}
+.ai-state{background:rgba(255,255,255,.08)}
+
+/* top bar: section tabs on the left, search and clock on the right */
+.main{gap:14px}
+.top{flex-wrap:nowrap}
+.stabs{display:flex;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.stabs::-webkit-scrollbar{display:none}
+.stabs button{flex:none;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:0;border-radius:10px;background:transparent;color:var(--on-wall-dim);font-weight:700;font-size:13px;cursor:pointer}
+.stabs button:hover{color:var(--on-wall);background:rgba(255,255,255,.08)}
+.stabs button.on{background:rgba(255,255,255,.95);color:#06304f;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.stabs .badge{background:#ff6a5c;color:#fff;border-radius:9px;font-size:11px;font-weight:800;padding:0 6px;line-height:18px}
+.top .tsearch{flex:0 1 300px;margin-left:auto;background:var(--glass);border-color:var(--glass-line);color:var(--on-wall-dim);box-shadow:none;backdrop-filter:blur(10px)}
+.top .tsearch input{color:var(--on-wall)}
+.top .tsearch input::placeholder{color:var(--on-wall-dim)}
+.top .tsearch:focus-within{border-color:#7fdcf0;box-shadow:0 0 0 4px rgba(127,220,240,.2)}
+.top .grow{display:none}
+.top .chip{background:var(--glass);border-color:var(--glass-line);color:var(--on-wall);backdrop-filter:blur(10px)}
+.top .chip.warn{background:#fff3d9;color:#8a5a00}
+.menu-btn{background:var(--glass);border-color:var(--glass-line);color:var(--on-wall)}
+
+/* page head sits on the wallpaper */
+.phead h1{color:var(--on-wall);font-weight:800;font-size:26px}
+.phead .sub{color:var(--on-wall-dim)}
+.phead > .btn:not(.create):not(.primary):not(.ai){background:var(--glass);border-color:var(--glass-line);color:var(--on-wall);backdrop-filter:blur(10px)}
+.phead > .btn:not(.create):not(.primary):not(.ai):hover{background:rgba(255,255,255,.2)}
+.btn.create,.btn.primary{box-shadow:0 6px 18px rgba(19,140,214,.38)}
+.phead .tabs{background:var(--glass);border-color:var(--glass-line);backdrop-filter:blur(10px)}
+.phead .tabs button{color:var(--on-wall-dim)}
+.phead .tabs button.on{background:#fff;color:#06304f}
+.phead .inp{background:var(--panel)}
+
+/* right quick-access rail */
+.qrail{position:sticky;top:0;height:100vh;height:100dvh;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0;background:rgba(0,0,0,.22);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-left:1px solid rgba(255,255,255,.1)}
+.qrail button{position:relative;width:42px;height:42px;border:0;border-radius:13px;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;cursor:pointer}
+.qrail button:hover{background:rgba(255,255,255,.22)}
+.qrail button.on{background:#fff;color:#06304f}
+.qrail svg{width:20px;height:20px}
+.qrail .badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:999px;background:#ff6a5c;color:#fff;font-size:10.5px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+.qrail hr{width:28px;border:0;border-top:1px solid rgba(255,255,255,.18);margin:2px 0}
+
+@media (max-width:1100px){.qrail{display:none}}
+@media (max-width:1100px) and (min-width:761px){.app{grid-template-columns:72px minmax(0,1fr)}}
+@media (max-width:900px){.stabs{display:none}.top .tsearch{margin-left:0;flex:1}}
+@media (max-width:760px){.app{grid-template-columns:minmax(0,1fr)}.side{background:rgba(4,18,38,.92)}}
+#view > .muted,#view > .small,#view > p{color:var(--on-wall-dim)}

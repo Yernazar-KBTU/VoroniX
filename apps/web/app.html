@@ -6,11 +6,11 @@
   <title>VoroniX</title>
   <meta name="description" content="VoroniX workspace: chats, bookings, clients and the AI administrator in one place.">
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#0d1130">
+  <meta name="theme-color" content="#06162f">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
 </head>
 <body>
   <div class="app" id="app">
@@ -26,6 +26,7 @@
     <div class="main">
       <header class="top">
         <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <nav class="stabs" id="stabs" aria-label="Pages in this section"></nav>
         <label class="tsearch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="gsearch" type="search" placeholder="Search clients, phones, services" aria-label="Search clients"></label>
         <span class="grow"></span>
         <span class="chip warn" id="modeChip" hidden>Reconnecting…</span>
@@ -35,6 +36,7 @@
       <div id="banner"></div>
       <main id="view"></main>
     </div>
+    <aside class="qrail" id="qrail" aria-label="Quick access"></aside>
   </div>
   <div id="modal"></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
