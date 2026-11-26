@@ -72,24 +72,61 @@ body{background:var(--wall)}
 @media (max-width:760px){.app{grid-template-columns:minmax(0,1fr)}.side{background:rgba(4,18,38,.92)}}
 #view > .muted,#view > .small,#view > p{color:var(--on-wall-dim)}
 
-/* Polish: calmer, more serious surfaces */
-.btn.create,.btn.primary{background:#0f8fb4;border:0;box-shadow:0 2px 8px rgba(6,48,79,.22)}
-.btn.create:hover,.btn.primary:hover{background:#0c7c9c;filter:none}
+/* ---------- Polish ---------- */
+
+/* Gradient buttons: the gradient spans the border box, so the edges match
+   (with a transparent border it used to repeat under the border). */
+.btn.create,.btn.primary{background:var(--brand);background-origin:border-box;border:1px solid transparent;box-shadow:0 4px 14px rgba(19,140,214,.32),inset 0 1px 0 rgba(255,255,255,.22);text-shadow:0 1px 1px rgba(6,48,79,.18)}
+.btn.create:hover,.btn.primary:hover{background:var(--brand);background-origin:border-box;filter:brightness(1.06) saturate(1.05);box-shadow:0 6px 18px rgba(19,140,214,.42),inset 0 1px 0 rgba(255,255,255,.22)}
+.btn.create:active,.btn.primary:active{filter:brightness(.97);box-shadow:0 2px 8px rgba(19,140,214,.3)}
+
+/* KPI cards: one icon style in the theme colour, no soft blobs */
 .kpi::after{display:none}
-.kpi .ki{width:auto;height:auto;background:none;color:var(--muted)}
-.kpi .ki svg{width:17px;height:17px}
-.kpi .k{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .ki{width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent-line)}
+.kpi .ki svg{width:18px;height:18px}
+.kpi .k{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+
+/* Number columns: right-aligned, equal-width digits; counts as fixed-width badges */
 table.t th.num,table.t td.num{text-align:right;font-variant-numeric:tabular-nums}
-table.t td.bad{color:var(--red);font-weight:600}
-.ms{width:18px;height:18px;border-radius:0;background:none!important;color:var(--muted)}
-.ms svg{width:16px;height:16px}
-.ms.Telegram{color:#229ed9}.ms.WhatsApp{color:#1fa855}.ms.Instagram{color:#c13584}
-.ms.other::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--muted)}
-.chlist{display:flex;flex-direction:column;gap:16px}
-.chrow{display:grid;grid-template-columns:1fr auto;align-items:center;row-gap:7px}
-.chname{display:inline-flex;align-items:center;gap:8px;font-weight:500}
-.chrow b{font-variant-numeric:tabular-nums}
+.cnt{display:inline-block;min-width:28px;padding:2px 8px;border-radius:7px;text-align:center;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;background:var(--panel2);color:var(--muted)}
+.cnt.bad{background:var(--red-soft);color:var(--red)}
+
+/* Messenger marks: brand tile with a white line glyph */
+.ms{width:22px;height:22px;border-radius:7px;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.ms svg{width:14px;height:14px}
+.ms.Telegram{background:linear-gradient(160deg,#37aee2,#1e96c8)}
+.ms.WhatsApp{background:linear-gradient(160deg,#3ccf6e,#1ea952)}
+.ms.Instagram{background:radial-gradient(circle at 28% 108%,#fdd36b 0,#f58a3a 28%,#e1306c 56%,#b0329e 78%,#6a4bd6 100%)}
+.ms.other{background:var(--panel2);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* Bookings by channel */
+.chlist{display:flex;flex-direction:column;gap:18px}
+.chrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;row-gap:8px}
+.chname{display:inline-flex;align-items:center;gap:10px;font-weight:600;min-width:0}
+.chrow b{font-variant-numeric:tabular-nums;font-size:15px}
 .chrow .hbar{grid-column:1/-1;height:6px;border-radius:3px}
-.chrow .hbar i{background:var(--accent);border-radius:3px}
-.ilogo{background:var(--panel2);border:1px solid var(--line)}
+.chrow .hbar i{background:var(--brand);border-radius:3px}
+
+/* Integration logos: brand tile, white glyph, soft inner light */
+.ilogo{width:42px;height:42px;border-radius:12px;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 6px rgba(6,30,60,.14)}
 .ilogo svg{width:22px;height:22px}
+
+/* Needs attention: grouped rows instead of a pill on every line */
+.lgrp{padding:12px 18px 6px;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--panel2);border-bottom:1px solid var(--line)}
+.li .grow .ell b{font-weight:700}
+.nowrap{white-space:nowrap}
+
+/* Sales funnel: all six stages fit on a laptop screen */
+.board{grid-auto-columns:minmax(150px,1fr);gap:10px}
+
+/* Tables that must fit: tags wrap instead of pushing columns off screen */
+table.t td.tags{white-space:normal;min-width:220px;line-height:1.9}
+table.t td.tags .pill{margin:1px 0}
+[data-testid="noshow-table"] th,[data-testid="noshow-table"] td{padding-left:12px;padding-right:12px}
+
+/* Integration cards: status under the text, so the description has room */
+.icard{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;column-gap:12px;row-gap:8px;padding:14px}
+.icard .pill{grid-column:2;justify-self:start}
+.icard .ibody{gap:3px}
+.icard .ibody b{font-size:14.5px}
+@media (max-width:760px){.kpi .k{white-space:normal;line-height:1.25}.kpi .ki{width:32px;height:32px}}
