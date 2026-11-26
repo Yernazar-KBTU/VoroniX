@@ -68,8 +68,15 @@ export function toast(text) {
   toastTimer = setTimeout(() => (el.hidden = true), 3200);
 }
 
-const MSG_ICON = { Telegram: "T", WhatsApp: "W", Instagram: "I" };
-export const msIcon = (m) => `<span class="ms ${esc(m)}" title="${esc(m)}">${MSG_ICON[m] || "?"}</span>`;
+// Line glyphs in each messenger's colour; drawn on a 24 grid.
+export const GLYPH = {
+  Telegram: '<path d="M20.5 4.5 3.5 11.2l5.6 2 2 5.8 3.1-3.6 4.6 3.4z"/><path d="m9.1 13.2 7.6-5.4"/>',
+  WhatsApp: '<path d="M12 3.5a8.5 8.5 0 0 0-7.3 12.8L3.5 20.5l4.3-1.1A8.5 8.5 0 1 0 12 3.5z"/><path d="M9 8.6c.2 3.4 2.9 6.1 6.3 6.3l.9-1.7-1.8-.9-.9.9a5 5 0 0 1-2.8-2.8l.9-.9-.9-1.8z"/>',
+  Instagram: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><circle cx="12" cy="12" r="3.6"/><path d="M16.6 7.4h.01"/>',
+};
+const MSG_ICON = { Telegram: 1, WhatsApp: 1, Instagram: 1 };
+export const msIcon = (m) =>
+  `<span class="ms ${esc(m)}" title="${esc(m)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPH[m] || '<circle cx="12" cy="12" r="8"/>'}</svg></span>`;
 export const isMessenger = (m) => m in MSG_ICON;
 export const pill = (s, cls) => `<span class="pill ${esc(cls || s)}">${esc(s)}</span>`;
 export const opt = (list, sel) => list.map(([v, l]) => `<option value="${esc(v)}" ${v === sel ? "selected" : ""}>${esc(l)}</option>`).join("");

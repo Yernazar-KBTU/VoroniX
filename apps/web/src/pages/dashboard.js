@@ -134,7 +134,7 @@ export const dashboard = {
     <div class="kpi b" data-testid="kpi-today">${ki("today")}<span class="k">Visits today</span><span class="v">${tod.length}</span><span class="s">${next ? "Next at " + next.start_datetime.slice(11) + " · " + esc(cli(next.client_id)?.display_name || "") : "No more visits today"}</span></div>
     <div class="kpi g">${ki("revenue")}<span class="k">Revenue this month</span><span class="v">${money(revenueOf(monthA))}</span><span class="s">${count(monthA.filter((a) => a.status === "Completed").length, "completed visit")}</span></div>
     <div class="kpi vi">${ki("ai")}<span class="k">Chats closed by AI</span><span class="v">${C.length ? Math.round((100 * aiOnly) / C.length) : 0}%</span><span class="s">${aiOnly} of ${C.length} without a human</span></div>
-    <div class="kpi r">${ki("noshow")}<span class="k">No-show rate, 30 days</span><span class="v">${nsr}%</span><span class="s">${noShows} missed of ${count(last30.length, "visit")}</span></div>
+    <div class="kpi r">${ki("noshow")}<span class="k">No-shows, 30 days</span><span class="v">${nsr}%</span><span class="s">${noShows} missed of ${count(last30.length, "visit")}</span></div>
   </div>
   <div class="grid g2">
     <section class="panel"><div class="ph"><h3>Today · ${DOW[now.getDay()]} ${today}</h3><span class="grow"></span><button class="btn sm" data-go="calendar">Open calendar</button></div>

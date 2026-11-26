@@ -71,3 +71,25 @@ body{background:var(--wall)}
 @media (max-width:900px){.stabs{display:none}.top .tsearch{margin-left:0;flex:1}}
 @media (max-width:760px){.app{grid-template-columns:minmax(0,1fr)}.side{background:rgba(4,18,38,.92)}}
 #view > .muted,#view > .small,#view > p{color:var(--on-wall-dim)}
+
+/* Polish: calmer, more serious surfaces */
+.btn.create,.btn.primary{background:#0f8fb4;border:0;box-shadow:0 2px 8px rgba(6,48,79,.22)}
+.btn.create:hover,.btn.primary:hover{background:#0c7c9c;filter:none}
+.kpi::after{display:none}
+.kpi .ki{width:auto;height:auto;background:none;color:var(--muted)}
+.kpi .ki svg{width:17px;height:17px}
+.kpi .k{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table.t th.num,table.t td.num{text-align:right;font-variant-numeric:tabular-nums}
+table.t td.bad{color:var(--red);font-weight:600}
+.ms{width:18px;height:18px;border-radius:0;background:none!important;color:var(--muted)}
+.ms svg{width:16px;height:16px}
+.ms.Telegram{color:#229ed9}.ms.WhatsApp{color:#1fa855}.ms.Instagram{color:#c13584}
+.ms.other::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.chlist{display:flex;flex-direction:column;gap:16px}
+.chrow{display:grid;grid-template-columns:1fr auto;align-items:center;row-gap:7px}
+.chname{display:inline-flex;align-items:center;gap:8px;font-weight:500}
+.chrow b{font-variant-numeric:tabular-nums}
+.chrow .hbar{grid-column:1/-1;height:6px;border-radius:3px}
+.chrow .hbar i{background:var(--accent);border-radius:3px}
+.ilogo{background:var(--panel2);border:1px solid var(--line)}
+.ilogo svg{width:22px;height:22px}

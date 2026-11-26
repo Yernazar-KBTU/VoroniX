@@ -37,6 +37,8 @@ const NAV = [
   ["AI and tools", [["knowledge", "AI knowledge base"], ["analytics", "Analytics"], ["database", "Database"], ["integrations", "Integrations"], ["business", "Business setup"]]],
 ];
 const LABEL = Object.fromEntries(NAV.flatMap(([, items]) => items));
+/** Shorter names for the top-bar tabs, where space is tight. */
+const TAB = { business: "Setup", knowledge: "Knowledge base" };
 
 /** The database page exists only where the server allows the SQL console (teaching setups). */
 export const canSee = (route) => Boolean(PAGES[route]) && (route !== "database" || Boolean(meta.features?.sql_console));
@@ -66,7 +68,7 @@ function renderRail() {
   const group = NAV.find(([, items]) => items.some(([k]) => k === ui.route)) || NAV[0];
   $("#stabs").innerHTML = group[1]
     .filter(([k]) => canSee(k))
-    .map(([k, l]) => `<button type="button" data-go="${k}" class="${ui.route === k ? "on" : ""}"${ui.route === k ? ' aria-current="page"' : ""}>${l}${k === "inbox" && needs ? `<span class="badge">${needs}</span>` : ""}</button>`)
+    .map(([k, l]) => `<button type="button" data-go="${k}" class="${ui.route === k ? "on" : ""}"${ui.route === k ? ' aria-current="page"' : ""}>${TAB[k] || l}${k === "inbox" && needs ? `<span class="badge">${needs}</span>` : ""}</button>`)
     .join("");
   // Quick access on the right: the places an owner jumps to all day.
   const quick = [["inbox", "Chats"], ["calendar", "Calendar"], ["clients", "Clients"], null, ["knowledge", "AI knowledge base"], ["business", "Business setup"]];
