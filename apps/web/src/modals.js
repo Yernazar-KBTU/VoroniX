@@ -248,6 +248,11 @@ const ACTIONS = {
     ui.composeAs = v;
     render();
   },
+  inboxtab(v) {
+    ui.inboxTab = v;
+    ui.curConv = null;
+    render();
+  },
   aireply: (id) => act(api.post(`/conversations/${id}/ai-reply`)),
   stopai: (id) => act(api.post(`/conversations/${id}/ai-stop`)),
   pay: (pid) => act(api.post(`/payments/${pid}/pay`, { method: businessCurrency() === "KZT" ? "Kaspi QR" : "Card" }), "Payment received"),

@@ -29,7 +29,7 @@ describe("schema", () => {
     const core = await pool.query("SELECT version FROM public.schema_migrations ORDER BY version");
     expect(core.rows.map((r) => r.version)).toEqual(["001_accounts.sql", "002_roles.sql"]);
     const own = await pool.query("SELECT version FROM tenant_migrations ORDER BY version");
-    expect(own.rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql", "004_integrations.sql", "005_data_quality.sql", "006_reminders.sql", "007_ai_engine.sql", "008_security_audit.sql", "009_payments_security.sql"]);
+    expect(own.rows.map((r) => r.version)).toEqual(["001_init.sql", "002_reporting.sql", "003_brand.sql", "004_integrations.sql", "005_data_quality.sql", "006_reminders.sql", "007_ai_engine.sql", "008_security_audit.sql", "009_payments_security.sql", "010_spam_stage.sql"]);
   });
 
   it("has the 19 CRM tables and 3 reporting views in the business schema, and 4 shared tables in public", async () => {

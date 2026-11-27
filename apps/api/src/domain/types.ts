@@ -6,7 +6,7 @@ export type Messenger = (typeof MESSENGERS)[number];
 export const APPT_STATUSES = ["Booked", "Confirmed", "Completed", "Cancelled", "No-show"] as const;
 export type ApptStatus = (typeof APPT_STATUSES)[number];
 
-export const STAGES = ["New", "In dialog", "Booked", "Paid", "Visited", "Lost"] as const;
+export const STAGES = ["New", "In dialog", "Booked", "Paid", "Visited", "Lost", "Spam"] as const;
 export type Stage = (typeof STAGES)[number];
 
 export interface BusinessSettings {

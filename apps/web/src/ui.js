@@ -10,6 +10,7 @@ export const ui = {
   route: "dashboard",
   curConv: null,
   composeAs: "client",
+  inboxTab: "all",
   gq: "",
 };
 
