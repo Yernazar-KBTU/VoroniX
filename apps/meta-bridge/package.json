@@ -6,8 +6,9 @@
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {
-    "start": "node src/server.mjs",
-    "test": "node --test test/lib.test.mjs test/media.test.mjs"
-  },
-  "license": "MIT"
+  "start": "node src/server.mjs",
+  "test": "node --test test/lib.test.mjs test/media.test.mjs",
+  "quality-check": "node scripts/quality-check.mjs"
+},
+   "license": "MIT"
 }
