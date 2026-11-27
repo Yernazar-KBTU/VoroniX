@@ -14,6 +14,7 @@ export const COOKIE = "vx_session";
 const LONG_DAYS = 30;
 const SHORT_DAYS = 1;
 const RESET_MINUTES = 60;
+const VERIFY_MINUTES = 24 * 60;
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 export const normEmail = (e: string) => e.trim().toLowerCase();
@@ -48,6 +49,7 @@ class Limiter {
 }
 const loginFailures = new Limiter(10);
 const resetRequests = new Limiter(5);
+const signupRequests = new Limiter(5);
 
 async function startSession(res: Response, userId: string, remember: boolean, userAgent: string) {
   const token = newToken();
@@ -68,6 +70,8 @@ export interface NewAccount {
   full_name: string;
   email: string;
   password: string | null;
+  password_hash?: string;
+  verified?: boolean;
   google_sub?: string | null;
   country?: string;
   timezone: string;
@@ -79,7 +83,7 @@ export async function createAccount(input: NewAccount): Promise<{ user: repo.Use
   const email = normEmail(input.email);
   if (await repo.findUserByEmail(pool, email)) throw conflict("An account with this email already exists. Sign in instead.", "email_taken");
   if (!(await isKnownTimezone(input.timezone))) throw badRequest("This time zone is not supported. Pick another city in the same zone.");
-  const password_hash = input.password ? await hashPassword(input.password) : null;
+  const password_hash = input.password_hash ?? (input.password ? await hashPassword(input.password) : null);
   return tx(async (c) => {
     const { business } = await openBusiness(c, {
       name: input.business_name.trim(),
@@ -95,14 +99,50 @@ export async function createAccount(input: NewAccount): Promise<{ user: repo.Use
       password_hash,
       role: "owner",
       google_sub: input.google_sub ?? null,
-      verified: !!input.google_sub,
+      verified: !!input.google_sub || !!input.verified,
     });
     return { user, business };
   });
 }
 
-export async function register(res: Response, input: NewAccount & { password: string }, userAgent: string) {
-  const out = await createAccount(input);
+export async function register(input: NewAccount & { password: string }, ip: string): Promise<void> {
+  if (!config.SMTP_ENABLED) throw new HttpError(503, "Email verification is not configured. Please try again later.", "email_unavailable");
+  if (signupRequests.blocked(ip)) throw new HttpError(429, "Too many sign-up requests. Try again in 15 minutes.", "too_many_attempts");
+  signupRequests.hit(ip);
+  const email = normEmail(input.email);
+  if (await repo.findUserByEmail(pool, email)) throw conflict("An account with this email already exists. Sign in instead.", "email_taken");
+  if (!(await isKnownTimezone(input.timezone))) throw badRequest("This time zone is not supported. Pick another city in the same zone.");
+  const token = newToken();
+  const pending: repo.PendingSignup = {
+    ...input,
+    email,
+    business_name: input.business_name.trim(),
+    business_type: input.business_type?.trim(),
+    full_name: input.full_name.trim(),
+    password_hash: await hashPassword(input.password),
+  };
+  await repo.savePendingSignup(pool, pending, sha256(token));
+  try {
+    await mailer.send(buttonMail({
+      to: email,
+      subject: "Verify your VoroniX email",
+      greeting: `Hi ${pending.full_name.split(" ")[0]},`,
+      lines: ["Confirm your email address to create your VoroniX workspace. This link works once and expires in 24 hours."],
+      button: "Verify email",
+      url: `${config.APP_URL}/app#verify=${token}`,
+      footer: "If you did not start this sign-up, ignore this email.",
+    }));
+  } catch (err) {
+    await repo.deletePendingSignup(pool, sha256(token));
+    logger.error({ err }, "verification email failed");
+    throw new HttpError(503, "We could not send the verification email. Check your address and try again.", "email_send_failed");
+  }
+}
+
+export async function verifySignup(res: Response, token: string, userAgent: string) {
+  const pending = await repo.takePendingSignup(pool, sha256(token));
+  if (!pending) throw new HttpError(400, "This verification link has expired or was already used. Start sign-up again.", "verification_link_invalid");
+  const out = await createAccount({ ...pending, password: null, password_hash: pending.password_hash, verified: true });
   await startSession(res, out.user.id, true, userAgent);
   logger.info({ business: out.business.id }, "business signed up");
   return out;
@@ -115,7 +155,7 @@ export async function login(res: Response, input: { email: string; password: str
 
   const user = await repo.findUserByEmail(pool, email);
   const ok = await verifyPassword(input.password, user?.password_hash ?? DUMMY_HASH);
-  if (!user || !user.password_hash || !ok) {
+  if (!user || !user.password_hash || !ok || !user.email_verified_at) {
     loginFailures.hit(key);
     throw new HttpError(401, "Email or password is incorrect.", "bad_credentials");
   }

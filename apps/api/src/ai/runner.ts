@@ -10,6 +10,9 @@ import type { AgentEngine } from "./engine.js";
 import { OfflineAgent } from "./offline-agent.js";
 import { VoronixBrainAgent } from "./voronix-brain-agent.js";
 import { VoronixDown } from "./voronix-ai.js";
+import { VoronixAiAgent, VoronixAiDown } from "./voronixai-agent.js";
+
+const voronixAi = new VoronixAiAgent();
 
 export function createEngine(apiKey = config.ANTHROPIC_API_KEY): AgentEngine {
   // Our own AI answers whenever it and the data server are set up.
@@ -31,6 +34,7 @@ export const claudeAvailable = (): boolean => ownKey.has(currentTenant()?.id ?? 
 export async function engineFor(): Promise<AgentEngine> {
   if (override) return override;
   const { rows } = await pool.query<{ ai_engine: string }>(`SELECT ai_engine FROM business_settings WHERE id = 1`);
+  if (rows[0]?.ai_engine === "voronixai") return voronixAi;
   if (rows[0]?.ai_engine === "claude") return ownKey.get(currentTenant()?.id ?? "") ?? platformClaude ?? platform;
   return platform;
 }
@@ -127,7 +131,7 @@ export async function replyTo(convId: string): Promise<void> {
       logger.error({ err: e, convId }, "AI reply failed");
       await pushMessage(convId, { from: "system", text: `AI could not answer: ${e.message}` }).catch(() => {});
       // Our AI is down: no automatic answer, a person takes the chat and sees why.
-      if (e instanceof VoronixDown) {
+      if (e instanceof VoronixDown || e instanceof VoronixAiDown) {
         await patchConversation(pool, convId, { needs_human: true }).catch(() => {});
         bus.changed("conversations");
       }

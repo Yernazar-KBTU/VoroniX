@@ -40,6 +40,41 @@ export async function findUserByEmail(db: Db, email: string): Promise<UserWithSe
   );
 }
 
+export interface PendingSignup {
+  business_name: string;
+  business_type?: string;
+  full_name: string;
+  email: string;
+  password_hash: string;
+  country?: string;
+  timezone: string;
+  currency: string;
+}
+
+export async function savePendingSignup(db: Db, p: PendingSignup, tokenHash: string): Promise<void> {
+  await db.query(
+    `INSERT INTO public.pending_signups (email, business_name, business_type, full_name, password_hash, country, timezone, currency, token_hash, expires_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now() + interval '24 hours')
+     ON CONFLICT (email) DO UPDATE SET business_name=EXCLUDED.business_name, business_type=EXCLUDED.business_type,
+       full_name=EXCLUDED.full_name, password_hash=EXCLUDED.password_hash, country=EXCLUDED.country,
+       timezone=EXCLUDED.timezone, currency=EXCLUDED.currency, token_hash=EXCLUDED.token_hash,
+       created_at=now(), expires_at=now() + interval '24 hours'`,
+    [p.email,p.business_name,p.business_type ?? null,p.full_name,p.password_hash,p.country ?? null,p.timezone,p.currency,tokenHash],
+  );
+}
+
+export async function takePendingSignup(db: Db, tokenHash: string): Promise<PendingSignup | null> {
+  const { rows } = await db.query<PendingSignup>(
+    `DELETE FROM public.pending_signups WHERE token_hash=$1 AND expires_at > now() RETURNING business_name,business_type,full_name,email,password_hash,country,timezone,currency`,
+    [tokenHash],
+  );
+  return rows[0] ?? null;
+}
+
+export async function deletePendingSignup(db: Db, tokenHash: string): Promise<void> {
+  await db.query(`DELETE FROM public.pending_signups WHERE token_hash=$1`, [tokenHash]);
+}
+
 export async function findUserByGoogle(db: Db, sub: string): Promise<User | null> {
   return (await db.query<User>(`SELECT ${USER} FROM public.users u WHERE u.google_sub = $1`, [sub])).rows[0] ?? null;
 }

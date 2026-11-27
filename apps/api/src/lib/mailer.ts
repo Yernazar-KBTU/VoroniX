@@ -1,5 +1,6 @@
 import { config } from "../config.js";
 import { logger } from "./logger.js";
+import nodemailer from "nodemailer";
 
 export interface Mail {
   to: string;
@@ -11,13 +12,22 @@ export interface Mail {
 /** Mail that was not sent because no provider is configured. Tests read it; it is capped so it cannot grow forever. */
 export const outbox: Mail[] = [];
 
-/**
- * Sends one email through the Resend HTTP API when RESEND_API_KEY is set.
- * Without a key (local development, tests) the mail is logged and kept in
- * `outbox` instead, so sign-in flows still work end to end.
- */
+/** Sends through SMTP when configured, otherwise Resend, otherwise the dev outbox. */
 export const mailer = {
   async send(m: Mail): Promise<void> {
+    if (config.SMTP_ENABLED) {
+      const transport = nodemailer.createTransport({
+        host: config.SMTP_HOST,
+        port: config.SMTP_PORT,
+        secure: config.SMTP_SECURE,
+        auth: { user: config.SMTP_USER, pass: config.SMTP_PASSWORD },
+        connectionTimeout: 10_000,
+        greetingTimeout: 10_000,
+        socketTimeout: 15_000,
+      });
+      await transport.sendMail({ from: config.MAIL_FROM, to: m.to, subject: m.subject, text: m.text, html: m.html });
+      return;
+    }
     if (!config.RESEND_API_KEY) {
       outbox.push(m);
       if (outbox.length > 50) outbox.shift();

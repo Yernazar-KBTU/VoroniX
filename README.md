@@ -52,10 +52,11 @@ Columns are found by their headers in English, Russian or Kazakh (Name, Price, D
 
 ## Accounts and businesses
 
-- **Sign up** creates a business and its owner. The business gets its own PostgreSQL schema `t_<id>` with every CRM table, so its clients, chats, bookings and numbering (`CL-0001`, `AP-1001`) are its own. The shared tables in `public` are `businesses`, `users`, `sessions` and `password_resets`.
+- **Sign up** creates a business and its owner after email verification. The business gets its own PostgreSQL schema `t_<id>` with every CRM table, so its clients, chats, bookings and numbering (`CL-0001`, `AP-1001`) are its own. The shared tables in `public` include `businesses`, `users`, `sessions`, pending sign-ups and password resets.
+- **Email verification**: sign-up requires SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `MAIL_FROM`). VoroniX creates the workspace only after the owner opens the single-use email link (valid for 24 hours). For Docker Compose, set the SMTP values in `.env` and restart the app.
 - **Time zone and currency** are chosen at sign-up. “Today”, the calendar, reminders, the calendar feed and every price follow the business, not the server.
 - **Sign in** with email and password (scrypt hash, HttpOnly cookie, 30 days with “Keep me signed in”, 10 failed attempts per 15 minutes).
-- **Forgot password?** emails a link that works once and for one hour, through [Resend](https://resend.com). Without `RESEND_API_KEY` the email is only written to the server log.
+- **Forgot password?** emails a link that works once and for one hour. Mail uses SMTP when configured, then [Resend](https://resend.com) if `RESEND_API_KEY` is set; otherwise it is written to the server log.
 - **Continue with Google** appears when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. Authorized redirect URI in Google Cloud: `<APP_URL>/api/auth/google/callback`.
 - **Getting started**: a new business sees a six-step checklist on the dashboard: describe the business, add services, add the team, teach the AI, connect a messenger, try a test chat.
 - **Webhooks carry the business id**: `POST /api/channels/<business id>/<messenger>/inbound` with the header `x-channel-secret`, and the calendar feed `GET /api/integrations/<business id>/calendar.ics?token=…`. The Integrations page shows both addresses.
@@ -122,7 +123,8 @@ A database from before accounts (tables directly in `public`) is not migrated in
 | `VORONIX_AI_URL`, `VORONIX_AI_KEY` | Address (and optional key) of [VoroniX AI](apps/voronix-ai/README.md), our own intent model. The built-in agent asks it what each client message means; without it, or when it does not answer within `VORONIX_AI_TIMEOUT_MS` (2500 ms), the rules decide alone |
 | `VORONIX_DATA_URL` | Where VoroniX AI keeps its memory. Default: this app itself at `/ai-data`, in this database. When the AI does not answer, the chat goes to a person and the CRM shows "VoroniX AI is down" |
 | `VORONIX_AI_PUBLIC_URL`, `VORONIX_DATA_PUBLIC_URL` | Addresses the browser uses to open the live AI page from the AI chip |
-| `RESEND_API_KEY`, `MAIL_FROM` | Password reset emails. `MAIL_FROM` must use a domain verified in Resend |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `MAIL_FROM` | Required for sign-up verification emails. Use the host, port and credentials from your SMTP provider. |
+| `RESEND_API_KEY` | Optional fallback for password reset emails when SMTP is not configured. |
 | `SUPPORT_EMAIL` | “Help” on the sign-in page and “Contact” on the public pages; hidden when empty |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | “Continue with Google” |
 | `SQL_CONSOLE` | `on` shows the Database page with the read-only SQL console. Default: on outside production, off in production |

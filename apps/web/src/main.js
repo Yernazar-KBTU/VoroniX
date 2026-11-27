@@ -64,7 +64,7 @@ function setAccount(me) {
 
 async function signedIn() {
   // A password reset link always opens the reset form, even in a browser that is signed in.
-  if (location.hash.startsWith("#reset=")) return showAuth();
+  if (location.hash.startsWith("#reset=") || location.hash.startsWith("#verify=")) return showAuth();
   try {
     return await api.get("/auth/me");
   } catch (e) {

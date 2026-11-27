@@ -157,8 +157,9 @@ export const business = {
   <div class="frow"><div class="f"><label for="b_staff">What you call staff</label><input id="b_staff" value="${esc(b.staff_label)}" placeholder="Master, Doctor, Trainer"></div><div class="f"><label for="b_svc">What you call services</label><input id="b_svc" value="${esc(b.service_label)}" placeholder="Service, Procedure, Class"></div><div class="f"><label for="b_lang">Client languages</label><input id="b_lang" value="${esc(b.languages)}"></div></div>
  </div><div class="ph" style="border-top:1px solid var(--line)"><h3>AI administrator</h3><span class="pill ai">AI</span></div><div class="pad" style="display:flex;flex-direction:column;gap:14px">
   <div class="f"><label for="b_engine">Who answers the chats</label><select id="b_engine">
-   <option value="voronix" ${b.ai_engine !== "claude" ? "selected" : ""}>VoroniX AI (our own)</option>
+   <option value="voronix" ${b.ai_engine !== "claude" && b.ai_engine !== "voronixai" ? "selected" : ""}>VoroniX AI (our own)</option>
    <option value="claude" ${b.ai_engine === "claude" ? "selected" : ""} ${meta.claude_available ? "" : "disabled"}>Claude${meta.claude_available ? "" : " (connect an Anthropic key in Integrations first)"}</option>
+   <option value="voronixai" ${b.ai_engine === "voronixai" ? "selected" : ""} ${meta.voronixai_available ? "" : "disabled"}>VoroniX.ai (guard, PII masking, model router)${meta.voronixai_available ? "" : " (set VORONIXAI_URL on the server first)"}</option>
   </select></div>
   <div class="f"><label for="b_tone">Tone of voice</label><textarea id="b_tone">${esc(b.tone)}</textarea></div>
   <div class="f"><label for="b_catch">Brand phrase (the AI uses it in greetings and confirmations)</label><input id="b_catch" value="${esc(b.catchphrase || "")}" placeholder="e.g. Красота начинается с заботы ✨"></div>
